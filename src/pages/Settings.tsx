@@ -39,7 +39,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="mb-4">
+          <TabsList>
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               <span>Conta</span>
@@ -49,7 +49,7 @@ export default function Settings() {
               <span>Plano</span>
             </TabsTrigger>
             <TabsTrigger value="integrations" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
+              <SettingsIcon className="h-4 w-4" />
               <span>Integrações</span>
             </TabsTrigger>
           </TabsList>
@@ -323,7 +323,7 @@ export default function Settings() {
                   </div>
                   <div className="flex justify-end mt-4">
                     <Button variant="default" size="sm">
-                      <Settings className="h-4 w-4 mr-2" />
+                      <SettingsIcon className="h-4 w-4 mr-2" />
                       Conectar
                     </Button>
                   </div>
@@ -347,7 +347,7 @@ export default function Settings() {
                   </div>
                   <div className="flex justify-end mt-4">
                     <Button variant="default" size="sm">
-                      <Settings className="h-4 w-4 mr-2" />
+                      <SettingsIcon className="h-4 w-4 mr-2" />
                       Conectar
                     </Button>
                   </div>

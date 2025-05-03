@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { AgentCardProps } from "@/components/agents/AgentCard";
 
-// Mock data for the agents page
-const mockAgents = [
+// Mock data for the agents page with correctly typed status
+const mockAgents: AgentCardProps[] = [
   {
     id: "1",
     name: "Sofia Atendente",
@@ -167,7 +168,7 @@ export default function Agents() {
         </div>
 
         <AgentGrid 
-          agents={filteredAgents} 
+          agents={filteredAgents}
           isLoading={isLoading} 
           onAgentEditClick={handleEditAgent}
           onTestVoice={handleTestVoice}
