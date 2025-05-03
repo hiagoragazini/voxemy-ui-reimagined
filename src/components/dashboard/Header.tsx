@@ -9,18 +9,26 @@ interface HeaderProps {
   openSidebar: () => void;
   userName?: string;
   userAvatar?: string;
+  sidebarCollapsed?: boolean;
 }
 
-export const Header = ({ openSidebar, userName = "Usuário", userAvatar }: HeaderProps) => {
+export const Header = ({ 
+  openSidebar, 
+  userName = "Usuário", 
+  userAvatar,
+  sidebarCollapsed = false
+}: HeaderProps) => {
   const [showSearch, setShowSearch] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={openSidebar} className="md:hidden">
-          <Menu className="h-5 w-5" />
-          <span className="sr-only">Menu</span>
-        </Button>
+        {sidebarCollapsed && (
+          <Button variant="ghost" size="icon" onClick={openSidebar} className="h-8 w-8">
+            <Menu className="h-4 w-4" />
+            <span className="sr-only">Menu</span>
+          </Button>
+        )}
         
         <div className={cn("hidden transition-all duration-200 md:block", showSearch && "hidden md:hidden")}>
           <h1 className="text-xl font-semibold">Dashboard</h1>
@@ -55,7 +63,7 @@ export const Header = ({ openSidebar, userName = "Usuário", userAvatar }: Heade
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary"></span>
         </Button>
         
-        <div className="flex items-center gap-2 rounded-full border border-border/40 bg-background p-1 pl-3 pr-1">
+        <div className="hidden items-center gap-2 rounded-full border border-border/40 bg-background p-1 pl-3 pr-1 md:flex">
           <span className="text-sm font-medium leading-none">{userName}</span>
           <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary/10">
             {userAvatar ? (
