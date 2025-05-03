@@ -1,0 +1,179 @@
+
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { AgentGrid } from "@/components/agents/AgentGrid";
+import { Layout } from "@/components/dashboard/Layout";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
+
+// Mock data for the agents page
+const mockAgents = [
+  {
+    id: "1",
+    name: "Sofia Atendente",
+    description: "Especialista em atendimento ao cliente, ideal para suporte técnico e dúvidas frequentes.",
+    category: "Atendimento",
+    status: "active",
+    calls: 253,
+    avgTime: "2:14",
+    successRate: 92,
+    lastActivity: "Hoje às 14:25",
+    avatarLetter: "S",
+    avatarColor: "bg-violet-100",
+  },
+  {
+    id: "2",
+    name: "Carlos Vendas",
+    description: "Focado em qualificação de leads e conversão de vendas para produtos tecnológicos.",
+    category: "Vendas",
+    status: "active",
+    calls: 187,
+    avgTime: "3:22",
+    successRate: 78,
+    lastActivity: "Hoje às 12:10",
+    avatarLetter: "C",
+    avatarColor: "bg-blue-100",
+  },
+  {
+    id: "3",
+    name: "Ana Suporte",
+    description: "Especialista em resolução de problemas técnicos e escalação para níveis superiores.",
+    category: "Suporte",
+    status: "inactive",
+    calls: 94,
+    avgTime: "4:05",
+    successRate: 81,
+    lastActivity: "Ontem às 16:42",
+    avatarLetter: "A",
+    avatarColor: "bg-green-100",
+  },
+  {
+    id: "4",
+    name: "Ricardo Cobranças",
+    description: "Focado em renegociação de dívidas e cobranças amigáveis.",
+    category: "Financeiro",
+    status: "paused",
+    calls: 142,
+    avgTime: "2:38",
+    successRate: 65,
+    lastActivity: "Hoje às 9:15",
+    avatarLetter: "R",
+    avatarColor: "bg-yellow-100",
+  },
+  {
+    id: "5",
+    name: "Juliana Pesquisas",
+    description: "Especializada em conduzir pesquisas de satisfação e feedback de clientes.",
+    category: "Pesquisa",
+    status: "active",
+    calls: 78,
+    avgTime: "1:47",
+    successRate: 94,
+    lastActivity: "Hoje às 11:30",
+    avatarLetter: "J",
+    avatarColor: "bg-pink-100",
+  }
+];
+
+export default function Agents() {
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleCreateAgent = () => {
+    toast.success("Redirecionando para criação de novo agente...");
+    // Aqui seria a navegação real para o formulário de criação
+  };
+
+  const handleTestVoice = (id: string) => {
+    toast.success(`Testando voz do agente ${id}...`);
+  };
+
+  const handleEditAgent = (id: string) => {
+    toast.success(`Editando agente ${id}...`);
+    // Aqui seria a navegação real para a edição do agente
+  };
+
+  // Filter agents based on selected filter
+  const filteredAgents = mockAgents.filter(agent => {
+    if (filter === "all") return true;
+    return agent.status === filter;
+  });
+
+  const getFilterCount = (filterType: "active" | "paused" | "inactive") => {
+    return mockAgents.filter(agent => agent.status === filterType).length;
+  };
+
+  return (
+    <Layout>
+      <div className="container mx-auto p-6">
+        <div className="flex flex-col mb-8">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+            Seus Agentes de Voz
+          </h1>
+          <p className="mt-1 text-muted-foreground max-w-3xl">
+            Gerencie sua equipe de atendentes virtuais e configure-os para diferentes campanhas.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button 
+              variant={filter === "all" ? "default" : "outline"} 
+              size="sm"
+              onClick={() => setFilter("all")}
+              className="flex items-center gap-1.5"
+            >
+              <Filter className="h-4 w-4" />
+              <span>Todos ({mockAgents.length})</span>
+            </Button>
+            <Button 
+              variant={filter === "active" ? "default" : "outline"} 
+              size="sm"
+              onClick={() => setFilter("active")}
+              className="flex items-center gap-1.5"
+            >
+              <UserCheck className="h-4 w-4 text-green-500" />
+              <span>Ativos ({getFilterCount("active")})</span>
+            </Button>
+            <Button 
+              variant={filter === "paused" ? "default" : "outline"} 
+              size="sm"
+              onClick={() => setFilter("paused")}
+              className="flex items-center gap-1.5"
+            >
+              <Clock className="h-4 w-4 text-amber-500" />
+              <span>Pausados ({getFilterCount("paused")})</span>
+            </Button>
+            <Button 
+              variant={filter === "inactive" ? "default" : "outline"} 
+              size="sm"
+              onClick={() => setFilter("inactive")}
+              className="flex items-center gap-1.5"
+            >
+              <UserX className="h-4 w-4 text-gray-500" />
+              <span>Inativos ({getFilterCount("inactive")})</span>
+            </Button>
+          </div>
+          <Button 
+            onClick={handleCreateAgent}
+            className="bg-violet-600 hover:bg-violet-700 text-white font-medium flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Criar Novo Agente
+          </Button>
+        </div>
+
+        <AgentGrid 
+          agents={filteredAgents} 
+          isLoading={isLoading} 
+          onAgentEditClick={handleEditAgent}
+          onTestVoice={handleTestVoice}
+          onCreateAgent={handleCreateAgent}
+        />
+      </div>
+    </Layout>
+  );
+}

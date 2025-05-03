@@ -8,6 +8,10 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Agents from "./pages/Agents";
+import Campaigns from "./pages/Campaigns";
+import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -21,10 +25,10 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/agents" element={<Navigate to="/dashboard" />} /> {/* Temporário */}
-          <Route path="/campaigns" element={<Navigate to="/dashboard" />} /> {/* Temporário */}
-          <Route path="/analytics" element={<Navigate to="/dashboard" />} /> {/* Temporário */}
-          <Route path="/settings" element={<Navigate to="/dashboard" />} /> {/* Temporário */}
+          <Route path="/agents" element={<Agents />} />
+          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
