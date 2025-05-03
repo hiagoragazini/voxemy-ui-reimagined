@@ -17,8 +17,9 @@ const Logo = ({ className = "", size = "md" }: LogoProps) => {
     <Link to="/" className={`flex items-center ${className}`}>
       <div className={`font-bold ${sizeClasses[size]}`}>
         <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">
-          VOXEMY
+          VOX
         </span>
+        <span className="text-white">EMY</span>
         <span className="text-blue-400 font-normal text-sm ml-0.5">AI</span>
       </div>
     </Link>

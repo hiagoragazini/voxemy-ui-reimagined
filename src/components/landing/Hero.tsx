@@ -29,10 +29,10 @@ const Hero = () => {
               className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white shadow-lg hover:shadow-violet-500/50 transition-all"
               onClick={scrollToPlans}
             >
-              Quero criar meu agente
+              Testar 7 dias grátis
             </Button>
             <p className="text-sm text-slate-400 mt-3">
-              Configure em minutos. Sem cartão de crédito.
+              Configure em minutos. Cancele quando quiser.
             </p>
           </div>
         </div>
