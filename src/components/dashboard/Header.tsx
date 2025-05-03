@@ -4,6 +4,7 @@ import { Search, Bell, User, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import Logo from "@/components/shared/Logo";
 
 interface HeaderProps {
   openSidebar: () => void;
@@ -14,7 +15,7 @@ interface HeaderProps {
 
 export const Header = ({ 
   openSidebar, 
-  userName = "John Doe", 
+  userName = "Usuário", 
   userAvatar,
   sidebarCollapsed = false
 }: HeaderProps) => {
@@ -22,7 +23,7 @@ export const Header = ({
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {sidebarCollapsed && (
           <Button variant="ghost" size="icon" onClick={openSidebar} className="h-8 w-8">
             <Menu className="h-4 w-4" />
@@ -30,12 +31,19 @@ export const Header = ({
           </Button>
         )}
         
-        <div className={cn("transition-all duration-200 md:block", showSearch && "hidden md:hidden")}>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-        </div>
+        <Logo size="md" className="mr-4" />
 
-        <div className={cn("max-w-md flex-1 md:flex ml-4", showSearch && "flex")}>
-          <div className="relative w-full max-w-xs">
+        <nav className="hidden md:flex items-center space-x-4">
+          <Button variant="ghost" className="font-medium">Dashboard</Button>
+          <Button variant="ghost" className="text-muted-foreground">Agentes</Button>
+          <Button variant="ghost" className="text-muted-foreground">Leads</Button>
+          <Button variant="ghost" className="text-muted-foreground">Relatórios</Button>
+        </nav>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className={cn("hidden md:block max-w-xs")}>
+          <div className="relative w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
@@ -44,9 +52,7 @@ export const Header = ({
             />
           </div>
         </div>
-      </div>
 
-      <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -59,17 +65,17 @@ export const Header = ({
         
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          <span className="sr-only">Notifications</span>
+          <span className="sr-only">Notificações</span>
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary"></span>
         </Button>
         
-        <div className="hidden items-center gap-2 md:flex">
-          <span className="text-sm font-medium leading-none">{userName}</span>
-          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium leading-none hidden md:block">{userName}</span>
+          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-violet-100 text-violet-600">
             {userAvatar ? (
               <img src={userAvatar} alt={userName} className="h-full w-full object-cover" />
             ) : (
-              <User className="h-5 w-5 text-primary" />
+              <User className="h-4 w-4" />
             )}
           </div>
         </div>
