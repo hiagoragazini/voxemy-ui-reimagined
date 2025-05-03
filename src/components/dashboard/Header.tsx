@@ -1,9 +1,19 @@
 
 import { useState } from "react";
-import { Search, Bell, User, Menu } from "lucide-react";
+import { Search, Bell, User, Menu, LogOut, Settings as SettingsIcon, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   openSidebar: () => void;
@@ -19,6 +29,11 @@ export const Header = ({
   sidebarCollapsed = false
 }: HeaderProps) => {
   const [showSearch, setShowSearch] = useState(false);
+  const navigate = useNavigate();
+
+  const handleProfileClick = (path: string) => {
+    navigate(path);
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -70,16 +85,39 @@ export const Header = ({
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary"></span>
         </Button>
         
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium leading-none hidden md:block">{userName}</span>
-          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-violet-100 text-violet-600">
-            {userAvatar ? (
-              <img src={userAvatar} alt={userName} className="h-full w-full object-cover" />
-            ) : (
-              <User className="h-4 w-4" />
-            )}
-          </div>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-accent rounded-full">
+              <span className="text-sm font-medium leading-none hidden md:block text-violet-600">{userName}</span>
+              <Avatar className="h-8 w-8 border border-violet-200">
+                {userAvatar ? (
+                  <AvatarImage src={userAvatar} alt={userName} />
+                ) : (
+                  <AvatarFallback className="bg-violet-100 text-violet-600">
+                    {userName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleProfileClick('/settings')} className="cursor-pointer">
+              <UserCog className="mr-2 h-4 w-4" />
+              <span>Perfil</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleProfileClick('/settings')} className="cursor-pointer">
+              <SettingsIcon className="mr-2 h-4 w-4" />
+              <span>Configurações</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleProfileClick('/login')} className="cursor-pointer text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Sair</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
