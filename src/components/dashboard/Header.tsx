@@ -32,13 +32,6 @@ export const Header = ({
         )}
         
         <Logo size="md" className="mr-4" />
-
-        <nav className="hidden md:flex items-center space-x-4">
-          <Button variant="ghost" className="font-medium">Dashboard</Button>
-          <Button variant="ghost" className="text-muted-foreground">Agentes</Button>
-          <Button variant="ghost" className="text-muted-foreground">Leads</Button>
-          <Button variant="ghost" className="text-muted-foreground">Relatórios</Button>
-        </nav>
       </div>
 
       <div className="flex items-center gap-2">
