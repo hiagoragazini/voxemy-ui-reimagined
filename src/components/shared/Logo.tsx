@@ -9,6 +9,7 @@ interface LogoProps {
 const Logo = ({ className = "", size = "md" }: LogoProps) => {
   const location = useLocation();
   const isDashboard = location.pathname.includes('/dashboard');
+  const isHome = location.pathname === '/';
 
   const sizeClasses = {
     sm: "text-xl",
@@ -25,7 +26,7 @@ const Logo = ({ className = "", size = "md" }: LogoProps) => {
         <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">
           ox
         </span>
-        {isDashboard ? (
+        {(isDashboard || isHome) ? (
           <span className="text-white">emy</span>
         ) : (
           <span className="text-gray-700">emy</span>
