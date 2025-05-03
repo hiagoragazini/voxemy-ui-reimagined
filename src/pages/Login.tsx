@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import Logo from "@/components/shared/Logo";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -44,9 +45,10 @@ const Login = () => {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-tr from-background to-muted p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Voxemy</h1>
+          <Logo size="lg" className="justify-center" />
           <p className="mt-2 text-muted-foreground">Entre na sua conta para continuar</p>
         </div>
+        
         <Card className="border-border/40 bg-background/95 shadow-lg backdrop-blur">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl">Login</CardTitle>
