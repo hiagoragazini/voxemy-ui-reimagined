@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import {
   ChevronLeft,
@@ -94,8 +93,8 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="text-xs font-medium">John Doe</span>
-                <span className="text-xs text-muted-foreground">Pro Plan</span>
+                <span className="text-xs font-medium text-slate-100">John Doe</span>
+                <span className="text-xs text-slate-300">Pro Plan</span>
               </div>
             )}
           </div>
