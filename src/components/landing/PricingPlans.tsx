@@ -49,7 +49,7 @@ const PricingPlans = () => {
   ];
 
   return (
-    <section className="py-20 bg-slate-900/50">
+    <section id="pricing-plans" className="py-20 bg-slate-900/50">
       <div className="container mx-auto px-4">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-bold mb-4">Escolha o plano ideal para o seu atendimento</h2>

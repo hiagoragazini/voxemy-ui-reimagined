@@ -2,6 +2,11 @@
 import { Button } from "@/components/ui/button";
 
 const Hero = () => {
+  const scrollToPlans = () => {
+    const plansSection = document.getElementById('pricing-plans');
+    plansSection?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <section className="pt-32 pb-20 px-4 md:pt-40 md:pb-28">
       <div className="container mx-auto">
@@ -23,7 +28,7 @@ const Hero = () => {
               <Button 
                 size="lg" 
                 className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white shadow-lg hover:shadow-violet-500/50 transition-all"
-                onClick={() => window.location.href = "/login"}
+                onClick={scrollToPlans}
               >
                 Quero criar meu agente
               </Button>

@@ -31,13 +31,14 @@ const Header = () => {
           </h1>
         </Link>
         
-        <Button 
-          variant="outline" 
-          className="border-violet-500 text-white hover:bg-violet-600 hover:text-white"
-          onClick={() => window.location.href = "/login"}
-        >
-          Entrar
-        </Button>
+        <Link to="/login">
+          <Button 
+            variant="outline" 
+            className="border-violet-500 text-white hover:bg-violet-600 hover:text-white"
+          >
+            Entrar
+          </Button>
+        </Link>
       </div>
     </header>
   );
