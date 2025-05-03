@@ -29,6 +29,17 @@ export const Header = ({
             <span className="sr-only">Menu</span>
           </Button>
         )}
+        
+        <div className={cn("md:hidden", showSearch ? "block" : "hidden")}>
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar..."
+              className="w-full bg-muted pl-8 focus-visible:ring-1 rounded-lg h-9"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
