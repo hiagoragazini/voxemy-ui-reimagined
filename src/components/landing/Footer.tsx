@@ -1,5 +1,6 @@
 
 import { Link } from "react-router-dom";
+import Logo from "@/components/shared/Logo";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -53,11 +54,7 @@ const Footer = () => {
       <div className="container mx-auto px-4 py-12 md:py-16">
         <div className="grid grid-cols-1 md:grid-cols-6 gap-8 mb-12">
           <div className="md:col-span-2">
-            <Link to="/" className="inline-block mb-6">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">
-                Voxemy
-              </h1>
-            </Link>
+            <Logo className="mb-6" />
             <p className="text-slate-400 mb-6 max-w-md">
               Transforme seu atendimento com agentes de voz alimentados por inteligência artificial avançada.
             </p>
@@ -94,7 +91,7 @@ const Footer = () => {
         </div>
         
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
-          <p>© {currentYear} Voxemy. Todos os direitos reservados.</p>
+          <p>© {currentYear} Voxemy AI. Todos os direitos reservados.</p>
           
           <div className="flex mt-4 md:mt-0">
             <Link to="/login" className="hover:text-white transition-colors">

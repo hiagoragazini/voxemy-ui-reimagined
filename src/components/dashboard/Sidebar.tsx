@@ -8,11 +8,10 @@ import {
   Settings,
   CalendarDays,
   User,
-  PanelLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import Logo from "@/components/shared/Logo";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -29,11 +28,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
     >
       <div className="flex h-16 items-center justify-between border-b border-border/40 px-3">
         {!collapsed && (
-          <Link to="/" className="flex items-center">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">
-              Voxemy
-            </h1>
-          </Link>
+          <Logo />
         )}
         <Button
           variant="ghost"

@@ -5,7 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 const Testimonials = () => {
   const testimonials = [
     {
-      quote: "Os agentes de IA da Voxemy transformaram completamente nosso atendimento ao cliente. Economizamos cerca de 30 horas por semana com automatização.",
+      quote: "Os agentes de IA da Voxemy AI transformaram completamente nosso atendimento ao cliente. Economizamos cerca de 30 horas por semana com automatização.",
       author: "Mariana Silva",
       role: "CEO, TechSolutions",
       avatar: "MS"
@@ -17,7 +17,7 @@ const Testimonials = () => {
       avatar: "CM"
     },
     {
-      quote: "Aumentamos nossa taxa de conversão em 40% após implementar os agentes de voz da Voxemy no nosso processo de vendas.",
+      quote: "Aumentamos nossa taxa de conversão em 40% após implementar os agentes de voz da Voxemy AI no nosso processo de vendas.",
       author: "Ana Luiza Costa",
       role: "CMO, GrowthDigital",
       avatar: "AC"
@@ -78,7 +78,7 @@ const Testimonials = () => {
           </div>
           
           <div className="mt-16">
-            <p className="text-slate-400 text-center text-sm mb-6">Empresas que já usam Voxemy</p>
+            <p className="text-slate-400 text-center text-sm mb-6">Empresas que já usam Voxemy AI</p>
             <div className="flex flex-wrap justify-center gap-x-10 gap-y-4 opacity-70">
               {companies.map((company, index) => (
                 <div key={index} className="text-lg font-semibold text-slate-400">

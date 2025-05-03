@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import Logo from "@/components/shared/Logo";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -25,11 +26,7 @@ const Header = () => {
       }`}
     >
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link to="/" className="flex items-center">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">
-            Voxemy
-          </h1>
-        </Link>
+        <Logo />
         
         <Link to="/login">
           <Button 
