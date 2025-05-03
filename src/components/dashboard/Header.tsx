@@ -14,7 +14,7 @@ interface HeaderProps {
 
 export const Header = ({ 
   openSidebar, 
-  userName = "Usuário", 
+  userName = "John Doe", 
   userAvatar,
   sidebarCollapsed = false
 }: HeaderProps) => {
@@ -30,17 +30,17 @@ export const Header = ({
           </Button>
         )}
         
-        <div className={cn("hidden transition-all duration-200 md:block", showSearch && "hidden md:hidden")}>
+        <div className={cn("transition-all duration-200 md:block", showSearch && "hidden md:hidden")}>
           <h1 className="text-xl font-semibold">Dashboard</h1>
         </div>
 
-        <div className={cn("hidden max-w-md flex-1 md:flex", showSearch && "flex")}>
-          <div className="relative w-full max-w-md">
+        <div className={cn("max-w-md flex-1 md:flex ml-4", showSearch && "flex")}>
+          <div className="relative w-full max-w-xs">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Buscar..."
-              className="w-full bg-background pl-8 focus-visible:ring-1 md:w-80"
+              className="w-full bg-muted pl-8 focus-visible:ring-1 rounded-lg h-9"
             />
           </div>
         </div>
@@ -63,7 +63,7 @@ export const Header = ({
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary"></span>
         </Button>
         
-        <div className="hidden items-center gap-2 rounded-full border border-border/40 bg-background p-1 pl-3 pr-1 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
           <span className="text-sm font-medium leading-none">{userName}</span>
           <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary/10">
             {userAvatar ? (

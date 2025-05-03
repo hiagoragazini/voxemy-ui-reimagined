@@ -16,8 +16,8 @@ export const AgentGrid = ({ agents, isLoading = false, onAgentEditClick }: Agent
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array(8)
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array(6)
           .fill(null)
           .map((_, index) => (
             <AgentCardSkeleton key={index} />
@@ -27,15 +27,29 @@ export const AgentGrid = ({ agents, isLoading = false, onAgentEditClick }: Agent
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {agents.map((agent) => (
         <AgentCard
           key={agent.id}
           {...agent}
           onStatusChange={handleStatusChange}
           onEditClick={onAgentEditClick}
+          avatarLetter={agent.name.charAt(0).toUpperCase()}
+          avatarColor={getAvatarColor(agent.name)}
         />
       ))}
     </div>
   );
+};
+
+// Função para gerar cores de avatar baseadas no nome
+const getAvatarColor = (name: string) => {
+  const colors = [
+    "bg-blue-100", "bg-purple-100", "bg-green-100", 
+    "bg-yellow-100", "bg-red-100", "bg-pink-100",
+    "bg-indigo-100", "bg-orange-100"
+  ];
+  
+  const index = name.charCodeAt(0) % colors.length;
+  return colors[index];
 };

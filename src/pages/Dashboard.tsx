@@ -8,7 +8,7 @@ import { Plus } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
-// Dados de exemplo para os agentes
+// Dados de exemplo para os agentes baseados na imagem
 const mockAgents = [
   {
     id: "1",
@@ -16,15 +16,17 @@ const mockAgents = [
     description: "Agente inteligente para atendimento e qualificação de leads de vendas.",
     status: "active" as const,
     usagePercentage: 75,
-    lastUpdated: "10/04/2023"
+    lastUpdated: "07/04/2023",
+    avatarLetter: "A"
   },
   {
     id: "2",
     name: "Atendimento ao Cliente",
     description: "Responde dúvidas e resolve problemas de clientes automaticamente.",
     status: "active" as const,
-    usagePercentage: 45,
-    lastUpdated: "08/04/2023"
+    usagePercentage: 60,
+    lastUpdated: "08/04/2023",
+    avatarLetter: "A"
   },
   {
     id: "3",
@@ -32,7 +34,8 @@ const mockAgents = [
     description: "Cria e otimiza conteúdo para blogs, redes sociais e email marketing.",
     status: "pending" as const,
     usagePercentage: 10,
-    lastUpdated: "20/04/2023"
+    lastUpdated: "20/04/2023",
+    avatarLetter: "G"
   },
   {
     id: "4",
@@ -40,15 +43,17 @@ const mockAgents = [
     description: "Processa e analisa dados para insights de negócios e recomendações.",
     status: "inactive" as const,
     usagePercentage: 0,
-    lastUpdated: "01/04/2023"
+    lastUpdated: "01/04/2023",
+    avatarLetter: "A"
   },
   {
     id: "5",
     name: "Tradutor Multilíngue",
     description: "Traduz e adapta conteúdo para diferentes idiomas e contextos culturais.",
     status: "active" as const,
-    usagePercentage: 60,
-    lastUpdated: "15/04/2023"
+    usagePercentage: 45,
+    lastUpdated: "15/04/2023",
+    avatarLetter: "T"
   },
   {
     id: "6",
@@ -56,7 +61,8 @@ const mockAgents = [
     description: "Guia novos usuários durante o processo inicial de uso da plataforma.",
     status: "active" as const,
     usagePercentage: 80,
-    lastUpdated: "18/04/2023"
+    lastUpdated: "18/04/2023",
+    avatarLetter: "O"
   }
 ];
 
@@ -97,8 +103,8 @@ const Dashboard = () => {
                 </p>
               </div>
               
-              <Button className="gap-1">
-                <Plus className="h-4 w-4" />
+              <Button className="bg-violet-600 hover:bg-violet-700">
+                <Plus className="h-4 w-4 mr-1" />
                 Novo Agente
               </Button>
             </div>
