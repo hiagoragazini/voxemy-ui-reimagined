@@ -34,7 +34,7 @@ const Header = () => {
         <Link to="/login">
           <Button 
             variant="outline" 
-            className="border-violet-500 text-white hover:bg-violet-600 hover:text-white"
+            className="border-violet-500 bg-violet-500/20 text-white hover:bg-violet-600 hover:text-white"
           >
             Entrar
           </Button>
