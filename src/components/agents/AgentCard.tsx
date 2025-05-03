@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
+import { Progress } from "@/components/ui/progress";
 
 export interface AgentCardProps {
   id: string;
@@ -28,6 +29,7 @@ export interface AgentCardProps {
 export const AgentCard = ({
   id,
   name,
+  description = "",
   category = "",
   status,
   calls = 0,
@@ -111,6 +113,12 @@ export const AgentCard = ({
             <Settings className="h-4 w-4" />
           </Button>
         </div>
+
+        {description && (
+          <div className="mb-4">
+            <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
+          </div>
+        )}
         
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
@@ -129,6 +137,12 @@ export const AgentCard = ({
             </div>
           </div>
         </div>
+
+        {successRate > 0 && (
+          <div className="mb-4">
+            <Progress value={successRate} className="h-1.5 bg-gray-100" />
+          </div>
+        )}
 
         <div className="flex items-center justify-between">
           <div className="text-xs text-muted-foreground flex items-center">
@@ -171,6 +185,8 @@ export const AgentCardSkeleton = () => (
         <Skeleton className="h-8 w-8 rounded-md" />
       </div>
       
+      <Skeleton className="h-4 w-full mb-4" />
+      
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div>
           <Skeleton className="h-3 w-16 mb-1" />
@@ -185,6 +201,8 @@ export const AgentCardSkeleton = () => (
           <Skeleton className="h-5 w-20" />
         </div>
       </div>
+
+      <Skeleton className="h-1.5 w-full mb-4" />
 
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-24" />
