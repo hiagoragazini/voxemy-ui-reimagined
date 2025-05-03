@@ -19,7 +19,7 @@ const Logo = ({ className = "", size = "md" }: LogoProps) => {
         <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">
           VOX
         </span>
-        <span className="text-white">emy</span>
+        <span className="text-white">EMY</span>
         <span className="text-blue-400 font-normal text-sm ml-0.5">AI</span>
       </div>
     </Link>
