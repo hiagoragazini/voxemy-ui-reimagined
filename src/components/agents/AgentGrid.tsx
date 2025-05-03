@@ -45,9 +45,19 @@ export const AgentGrid = ({
     );
   }
 
+  // Marcar o primeiro agente como top performer
+  const agentsWithTopPerformer = agents.map((agent, index) => ({
+    ...agent,
+    isTopPerformer: index === 0,
+    voiceUsage: {
+      current: Math.floor(Math.random() * 8) + 1,
+      total: 10
+    }
+  }));
+
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-      {agents.map((agent) => (
+      {agentsWithTopPerformer.map((agent) => (
         <AgentCard
           key={agent.id}
           {...agent}
@@ -57,13 +67,13 @@ export const AgentGrid = ({
         />
       ))}
       
-      {/* Create agent card */}
-      <Card className="border-dashed border-2 border-gray-200 hover:border-primary/30 transition-all duration-200">
+      {/* Create agent card with improved visuals */}
+      <Card className="border-dashed border-2 border-gray-200 hover:border-primary/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group">
         <div className="flex flex-col items-center justify-center h-full p-8 text-center cursor-pointer" onClick={onCreateAgent}>
-          <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mb-4">
-            <Plus className="h-8 w-8 text-violet-600" />
+          <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-violet-200 transition-colors">
+            <Plus className="h-8 w-8 text-violet-600 group-hover:scale-110 transition-transform" />
           </div>
-          <h3 className="text-lg font-medium mb-2">Criar Novo Agente</h3>
+          <h3 className="text-lg font-medium mb-2 group-hover:text-violet-700 transition-colors">Criar Novo Agente</h3>
           <p className="text-muted-foreground text-sm">
             Configure um novo assistente de voz para suas chamadas
           </p>

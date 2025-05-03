@@ -1,12 +1,15 @@
 
 import { useState } from "react";
-import { Settings, PhoneCall } from "lucide-react";
+import { Settings, PhoneCall, Headphones, Award, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 
 export interface AgentCardProps {
   id: string;
@@ -24,6 +27,8 @@ export interface AgentCardProps {
   onStatusChange?: (id: string, isActive: boolean) => void;
   onEditClick?: (id: string) => void;
   onTestVoice?: (id: string) => void;
+  isTopPerformer?: boolean;
+  voiceUsage?: {current: number, total: number}; // For voice usage progress
 }
 
 export const AgentCard = ({
@@ -42,6 +47,8 @@ export const AgentCard = ({
   onStatusChange,
   onEditClick,
   onTestVoice,
+  isTopPerformer = id === "1", // Make first agent top performer by default
+  voiceUsage = {current: 6, total: 10}, // Default voice usage values
 }: AgentCardProps) => {
   const [isActive] = useState(status === "active");
 
@@ -83,9 +90,11 @@ export const AgentCard = ({
   const statusColor = getStatusColor(status);
   const statusDot = getStatusDot(status);
   const statusLabel = getStatusLabel(status);
+  
+  const usagePercentage = (voiceUsage.current / voiceUsage.total) * 100;
 
   return (
-    <Card className="hover:border-primary/20 transition-all duration-200 border-border/40">
+    <Card className="hover:border-primary/20 transition-all duration-300 border-border/40 hover:shadow-md hover:scale-[1.01] group">
       <div className="p-5">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -93,7 +102,15 @@ export const AgentCard = ({
               <span className="text-lg font-semibold">{avatarLetter}</span>
             </div>
             <div>
-              <h3 className="font-medium text-lg">{name}</h3>
+              <div className="flex items-center">
+                <h3 className="font-medium text-lg">{name}</h3>
+                {isTopPerformer && (
+                  <Badge className="ml-2 bg-amber-100 hover:bg-amber-200 text-amber-800 border-0 flex items-center gap-1 py-1">
+                    <Award className="h-3 w-3" />
+                    <span className="text-[10px]">Mais ativo hoje</span>
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span>{category}</span>
                 {category && status && <span className="mx-1">•</span>}
@@ -104,14 +121,51 @@ export const AgentCard = ({
               </div>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-muted-foreground"
-            onClick={() => onEditClick?.(id)}
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground h-8 w-8"
+                >
+                  <BarChart className="h-4 w-4" />
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-80">
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Estatísticas detalhadas</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Total de chamadas</p>
+                      <p className="font-medium">{calls}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Tempo médio</p>
+                      <p className="font-medium">{avgTime}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Taxa de sucesso</p>
+                      <p className="font-medium">{successRate}%</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Última atividade</p>
+                      <p className="font-medium">{lastActivity || "Nunca usado"}</p>
+                    </div>
+                  </div>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-muted-foreground h-8 w-8"
+              onClick={() => onEditClick?.(id)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {description && (
@@ -138,11 +192,14 @@ export const AgentCard = ({
           </div>
         </div>
 
-        {successRate > 0 && (
-          <div className="mb-4">
-            <Progress value={successRate} className="h-1.5 bg-gray-100" />
+        {/* Voice usage progress */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-1 text-xs">
+            <span className="text-muted-foreground">Uso de voz</span>
+            <span className="font-medium">{voiceUsage.current}h de {voiceUsage.total}h</span>
           </div>
-        )}
+          <Progress value={usagePercentage} className="h-1.5 bg-gray-100" />
+        </div>
 
         <div className="flex items-center justify-between">
           <div className="text-xs text-muted-foreground flex items-center">
@@ -156,15 +213,24 @@ export const AgentCard = ({
             )}
             {!lastActivity && 'Nunca usado'}
           </div>
-          <Button 
-            size="sm" 
-            variant="default"
-            className="bg-violet-600 hover:bg-violet-700 text-white"
-            onClick={handleTestVoice}
-          >
-            <PhoneCall className="h-3 w-3 mr-1" /> 
-            Testar Voz
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  size="sm" 
+                  variant="default"
+                  className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all duration-200"
+                  onClick={handleTestVoice}
+                >
+                  <Headphones className="h-3.5 w-3.5 mr-1.5" /> 
+                  Testar Voz
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Ouça o agente em ação</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     </Card>
@@ -182,7 +248,10 @@ export const AgentCardSkeleton = () => (
             <Skeleton className="h-3 w-24" />
           </div>
         </div>
-        <Skeleton className="h-8 w-8 rounded-md" />
+        <div className="flex gap-1">
+          <Skeleton className="h-8 w-8 rounded-md" />
+          <Skeleton className="h-8 w-8 rounded-md" />
+        </div>
       </div>
       
       <Skeleton className="h-4 w-full mb-4" />
@@ -202,7 +271,11 @@ export const AgentCardSkeleton = () => (
         </div>
       </div>
 
-      <Skeleton className="h-1.5 w-full mb-4" />
+      <Skeleton className="h-1.5 w-full mb-1" />
+      <div className="flex justify-between mb-4">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-3 w-16" />
+      </div>
 
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-24" />
@@ -211,4 +284,3 @@ export const AgentCardSkeleton = () => (
     </div>
   </Card>
 );
-

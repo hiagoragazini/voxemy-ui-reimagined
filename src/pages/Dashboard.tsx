@@ -4,9 +4,11 @@ import { Header } from "@/components/dashboard/Header";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { AgentGrid, getAvatarColor } from "@/components/agents/AgentGrid";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronRight } from "lucide-react";
+import { Plus, ChevronRight, PhoneCall, Clock, CheckCircle2 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 // Dados de exemplo para os agentes baseados na imagem
 const mockAgents = [
@@ -108,16 +110,73 @@ const Dashboard = () => {
         
         <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
           <div className="container mx-auto p-6">
+            <div className="flex flex-col mb-8">
+              <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+                Seu Call Center Automatizado com IA
+              </h1>
+              <p className="mt-1 text-muted-foreground max-w-3xl">
+                Acompanhe seu time de IA em ação e veja o desempenho das chamadas em tempo real.
+              </p>
+            </div>
+            
+            {/* Estatísticas do topo */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Total de Chamadas Hoje</p>
+                    <p className="text-2xl font-bold">254</p>
+                    <p className="text-xs text-green-600 flex items-center mt-1">
+                      <span className="inline-block mr-1">↑</span> 12% em relação a ontem
+                    </p>
+                  </div>
+                  <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-full">
+                    <PhoneCall className="w-5 h-5 text-violet-700 dark:text-violet-400" />
+                  </div>
+                </div>
+              </Card>
+              
+              <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Tempo Médio de Chamada</p>
+                    <p className="text-2xl font-bold">3:24</p>
+                    <p className="text-xs text-amber-600 flex items-center mt-1">
+                      <span className="inline-block mr-1">↔</span> Estável em relação a ontem
+                    </p>
+                  </div>
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                    <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                </div>
+              </Card>
+              
+              <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Taxa de Sucesso Global</p>
+                    <p className="text-2xl font-bold">78.5%</p>
+                    <p className="text-xs text-green-600 flex items-center mt-1">
+                      <span className="inline-block mr-1">↑</span> 3.2% em relação a ontem
+                    </p>
+                  </div>
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                    <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                <p className="mt-1 text-muted-foreground">
-                  Gerencie seus agentes de voz e veja o desempenho das chamadas.
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Seus Agentes</h2>
+                <p className="text-sm text-muted-foreground">
+                  Gerenciamento e monitoramento de seus assistentes virtuais
                 </p>
               </div>
               
               <Button 
-                className="bg-violet-600 hover:bg-violet-700 text-white"
+                className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
                 onClick={handleCreateAgent}
               >
                 <Plus className="h-4 w-4 mr-1" />
@@ -135,55 +194,31 @@ const Dashboard = () => {
               />
             </div>
 
-            {/* Próximos passos */}
+            {/* Próximos passos com melhorias visuais */}
             <div className="mb-6">
-              <h2 className="text-xl font-bold mb-4">Próximos Passos</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Próximos Passos</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="bg-violet-100 dark:bg-violet-900/30 p-2 rounded-lg">
-                      <PhoneCallIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium">Testar uma chamada real</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Selecione um agente e faça uma ligação para testar o sistema.
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </div>
+                <NextStepCard 
+                  number={1}
+                  title="Testar uma chamada real"
+                  description="Selecione um agente e faça uma ligação para testar o sistema."
+                  icon={<PhoneCallIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
+                />
                 
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="bg-violet-100 dark:bg-violet-900/30 p-2 rounded-lg">
-                      <Plus className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium">Adicionar leads</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Importe seus contatos para o sistema realizar chamadas automatizadas.
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </div>
+                <NextStepCard 
+                  number={2}
+                  title="Adicionar leads"
+                  description="Importe seus contatos para o sistema realizar chamadas automatizadas."
+                  icon={<Plus className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
+                />
                 
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="bg-violet-100 dark:bg-violet-900/30 p-2 rounded-lg">
-                      <SettingsIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium">Configurar integrações</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Conecte seu CRM ou outras ferramentas para sincronizar dados.
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                </div>
+                <NextStepCard 
+                  number={3}
+                  title="Configurar integrações"
+                  description="Conecte seu CRM ou outras ferramentas para sincronizar dados."
+                  icon={<SettingsIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
+                />
               </div>
             </div>
           </div>
@@ -192,6 +227,41 @@ const Dashboard = () => {
     </div>
   );
 };
+
+// NextStepCard component for improved "Próximos Passos"
+const NextStepCard = ({ 
+  number, 
+  title, 
+  description, 
+  icon 
+}: { 
+  number: number; 
+  title: string; 
+  description: string; 
+  icon: React.ReactNode 
+}) => (
+  <div className="bg-white dark:bg-gray-800 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 group">
+    <div className="flex items-start gap-4">
+      <div className="relative">
+        <div className="bg-violet-100 dark:bg-violet-900/30 p-2.5 rounded-lg">
+          {icon}
+        </div>
+        <div className="absolute -top-2 -right-2 w-5 h-5 bg-violet-600 rounded-full flex items-center justify-center text-xs text-white font-medium">
+          {number}
+        </div>
+      </div>
+      <div className="flex-1">
+        <h3 className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">{title}</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {description}
+        </p>
+      </div>
+      <div className="text-muted-foreground transition-transform group-hover:translate-x-1">
+        <ChevronRight className="h-5 w-5" />
+      </div>
+    </div>
+  </div>
+);
 
 // Components para ícones customizados
 const PhoneCallIcon = (props: React.SVGAttributes<SVGElement>) => (
