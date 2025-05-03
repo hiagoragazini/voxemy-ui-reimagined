@@ -4,7 +4,6 @@ import { Search, Bell, User, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import Logo from "@/components/shared/Logo";
 
 interface HeaderProps {
   openSidebar: () => void;
@@ -30,8 +29,6 @@ export const Header = ({
             <span className="sr-only">Menu</span>
           </Button>
         )}
-        
-        <Logo size="md" className="mr-4" />
       </div>
 
       <div className="flex items-center gap-2">
