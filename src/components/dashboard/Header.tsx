@@ -24,7 +24,7 @@ interface HeaderProps {
 
 export const Header = ({ 
   openSidebar, 
-  userName = "Usuário", 
+  userName = "João", 
   userAvatar,
   sidebarCollapsed = false
 }: HeaderProps) => {
