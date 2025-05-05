@@ -1,11 +1,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
 import { 
   LayoutDashboard, 
   Users, 
@@ -13,8 +11,12 @@ import {
   BarChart3, 
   Settings, 
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  Phone as PhoneIcon
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -66,7 +68,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
           {!collapsed && (
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-md bg-violet-100 flex items-center justify-center">
-                <Phone className="h-4 w-4 text-violet-600" />
+                <PhoneIcon className="h-4 w-4 text-violet-600" />
               </div>
               <span className="text-lg font-semibold tracking-tight">Voxemy</span>
             </div>
@@ -129,21 +131,11 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
                   <span className="text-xs text-muted-foreground">150 min</span>
                   <span className="text-xs font-medium">300 min</span>
                 </div>
-                <div className="w-full bg-violet-200 rounded-full h-1.5 my-1">
-                  <div
-                    className="bg-violet-600 h-1.5 rounded-full"
-                    style={{ width: "50%" }}
-                  ></div>
-                </div>
+                <Progress className="h-1.5 my-1" value={50} fill="bg-violet-600" />
               </div>
             ) : (
               <div className="flex items-center justify-center">
-                <div className="w-full bg-violet-200 rounded-full h-1.5">
-                  <div
-                    className="bg-violet-600 h-1.5 rounded-full"
-                    style={{ width: "50%" }}
-                  ></div>
-                </div>
+                <Progress className="h-1.5 w-full" value={50} fill="bg-violet-600" />
               </div>
             )}
           </div>
