@@ -1,13 +1,13 @@
 
 "use client";
 
-import Header from "@/components/landing/Header";
-import Hero from "@/components/landing/Hero";
-import Benefits from "@/components/landing/Benefits";
-import HowItWorks from "@/components/landing/HowItWorks";
-import PricingPlans from "@/components/landing/PricingPlans";
-import Testimonials from "@/components/landing/Testimonials";
-import Footer from "@/components/landing/Footer";
+import Header from "../src/components/landing/Header";
+import Hero from "../src/components/landing/Hero";
+import Benefits from "../src/components/landing/Benefits";
+import HowItWorks from "../src/components/landing/HowItWorks";
+import PricingPlans from "../src/components/landing/PricingPlans";
+import Testimonials from "../src/components/landing/Testimonials";
+import Footer from "../src/components/landing/Footer";
 
 export default function HomePage() {
   return (
