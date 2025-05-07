@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "../../components/ui/avatar";
 
 const Testimonials = () => {
   const testimonials = [
