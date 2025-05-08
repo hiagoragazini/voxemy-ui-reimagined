@@ -1,5 +1,7 @@
 
-import { Link } from "react-router-dom";
+"use client";
+
+import Link from "next/link";
 import Logo from "../shared/Logo";
 
 const Footer = () => {
@@ -94,7 +96,7 @@ const Footer = () => {
           <p>© {currentYear} Voxemy AI. Todos os direitos reservados.</p>
           
           <div className="flex mt-4 md:mt-0">
-            <Link to="/login" className="hover:text-white transition-colors">
+            <Link href="/login" className="hover:text-white transition-colors">
               Entrar
             </Link>
           </div>

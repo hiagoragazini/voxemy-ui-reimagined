@@ -1,5 +1,7 @@
 
-import { Button } from "../../components/ui/button";
+"use client";
+
+import { Button } from "@/components/ui/button";
 
 const Hero = () => {
   const scrollToPlans = () => {

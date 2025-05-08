@@ -1,5 +1,5 @@
 
-import { Link } from "react-router-dom";
+import Link from "next/link";
 
 interface LogoProps {
   className?: string;
@@ -14,7 +14,7 @@ const Logo = ({ className = "", size = "md" }: LogoProps) => {
   };
 
   return (
-    <Link to="/" className={`flex items-center ${className}`}>
+    <Link href="/" className={`flex items-center ${className}`}>
       <div className={`font-bold ${sizeClasses[size]}`}>
         <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent">
           V

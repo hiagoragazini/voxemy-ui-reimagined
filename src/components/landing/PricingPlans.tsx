@@ -1,10 +1,12 @@
 
+"use client";
+
 import { Check } from "lucide-react";
-import { Button } from "../../components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 const PricingPlans = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   
   const plans = [
     {
@@ -52,7 +54,7 @@ const PricingPlans = () => {
   ];
 
   const handlePlanSelect = () => {
-    navigate("/login");
+    router.push("/login");
   };
 
   return (
