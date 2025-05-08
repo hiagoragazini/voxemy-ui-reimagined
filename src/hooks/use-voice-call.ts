@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -19,7 +19,20 @@ interface TextToSpeechParams {
 export function useVoiceCall() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [lastAudioContent, setLastAudioContent] = useState<string | null>(null);
+
+  // Limpar referências quando o componente é desmontado
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Função para converter texto em áudio usando Eleven Labs
   const textToSpeech = async ({ text, voiceId, model }: TextToSpeechParams) => {
@@ -28,6 +41,8 @@ export function useVoiceCall() {
     
     try {
       console.log('Enviando texto para conversão:', text);
+      console.log('Usando voice ID:', voiceId || 'padrão');
+      console.log('Usando model:', model || 'padrão');
       
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { 
@@ -37,12 +52,23 @@ export function useVoiceCall() {
         }
       });
 
-      if (error) throw new Error(error.message);
-      if (!data.success) throw new Error(data.error || 'Falha ao gerar áudio');
+      if (error) {
+        console.error('Erro na função text-to-speech:', error);
+        throw new Error(error.message);
+      }
+      
+      if (!data.success) {
+        console.error('Falha na resposta text-to-speech:', data.error);
+        throw new Error(data.error || 'Falha ao gerar áudio');
+      }
 
-      console.log('Áudio recebido com sucesso');
+      console.log('Áudio recebido com sucesso:', data.metadata ? JSON.stringify(data.metadata) : 'sem metadados');
+      
+      // Armazenar o conteúdo do áudio para reprodução posterior
+      setLastAudioContent(data.audioContent);
+      
       return data.audioContent; // Conteúdo do áudio em base64
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro na conversão de texto para voz:', err);
       setError(err.message);
       toast.error('Erro ao converter texto para voz: ' + err.message);
@@ -55,36 +81,61 @@ export function useVoiceCall() {
   // Função para reproduzir áudio base64
   const playAudio = (base64Audio: string) => {
     try {
-      console.log('Reproduzindo áudio...');
+      console.log('Iniciando reprodução de áudio...');
+      setIsPlaying(true);
       
       // Se já existir um elemento de áudio, pare-o
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.currentTime = 0;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
       }
       
-      // Criar um novo elemento de áudio
-      const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
-      
-      // Configurar eventos de áudio para debug
-      audio.addEventListener('play', () => console.log('Áudio iniciou a reprodução'));
-      audio.addEventListener('ended', () => console.log('Áudio terminou de reproduzir'));
-      audio.addEventListener('error', (e) => console.error('Erro ao reproduzir áudio:', e));
+      // Criar novo elemento de áudio
+      const audio = new Audio();
+      audio.src = `data:audio/mp3;base64,${base64Audio}`;
       
       // Definir volume para garantir que não esteja mudo
       audio.volume = 1.0;
       
-      // Armazenar referência ao elemento de áudio
-      setAudioElement(audio);
+      // Configurar eventos para debug
+      audio.onloadedmetadata = () => console.log('Áudio carregado:', audio.duration, 'segundos');
+      audio.onplay = () => console.log('Reprodução iniciada');
+      audio.onended = () => {
+        console.log('Reprodução finalizada');
+        setIsPlaying(false);
+      };
+      audio.onpause = () => console.log('Reprodução pausada');
       
-      // Tocar áudio
+      // Configurar evento de erro
+      audio.onerror = (e) => {
+        console.error('Erro ao reproduzir áudio:', e);
+        toast.error('Erro ao reproduzir áudio. Verifique suas configurações de áudio.');
+        setIsPlaying(false);
+      };
+      
+      // Armazenar referência
+      audioRef.current = audio;
+      
+      // Reproduzir áudio
+      console.log('Tentando reproduzir áudio...');
       const playPromise = audio.play();
       
       if (playPromise !== undefined) {
         playPromise
-          .then(() => console.log('Reprodução de áudio iniciada com sucesso'))
+          .then(() => {
+            console.log('Reprodução iniciada com sucesso');
+            // Verificar se há áudio sendo reproduzido após 500ms
+            setTimeout(() => {
+              if (audio.currentTime > 0) {
+                console.log('Áudio está progredindo:', audio.currentTime);
+              } else {
+                console.log('Áudio não está progredindo');
+              }
+            }, 500);
+          })
           .catch(err => {
-            console.error('Erro ao iniciar reprodução de áudio:', err);
+            console.error('Erro ao iniciar reprodução:', err);
+            setIsPlaying(false);
             toast.error('Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som.');
           });
       }
@@ -92,9 +143,18 @@ export function useVoiceCall() {
       return true;
     } catch (err) {
       console.error('Falha ao reproduzir áudio:', err);
+      setIsPlaying(false);
       toast.error('Erro ao reproduzir áudio');
       return false;
     }
+  };
+
+  // Reproduzir o último áudio novamente
+  const playLastAudio = () => {
+    if (lastAudioContent) {
+      return playAudio(lastAudioContent);
+    }
+    return false;
   };
 
   // Função para fazer uma chamada usando Twilio
@@ -127,7 +187,7 @@ export function useVoiceCall() {
 
       toast.success('Chamada iniciada com sucesso!');
       return data;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao fazer chamada:', err);
       setError(err.message);
       toast.error('Erro ao fazer chamada: ' + err.message);
@@ -139,9 +199,11 @@ export function useVoiceCall() {
 
   return {
     isLoading,
+    isPlaying,
     error,
     textToSpeech,
     playAudio,
+    playLastAudio,
     makeCall
   };
 }

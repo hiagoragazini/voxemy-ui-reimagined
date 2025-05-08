@@ -25,11 +25,15 @@ serve(async (req) => {
     }
 
     console.log(`Gerando áudio para o texto: ${text.substring(0, 50)}...`);
+    console.log(`Voice ID: ${voiceId || 'usando padrão'}`);
+    console.log(`Model: ${model || 'usando padrão'}`);
 
     // Usar o voiceId fornecido ou um padrão
     const selectedVoiceId = voiceId || "pFZP5JQG7iQjIQuC4Bku"; // Lily - voz padrão
     // Usar o modelo fornecido ou um padrão
     const selectedModel = model || "eleven_multilingual_v2";
+
+    console.log(`Enviando requisição para Eleven Labs com voice ID ${selectedVoiceId} e modelo ${selectedModel}`);
 
     // Fazer a requisição para a API do Eleven Labs
     const response = await fetch(
@@ -82,7 +86,13 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        audioContent: base64Audio 
+        audioContent: base64Audio,
+        metadata: {
+          voiceId: selectedVoiceId,
+          model: selectedModel,
+          textLength: text.length,
+          audioSize: audioBuffer.byteLength
+        }
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
