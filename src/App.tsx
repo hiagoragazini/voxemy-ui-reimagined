@@ -28,11 +28,31 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Navigate to="/auth" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/agents" element={<Agents />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/agents" element={
+              <ProtectedRoute>
+                <Agents />
+              </ProtectedRoute>
+            } />
+            <Route path="/campaigns" element={
+              <ProtectedRoute>
+                <Campaigns />
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics" element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

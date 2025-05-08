@@ -2,9 +2,11 @@
 import { Check } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PricingPlans = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const plans = [
     {
@@ -52,8 +54,14 @@ const PricingPlans = () => {
   ];
 
   const handlePlanSelect = () => {
-    // Redireciona diretamente para o dashboard ao selecionar um plano
-    navigate("/dashboard");
+    // Se o usuário já está logado, vai direto para o dashboard
+    // Caso contrário, vai para a página de autenticação
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      navigate("/auth");
+      // Aqui no futuro poderia ser integrado com Stripe para criar a conta durante o checkout
+    }
   };
 
   return (
