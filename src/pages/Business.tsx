@@ -135,10 +135,16 @@ const Business = () => {
           })
           .eq("user_id", user.id);
       } else {
-        // Insert new record
+        // Insert new record - ensure all required fields are provided
         operation = supabase.from("business_info").insert({
-          ...values,
           user_id: user.id,
+          company_name: values.company_name,
+          business_area: values.business_area,
+          products_services: values.products_services,
+          main_benefits: values.main_benefits,
+          sales_arguments: values.sales_arguments,
+          common_objections: values.common_objections,
+          tone_of_voice: values.tone_of_voice,
         });
       }
 
