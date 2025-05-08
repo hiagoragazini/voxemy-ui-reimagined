@@ -5,7 +5,8 @@ import { useState } from "react";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Play, Mic, Phone } from "lucide-react";
+import { Play, Mic, Phone, Volume2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface VoiceTesterProps {
   agentName?: string;
@@ -28,18 +29,45 @@ export function VoiceTester({
   const [phoneNumber, setPhoneNumber] = useState(testNumber || "");
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const { isLoading, error, textToSpeech, playAudio, makeCall } = useVoiceCall();
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const handleTestVoice = async () => {
+    if (!text.trim()) {
+      toast.error("Por favor, insira um texto para testar");
+      return;
+    }
+    
+    setIsPlaying(true);
     const audio = await textToSpeech({ text, voiceId });
+    
     if (audio) {
       setAudioBase64(audio);
-      playAudio(audio);
+      const played = playAudio(audio);
+      
+      if (!played) {
+        toast.error("Não foi possível reproduzir o áudio. Verifique suas configurações de som.");
+      }
+    } else {
+      toast.error("Falha ao gerar áudio. Verifique os logs para mais detalhes.");
+    }
+    setIsPlaying(false);
+  };
+
+  const handlePlayAgain = () => {
+    if (audioBase64) {
+      setIsPlaying(true);
+      const played = playAudio(audioBase64);
+      setIsPlaying(false);
+      
+      if (!played) {
+        toast.error("Não foi possível reproduzir o áudio. Verifique suas configurações de som.");
+      }
     }
   };
 
   const handleMakeCall = async () => {
     if (!phoneNumber) {
-      alert("Por favor, informe um número de telefone para teste");
+      toast.error("Por favor, informe um número de telefone para teste");
       return;
     }
     
@@ -71,14 +99,31 @@ export function VoiceTester({
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       <div className="flex flex-col space-y-3">
-        <Button 
-          onClick={handleTestVoice}
-          disabled={isLoading || !text}
-          className="w-full flex items-center gap-2 bg-violet-600 hover:bg-violet-700"
-        >
-          <Play className="h-4 w-4" />
-          <span>Testar Voz</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleTestVoice}
+            disabled={isLoading || !text}
+            className="w-full flex items-center gap-2 bg-violet-600 hover:bg-violet-700"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            <span>Testar Voz</span>
+          </Button>
+          
+          {audioBase64 && (
+            <Button
+              onClick={handlePlayAgain}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={isLoading}
+            >
+              <Volume2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
 
         <div className="relative">
           <input
@@ -95,10 +140,21 @@ export function VoiceTester({
             className="mt-2 w-full flex items-center gap-2"
             variant="outline"
           >
-            <Phone className="h-4 w-4" />
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Phone className="h-4 w-4" />
+            )}
             <span>Fazer Chamada de Teste</span>
           </Button>
         </div>
+      </div>
+
+      <div className="text-center text-xs text-muted-foreground mt-2">
+        <p>
+          Se não estiver ouvindo som, verifique se o volume do seu dispositivo está ativado 
+          e se o seu navegador permite a reprodução automática de áudio.
+        </p>
       </div>
 
       {onClose && (

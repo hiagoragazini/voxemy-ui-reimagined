@@ -46,17 +46,28 @@ serve(async (req) => {
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
+            style: 0.0,
+            use_speaker_boost: true,
           },
         }),
       }
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      console.error("Erro na API do Eleven Labs:", errorData);
-      throw new Error(
-        `Falha ao gerar fala: ${response.status} ${response.statusText}`
-      );
+      const errorText = await response.text();
+      let errorMessage = `Falha ao gerar fala: ${response.status} ${response.statusText}`;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        console.error("Erro na API do Eleven Labs:", errorData);
+        if (errorData.detail && errorData.detail.message) {
+          errorMessage = `Erro do Eleven Labs: ${errorData.detail.message}`;
+        }
+      } catch (e) {
+        console.error("Erro ao processar resposta de erro:", errorText);
+      }
+      
+      throw new Error(errorMessage);
     }
 
     // Obter o buffer de áudio
@@ -65,6 +76,8 @@ serve(async (req) => {
     const base64Audio = btoa(
       String.fromCharCode(...new Uint8Array(audioBuffer))
     );
+
+    console.log("Áudio gerado com sucesso, tamanho:", audioBuffer.byteLength);
 
     return new Response(
       JSON.stringify({ 
