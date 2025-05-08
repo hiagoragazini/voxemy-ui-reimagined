@@ -19,6 +19,13 @@ const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const scrollToPricing = () => {
+    const pricingSection = document.getElementById("pricing-plans");
+    if (pricingSection) {
+      pricingSection.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -50,14 +57,13 @@ const Header = () => {
                   Entrar
                 </Button>
               </Link>
-              <Link to="#pricing-plans">
-                <Button 
-                  variant="outline" 
-                  className="border-violet-500 bg-violet-500/20 text-white hover:bg-violet-600 hover:text-white"
-                >
-                  Começar Agora
-                </Button>
-              </Link>
+              <Button 
+                variant="outline" 
+                className="border-violet-500 bg-violet-500/20 text-white hover:bg-violet-600 hover:text-white"
+                onClick={scrollToPricing}
+              >
+                Começar Agora
+              </Button>
             </div>
           )}
         </div>
