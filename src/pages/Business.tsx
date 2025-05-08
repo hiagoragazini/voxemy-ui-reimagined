@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Layout } from "@/components/dashboard/Layout";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Form,
@@ -166,7 +165,7 @@ const Business = () => {
     return (
       <Layout>
         <div className="container mx-auto p-6 flex justify-center items-center min-h-[70vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       </Layout>
     );
@@ -175,7 +174,7 @@ const Business = () => {
   return (
     <Layout>
       <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+        <h1 className="text-3xl font-bold tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
           Meu Negócio
         </h1>
         <p className="text-muted-foreground mb-8 max-w-3xl">
@@ -334,7 +333,7 @@ const Business = () => {
                 <Button 
                   type="submit" 
                   disabled={loading}
-                  className="bg-violet-600 hover:bg-violet-700"
+                  className="bg-blue-900 hover:bg-blue-800 text-white"
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Salvar Informações
