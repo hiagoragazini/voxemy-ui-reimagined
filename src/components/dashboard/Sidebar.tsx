@@ -8,6 +8,7 @@ import {
   Settings,
   CalendarDays,
   User,
+  Briefcase,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -58,31 +59,42 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
           label="Dashboard" 
           to="/dashboard" 
           collapsed={collapsed}
-          active
+          active={window.location.pathname === "/dashboard"}
         />
         <SidebarItem 
           icon={<Users className="h-4 w-4" />} 
           label="Agentes" 
           to="/agents" 
           collapsed={collapsed}
+          active={window.location.pathname === "/agents"}
         />
         <SidebarItem 
           icon={<CalendarDays className="h-4 w-4" />} 
           label="Campanhas" 
           to="/campaigns" 
           collapsed={collapsed}
+          active={window.location.pathname === "/campaigns"}
+        />
+        <SidebarItem 
+          icon={<Briefcase className="h-4 w-4" />} 
+          label="Meu Negócio" 
+          to="/business" 
+          collapsed={collapsed}
+          active={window.location.pathname === "/business"}
         />
         <SidebarItem 
           icon={<BarChart className="h-4 w-4" />} 
           label="Análises" 
           to="/analytics" 
           collapsed={collapsed}
+          active={window.location.pathname === "/analytics"}
         />
         <SidebarItem 
           icon={<Settings className="h-4 w-4" />} 
           label="Configurações" 
           to="/settings" 
           collapsed={collapsed}
+          active={window.location.pathname === "/settings"}
         />
       </nav>
       

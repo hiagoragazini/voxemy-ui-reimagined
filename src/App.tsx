@@ -14,6 +14,7 @@ import Agents from "./pages/Agents";
 import Campaigns from "./pages/Campaigns";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import Business from "./pages/Business";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,11 @@ const App = () => (
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+            <Route path="/business" element={
+              <ProtectedRoute>
+                <Business />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />
