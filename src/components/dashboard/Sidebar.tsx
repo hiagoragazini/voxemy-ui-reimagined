@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/shared/Logo";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -18,6 +19,11 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
+  const { user } = useAuth();
+  
+  // Get user name from authentication context
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
+  
   return (
     <aside 
       className={cn(
@@ -40,7 +46,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
               "h-4 w-4 text-muted-foreground transition-transform", 
               collapsed && "rotate-180"
             )} 
-          />
+          /> 
           <span className="sr-only">Toggle Sidebar</span>
         </Button>
       </div>
@@ -93,7 +99,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="text-xs font-medium text-slate-100">John Doe</span>
+                <span className="text-xs font-medium text-slate-100">{userName}</span>
                 <span className="text-xs text-slate-300">Pro Plan</span>
               </div>
             )}
