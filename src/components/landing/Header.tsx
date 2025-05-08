@@ -53,14 +53,14 @@ const Header = () => {
               <Link to="/dashboard">
                 <Button 
                   variant="outline" 
-                  className="border-violet-500 bg-violet-500/20 text-white hover:bg-violet-600 hover:text-white"
+                  className="border-blue-700 bg-blue-700/20 text-white hover:bg-blue-800 hover:text-white"
                 >
                   Acessar Dashboard
                 </Button>
               </Link>
               <Button 
                 variant="ghost" 
-                className="text-white hover:bg-violet-600/20"
+                className="text-white hover:bg-blue-700/20"
                 onClick={handleLogout}
               >
                 Sair
@@ -71,14 +71,14 @@ const Header = () => {
               <Link to="/auth">
                 <Button 
                   variant="ghost" 
-                  className="text-white hover:bg-violet-600/20"
+                  className="text-white hover:bg-blue-700/20"
                 >
                   Entrar
                 </Button>
               </Link>
               <Button 
                 variant="outline" 
-                className="border-violet-500 bg-violet-500/20 text-white hover:bg-violet-600 hover:text-white"
+                className="border-blue-700 bg-blue-700/20 text-white hover:bg-blue-800 hover:text-white"
                 onClick={scrollToPricing}
               >
                 Começar Agora

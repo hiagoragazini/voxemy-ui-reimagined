@@ -1,11 +1,16 @@
+
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Separator } from "@/components/ui/separator";
+import Logo from "../shared/Logo";
+import { Briefcase } from "lucide-react";
 
 // Define the navigation items for the sidebar
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: "home" },
+  { name: "Meu Negócio", path: "/business", icon: "briefcase" },
   { name: "Agentes", path: "/agents", icon: "user" },
   { name: "Campanhas", path: "/campaigns", icon: "phone" },
   { name: "Analytics", path: "/analytics", icon: "bar-chart-2" },
@@ -23,12 +28,11 @@ export function Sidebar({ className }: { className?: string }) {
         className
       )}
     >
+      <div className="px-4 py-3">
+        <Logo size="md" className="mb-2" />
+        <Separator className="my-3" />
+      </div>
       <div className="py-2">
-        <div className="px-4 py-2">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Menu
-          </h2>
-        </div>
         <nav className="grid gap-1 px-2">
           {navItems.map((item) => (
             <NavLink
@@ -38,8 +42,8 @@ export function Sidebar({ className }: { className?: string }) {
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
                   isActive
-                    ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-50"
-                    : "text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800"
+                    ? "bg-secondary text-primary dark:bg-gray-700 dark:text-gray-50"
+                    : "text-muted-foreground hover:bg-secondary/70 dark:text-gray-400 dark:hover:bg-gray-800"
                 )
               }
             >
@@ -72,6 +76,22 @@ function IconComponent({ name }: { name: string }) {
         >
           <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
           <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+      );
+    case "briefcase":
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
         </svg>
       );
     case "user":

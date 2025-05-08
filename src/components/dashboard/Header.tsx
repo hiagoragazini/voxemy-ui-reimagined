@@ -1,139 +1,82 @@
 
 import { useState } from "react";
-import { Search, Bell, Menu, LogOut, Settings as SettingsIcon, UserCog } from "lucide-react";
+import { Bell, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/components/ui/sonner";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
-  openSidebar?: () => void;
-  userAvatar?: string;
-  sidebarCollapsed?: boolean;
+  onMenuClick?: () => void;
 }
 
-export const Header = ({ 
-  openSidebar, 
-  userAvatar,
-  sidebarCollapsed = false
-}: HeaderProps) => {
-  const [showSearch, setShowSearch] = useState(false);
-  const navigate = useNavigate();
+export function Header({ onMenuClick }: HeaderProps) {
   const { user, signOut } = useAuth();
-  
-  // Get the user's name from authentication context
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
-
-  const handleProfileClick = (path: string) => {
-    navigate(path);
-  };
+  const navigate = useNavigate();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const handleLogout = async () => {
     try {
       await signOut();
-      navigate('/'); // Redirect to home page after logout
-      toast.success('Você saiu com sucesso!');
+      navigate("/");
     } catch (error) {
-      toast.error('Erro ao sair. Tente novamente.');
-      console.error('Logout error:', error);
+      console.error("Error signing out:", error);
     }
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-b bg-background border-border/40 px-4 py-3 flex items-center justify-between">
       <div className="flex items-center gap-4">
-        {sidebarCollapsed && openSidebar && (
-          <Button variant="ghost" size="icon" onClick={openSidebar} className="h-8 w-8">
-            <Menu className="h-4 w-4" />
-            <span className="sr-only">Menu</span>
-          </Button>
-        )}
-        
-        <div className={cn("md:hidden", showSearch ? "block" : "hidden")}>
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar..."
-              className="w-full bg-muted pl-8 focus-visible:ring-1 rounded-lg h-9"
-            />
-          </div>
+        <div className="relative md:max-w-xs md:w-full hidden md:block">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <input
+            type="search"
+            placeholder="Buscar..."
+            className="w-full bg-secondary/50 py-2 pl-8 pr-4 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
+          />
         </div>
       </div>
 
       <div className="flex items-center gap-2">
-        <div className={cn("hidden md:block max-w-xs")}>
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar..."
-              className="w-full bg-muted pl-8 focus-visible:ring-1 rounded-lg h-9"
-            />
-          </div>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={() => setShowSearch(!showSearch)}
-        >
-          <Search className="h-5 w-5" />
-          <span className="sr-only">Buscar</span>
-        </Button>
-        
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="sr-only">Notificações</span>
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary"></span>
+          <Bell className="h-5 w-5 text-muted-foreground" />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full"></span>
         </Button>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-accent rounded-full">
-              <span className="text-sm font-medium leading-none hidden md:block text-violet-600">{userName}</span>
-              <Avatar className="h-8 w-8 border border-violet-200">
-                {userAvatar ? (
-                  <AvatarImage src={userAvatar} alt={userName} />
-                ) : (
-                  <AvatarFallback className="bg-violet-100 text-violet-600">
-                    {userName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleProfileClick('/settings')} className="cursor-pointer">
-              <UserCog className="mr-2 h-4 w-4" />
-              <span>Perfil</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleProfileClick('/settings')} className="cursor-pointer">
-              <SettingsIcon className="mr-2 h-4 w-4" />
-              <span>Configurações</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Sair</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-2"
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+          >
+            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center">
+              <User className="h-4 w-4 text-primary" />
+            </div>
+            <span className="text-sm font-medium hidden md:block">
+              {user?.email?.split("@")[0] || "Usuário"}
+            </span>
+          </Button>
+
+          {showProfileMenu && (
+            <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-background border border-border z-10">
+              <div className="py-1">
+                <a
+                  href="/settings"
+                  className="block px-4 py-2 text-sm text-foreground hover:bg-secondary"
+                >
+                  Configurações
+                </a>
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary"
+                >
+                  Sair
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
-};
+}

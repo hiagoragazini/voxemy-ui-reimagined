@@ -13,7 +13,7 @@ export function Layout({ children }: LayoutProps) {
       <Sidebar className="w-64 shrink-0" />
       <div className="flex flex-col flex-1">
         <Header />
-        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+        <main className="flex-1 overflow-auto bg-background dark:bg-gray-900">
           {children}
         </main>
       </div>
