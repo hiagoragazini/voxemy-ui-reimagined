@@ -47,10 +47,10 @@ export function AudioPlayer({ audioData, isLoading = false }: AudioPlayerProps) 
         audioRef.current = null;
       }
 
-      // Criar um novo elemento para evitar problemas de cache
+      // Create an audio element safely
       const audio = new Audio();
       
-      // Definir manipuladores de eventos primeiro para debug
+      // Set event handlers first for debugging
       audio.onloadeddata = () => {
         console.log("Dados de áudio carregados com sucesso");
       };
@@ -80,33 +80,39 @@ export function AudioPlayer({ audioData, isLoading = false }: AudioPlayerProps) 
         toast.error("Erro ao reproduzir áudio. Verifique o console para mais detalhes.");
       };
       
-      // É importante configurar o volume antes da fonte
+      // Important: Set volume before source
       audio.volume = 1.0;
       
-      // Usar um formato de dados compatível com todos os navegadores
-      audio.src = `data:audio/mp3;base64,${audioData}`;
-      
-      // Armazenar referência
-      audioRef.current = audio;
-      
-      // Tentar reproduzir
-      const playPromise = audio.play();
-      
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.error("Erro ao iniciar reprodução:", error);
-          
-          // Erros específicos de permissão e interação do usuário
-          if (error.name === "NotAllowedError") {
-            setAudioError("O navegador bloqueou a reprodução automática de áudio. Clique na página primeiro.");
-            toast.error("Reprodução automática bloqueada. Clique em qualquer lugar da página e tente novamente.");
-          } else {
-            setAudioError(`Falha ao reproduzir áudio: ${error.message}`);
-            toast.error("Não foi possível reproduzir o áudio. Tente novamente.");
-          }
-          
-          setIsPlaying(false);
-        });
+      // Only set the source if audioData exists and has content
+      if (audioData && audioData.length > 0) {
+        // Use a format compatible with all browsers
+        audio.src = `data:audio/mp3;base64,${audioData}`;
+        
+        // Store reference
+        audioRef.current = audio;
+        
+        // Try to play
+        const playPromise = audio.play();
+        
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.error("Erro ao iniciar reprodução:", error);
+            
+            // Specific errors for permission and user interaction
+            if (error.name === "NotAllowedError") {
+              setAudioError("O navegador bloqueou a reprodução automática de áudio. Clique na página primeiro.");
+              toast.error("Reprodução automática bloqueada. Clique em qualquer lugar da página e tente novamente.");
+            } else {
+              setAudioError(`Falha ao reproduzir áudio: ${error.message}`);
+              toast.error("Não foi possível reproduzir o áudio. Tente novamente.");
+            }
+            
+            setIsPlaying(false);
+          });
+        }
+      } else {
+        setAudioError("Dados de áudio inválidos ou vazios");
+        toast.error("Erro: Dados de áudio inválidos");
       }
     } catch (err: any) {
       console.error("Erro ao reproduzir áudio:", err);

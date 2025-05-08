@@ -11,14 +11,20 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "@/components/ui/sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useVoiceCall } from "@/hooks/use-voice-call";
-import { Loader2, Save, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Save } from "lucide-react";
 
-// Lista de vozes disponíveis
+// Lista expandida de vozes disponíveis
 const VOICES = [
   { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah (Feminina)" },
   { id: "CwhRBWXzGAHq8TQ4Fs17", name: "Roger (Masculina)" },
   { id: "GBv7mTt0atIp3Br8iCZE", name: "Thomas (Britânica)" },
+  { id: "9BWtsMINqrJLrRacOk9x", name: "Aria (Feminina)" },
+  { id: "FGY2WhTYpPnrIDTdsKH5", name: "Laura (Feminina)" },
+  { id: "IKne3meq5aSn9XLyUdCD", name: "Charlie (Masculina)" },
+  { id: "JBFqnCBsd6RMkjVDRZzb", name: "George (Masculina)" },
+  { id: "N2lVS1w4EtoT3dr4eOWO", name: "Callum (Masculina)" },
+  { id: "SAz9YHcvj6GT2YYXdXww", name: "River (Neutro)" },
+  { id: "TX3LPaxmHKxFdv7VOQHJ", name: "Liam (Masculina)" },
 ];
 
 // Categorias de agentes
@@ -30,6 +36,14 @@ const CATEGORIES = [
   "Marketing",
   "RH",
   "Outros"
+];
+
+// Modelos de IA disponíveis
+const AI_MODELS = [
+  { id: "gpt-4o-mini", name: "GPT-4o Mini (Rápido e econômico)" },
+  { id: "gpt-4o", name: "GPT-4o (Mais completo)" },
+  { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet (Antropic)" },
+  { id: "eleven_multilingual_v2", name: "Eleven Labs Multilingual V2 (Voz)" },
 ];
 
 interface AgentConfigProps {
@@ -57,6 +71,10 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     defaultGreeting: "",
     maxResponseLength: "150",
     knowledge: "",
+    aiModel: "gpt-4o-mini", // Modelo padrão
+    conversationPrompt: "", // Prompt personalizado para conversação
+    webhookUrl: "", // URL para webhook de eventos da chamada
+    phoneNumber: "", // Número para testes
   });
 
   useEffect(() => {
@@ -76,6 +94,10 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           defaultGreeting: "Olá, como posso ajudar você hoje?",
           maxResponseLength: "200",
           knowledge: "Informações sobre produtos e serviços da empresa.\n\nPerguntas frequentes sobre atendimento ao cliente.",
+          aiModel: "gpt-4o-mini",
+          conversationPrompt: "Você é um assistente virtual especializado em atendimento ao cliente.",
+          webhookUrl: "",
+          phoneNumber: "",
         });
         setIsLoading(false);
       }, 1000);
@@ -85,6 +107,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         ...formState,
         defaultGreeting: "Olá, como posso ajudar você hoje?",
         instructions: "Seja cordial e objetivo nas respostas.",
+        conversationPrompt: "Você é um assistente virtual especializado em atendimento ao cliente.",
       });
     }
   }, [id, isNew]);
@@ -242,6 +265,34 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
+                      <Label htmlFor="aiModel">Modelo de IA</Label>
+                      <Select 
+                        value={formState.aiModel}
+                        onValueChange={(value) => handleFormChange('aiModel', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um modelo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AI_MODELS.map(model => (
+                            <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="conversationPrompt">Prompt de Conversação</Label>
+                      <Textarea 
+                        id="conversationPrompt"
+                        value={formState.conversationPrompt} 
+                        onChange={(e) => handleFormChange('conversationPrompt', e.target.value)} 
+                        placeholder="Instruções para a IA sobre como se comportar nas conversas"
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="instructions">Instruções para o Agente</Label>
                       <Textarea 
                         id="instructions"
@@ -300,19 +351,12 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
             <TabsContent value="voice" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Configuração de Voz</CardTitle>
+                  <CardTitle>Configuração de Voz e Chamadas</CardTitle>
                   <CardDescription>
                     Personalize como o agente deve soar em chamadas.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Alert className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      A funcionalidade de voz usa a API Eleven Labs, que oferece síntese de voz natural de alta qualidade. Esta funcionalidade tem custo baseado em caracteres processados.
-                    </AlertDescription>
-                  </Alert>
-                
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="voiceId">Voz do Agente</Label>
@@ -340,6 +384,29 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                         placeholder="Como o agente deve iniciar uma conversa"
                       />
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phoneNumber">Número para Teste (Twilio)</Label>
+                      <Input 
+                        id="phoneNumber"
+                        type="tel"
+                        value={formState.phoneNumber} 
+                        onChange={(e) => handleFormChange('phoneNumber', e.target.value)} 
+                        placeholder="Ex: +5511999999999"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="webhookUrl">URL de Webhook (opcional)</Label>
+                      <Input 
+                        id="webhookUrl"
+                        type="url"
+                        value={formState.webhookUrl} 
+                        onChange={(e) => handleFormChange('webhookUrl', e.target.value)} 
+                        placeholder="https://seu-dominio.com/webhooks/calls"
+                      />
+                      <p className="text-xs text-muted-foreground">URL para receber atualizações de status das chamadas</p>
+                    </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="testVoice">Testar Voz</Label>
@@ -348,7 +415,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                           id="testVoice"
                           value={testMessage} 
                           onChange={(e) => setTestMessage(e.target.value)} 
-                          placeholder="Digite um texto para testar a voz"
+                          placeholder={`Digite um texto para testar a voz. Padrão: "Olá, eu sou ${formState.name}, um assistente virtual."`}
                           rows={2}
                         />
                         <Button 

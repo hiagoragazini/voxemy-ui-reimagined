@@ -5,9 +5,7 @@ import { AgentGrid } from "@/components/agents/AgentGrid";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
-import { toast } from "@/components/ui/sonner";
 import { AgentCardProps } from "@/components/agents/AgentCard";
-import { useVoiceCall } from "@/hooks/use-voice-call";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AgentVoiceTester } from "@/components/agents/AgentVoiceTester";
 
@@ -16,6 +14,8 @@ const VOICES = {
   SARAH: "EXAVITQu4vr4xnSDxMaL", // Sarah - voz feminina
   ROGER: "CwhRBWXzGAHq8TQ4Fs17", // Roger - voz masculina
   THOMAS: "GBv7mTt0atIp3Br8iCZE", // Thomas - voz masculina britânica
+  ARIA: "9BWtsMINqrJLrRacOk9x", // Aria - voz feminina
+  LAURA: "FGY2WhTYpPnrIDTdsKH5", // Laura - voz feminina
 };
 
 // Mock data com apenas 3 agentes, cada um com uma voz diferente
@@ -68,7 +68,6 @@ export default function Agents() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [isLoading, setIsLoading] = useState(false);
-  const { textToSpeech, playAudio } = useVoiceCall();
   const [showVoiceTester, setShowVoiceTester] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AgentCardProps | null>(null);
 

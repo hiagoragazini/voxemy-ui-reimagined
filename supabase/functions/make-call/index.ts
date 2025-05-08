@@ -1,11 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Twilio } from "https://esm.sh/twilio@4.20.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -28,6 +24,11 @@ serve(async (req) => {
       callbackUrl,
       agentId,
       campaignId,
+      agentName,
+      useAI = true,
+      aiModel = "gpt-4o-mini",
+      systemPrompt,
+      voiceId,
       twimlInstructions 
     } = await req.json();
 
@@ -43,16 +44,44 @@ serve(async (req) => {
     // Formatar o número para o formato internacional
     const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
 
+    // Base URL para funções
+    const baseUrl = Deno.env.get("SUPABASE_URL") || "";
+    
     // Criar TwiML para a chamada
     let twiml = twimlInstructions;
     if (!twiml) {
-      twiml = `
-        <Response>
-          <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
-          <Pause length="1"/>
-          <Say language="pt-BR">Esta é uma demonstração da integração do Twilio com o Eleven Labs.</Say>
-        </Response>
-      `;
+      // Se estiver usando IA conversacional
+      if (useAI) {
+        // Integração com função de AI + TTS para chamadas inteligentes
+        const webhookBase = `${baseUrl}/functions/v1/call-handler?`;
+        const params = new URLSearchParams();
+        
+        if (agentId) params.append("agentId", agentId);
+        if (agentName) params.append("agentName", agentName);
+        if (campaignId) params.append("campaignId", campaignId);
+        if (aiModel) params.append("aiModel", aiModel);
+        if (systemPrompt) params.append("systemPrompt", encodeURIComponent(systemPrompt));
+        if (voiceId) params.append("voiceId", voiceId);
+        
+        const webhookUrl = `${webhookBase}${params.toString()}`;
+        
+        twiml = `
+          <Response>
+            <Connect>
+              <Stream url="${webhookUrl}"/>
+            </Connect>
+          </Response>
+        `;
+      } else {
+        // Chamada simples sem IA
+        twiml = `
+          <Response>
+            <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
+            <Pause length="1"/>
+            <Say language="pt-BR">Esta é uma demonstração da integração do Twilio com o Eleven Labs.</Say>
+          </Response>
+        `;
+      }
     }
 
     // Parâmetros para a URL de callback
@@ -73,7 +102,7 @@ serve(async (req) => {
     const call = await client.calls.create({
       twiml: twiml,
       to: formattedPhoneNumber,
-      from: "+15155172542", // Número do Twilio (troque por um número válido da sua conta)
+      from: Deno.env.get("TWILIO_PHONE_NUMBER") || "+15155172542", // Use env var if available
       statusCallback: callbackUrl ? callbackUrl : undefined,
       statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
       statusCallbackMethod: 'POST',
