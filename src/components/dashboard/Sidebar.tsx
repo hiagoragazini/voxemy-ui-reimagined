@@ -1,4 +1,3 @@
-
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -43,13 +42,6 @@ export function Sidebar({ className }: { className?: string }) {
                     : "text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800"
                 )
               }
-              onClick={(e) => {
-                if (item.path === "/campaigns") {
-                  e.preventDefault();
-                  window.location.href = "/campanhas";
-                  return;
-                }
-              }}
             >
               <span className="flex h-6 w-6 items-center justify-center">
                 <IconComponent name={item.icon} />
