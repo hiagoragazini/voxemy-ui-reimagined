@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { AgentGrid } from "@/components/ui/agent-grid";
 import { Layout } from "@/components/ui/layout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
 import { AgentCardProps } from "@/components/ui/agent-card";
 
@@ -15,51 +14,71 @@ const VOICES = {
   SARAH: "EXAVITQu4vr4xnSDxMaL", // Sarah - voz feminina
   ROGER: "CwhRBWXzGAHq8TQ4Fs17", // Roger - voz masculina
   THOMAS: "GBv7mTt0atIp3Br8iCZE", // Thomas - voz masculina britânica
+  ARIA: "9BWtsMINqrJLrRacOk9x", // Aria - voz feminina
+  LAURA: "FGY2WhTYpPnrIDTdsKH5", // Laura - voz feminina
 };
 
-// Mock data com apenas 3 agentes, cada um com uma voz diferente
+// Mock data com os mesmos agentes que na dashboard, garantindo consistência
 const mockAgents: AgentCardProps[] = [
   {
     id: "1",
-    name: "Sofia Atendente",
-    description: "Especialista em atendimento ao cliente, ideal para suporte técnico e dúvidas frequentes.",
-    category: "Atendimento",
+    name: "Assistente de Vendas",
+    category: "Comercial",
+    description: "Agente inteligente para atendimento e qualificação de leads de vendas.",
     status: "active",
-    calls: 253,
-    avgTime: "2:14",
-    successRate: 92,
-    lastActivity: "Hoje às 14:25",
-    avatarLetter: "S",
+    calls: 127,
+    avgTime: "4:32",
+    successRate: 68,
+    successChange: "+5.2%",
+    lastActivity: "Hoje, 14:30",
+    avatarLetter: "A",
     avatarColor: "bg-violet-100",
-    voiceId: VOICES.SARAH, // Voz feminina
+    voiceId: VOICES.ROGER,
   },
   {
     id: "2",
-    name: "Carlos Vendas",
-    description: "Focado em qualificação de leads e conversão de vendas para produtos tecnológicos.",
-    category: "Vendas",
+    name: "Atendente de Suporte",
+    category: "Suporte",
+    description: "Responde dúvidas e resolve problemas de clientes automaticamente.",
     status: "active",
-    calls: 187,
-    avgTime: "3:22",
-    successRate: 78,
-    lastActivity: "Hoje às 12:10",
-    avatarLetter: "C",
+    calls: 85,
+    avgTime: "5:15",
+    successRate: 92,
+    successChange: "+1.2%",
+    lastActivity: "Ontem, 17:20",
+    avatarLetter: "A",
     avatarColor: "bg-blue-100",
-    voiceId: VOICES.ROGER, // Voz masculina
+    voiceId: VOICES.SARAH,
   },
   {
     id: "3",
-    name: "Thomas Suporte",
-    description: "Especialista em resolução de problemas técnicos com sotaque britânico, perfeito para atendimento internacional.",
-    category: "Suporte",
-    status: "active",
-    calls: 94,
-    avgTime: "4:05",
-    successRate: 81,
-    lastActivity: "Ontem às 16:42",
-    avatarLetter: "T",
+    name: "Pesquisador de Mercado",
+    category: "Pesquisa",
+    description: "Realiza pesquisas de mercado e coleta feedback de clientes.",
+    status: "paused",
+    calls: 42,
+    avgTime: "2:48",
+    successRate: 75,
+    successChange: "-0.7%",
+    lastActivity: "22/04/2025",
+    avatarLetter: "P",
     avatarColor: "bg-green-100",
-    voiceId: VOICES.THOMAS, // Voz masculina britânica
+    voiceId: VOICES.THOMAS,
+  },
+  {
+    id: "4",
+    name: "Agendador",
+    category: "Agendamentos",
+    description: "Agenda compromissos e gerencia calendários de forma automática.",
+    status: "inactive",
+    calls: 0,
+    avgTime: "0:00",
+    successRate: 0,
+    successChange: "0%",
+    lastActivity: "",
+    avatarLetter: "A",
+    avatarColor: "bg-red-100",
+    voiceId: VOICES.ARIA,
   }
 ];
 

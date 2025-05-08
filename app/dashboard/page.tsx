@@ -4,9 +4,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Layout } from "@/components/ui/layout";
-import { AgentGrid, getAvatarColor } from "@/components/ui/agent-grid";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronRight, PhoneCall, Clock, CheckCircle2 } from "lucide-react";
+import { Plus, ChevronRight, PhoneCall, Clock, CheckCircle2, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AgentCardProps } from "@/components/ui/agent-card";
@@ -34,32 +33,8 @@ const mockAgents: AgentCardProps[] = [
     calls: 85,
     avgTime: "5:15",
     successRate: 92,
-    successChange: "+5.2%",
+    successChange: "+1.2%",
     lastActivity: "Ontem, 17:20",
-  },
-  {
-    id: "3",
-    name: "Pesquisador de Mercado",
-    category: "Pesquisa",
-    description: "Realiza pesquisas de mercado e coleta feedback de clientes.",
-    status: "paused",
-    calls: 42,
-    avgTime: "2:48",
-    successRate: 75,
-    successChange: "+5.2%",
-    lastActivity: "22/04/2025",
-  },
-  {
-    id: "4",
-    name: "Agendador",
-    category: "Agendamentos",
-    description: "Agenda compromissos e gerencia calendários de forma automática.",
-    status: "inactive",
-    calls: 0,
-    avgTime: "0:00",
-    successRate: 0,
-    successChange: "+5.2%",
-    lastActivity: "",
   }
 ];
 
@@ -67,39 +42,37 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleAgentEditClick = (id: string) => {
-    console.log(`Editar agente ${id}`);
-    router.push(`/agentes/${id}/editar`);
-  };
-
-  const handleCreateAgent = () => {
-    console.log("Criar novo agente");
-    router.push('/agentes/novo');
-  };
-
-  const handleTestVoice = (id: string) => {
-    const agent = mockAgents.find(agent => agent.id === id);
-    if (agent) {
-      console.log(`Iniciando teste de voz para ${agent.name}`);
-    }
-  };
-
-  // Preparar agentes com avatar letters e cores
-  const agentsWithAvatars = mockAgents.map(agent => ({
+  // Top agentes (versão resumida para não repetir a página completa)
+  const topAgents = mockAgents.slice(0, 2).map(agent => ({
     ...agent,
     avatarLetter: agent.name.split(' ')[0][0] + (agent.name.split(' ')[1]?.[0] || ''),
     avatarColor: getAvatarColor(agent.name)
   }));
+
+  // Navegar para a página de todos os agentes
+  const viewAllAgents = () => {
+    router.push('/agentes');
+  };
+
+  // Navegar para a página de criação de agente
+  const handleCreateAgent = () => {
+    router.push('/agentes/novo');
+  };
+
+  // Navegar para a página de edição de agente
+  const handleAgentEditClick = (id: string) => {
+    router.push(`/agentes/${id}/editar`);
+  };
 
   return (
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
-            Visão Geral dos seus Agentes de Voz
+            Dashboard
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
-            Acompanhe seu time de IA em ação e veja o desempenho das chamadas em tempo real.
+            Acompanhe o desempenho do seu sistema de atendimento por voz em tempo real.
           </p>
         </div>
         
@@ -151,31 +124,72 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Seus Agentes</h2>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Agentes Mais Ativos</h2>
             <p className="text-sm text-muted-foreground">
-              Gerenciamento e monitoramento de seus assistentes virtuais
+              Agentes com maior volume de chamadas nas últimas 24 horas
             </p>
           </div>
           
-          <Button 
-            className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
-            onClick={handleCreateAgent}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Novo Agente
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline"
+              onClick={viewAllAgents}
+              className="flex items-center gap-1 text-sm"
+            >
+              Ver Todos
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+            
+            <Button 
+              className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
+              onClick={handleCreateAgent}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Novo Agente
+            </Button>
+          </div>
         </div>
 
-        <div className="mb-10">
-          <AgentGrid 
-            agents={agentsWithAvatars}
-            isLoading={isLoading}
-            onAgentEditClick={handleAgentEditClick}
-            onTestVoice={handleTestVoice}
-            onCreateAgent={handleCreateAgent}
-          />
+        {/* Top agentes cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+          {topAgents.map(agent => (
+            <Card 
+              key={agent.id}
+              className="flex p-4 gap-4 hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleAgentEditClick(agent.id)}
+            >
+              <div className={`${agent.avatarColor} h-12 w-12 rounded-full flex items-center justify-center font-medium text-lg`}>
+                {agent.avatarLetter}
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold">{agent.name}</h3>
+                    <p className="text-sm text-muted-foreground">{agent.category}</p>
+                  </div>
+                  <Badge variant={agent.status === "active" ? "success" : agent.status === "paused" ? "warning" : "outline"}>
+                    {agent.status === "active" ? "Ativo" : agent.status === "paused" ? "Pausado" : "Inativo"}
+                  </Badge>
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-1">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Chamadas</p>
+                    <p className="font-semibold">{agent.calls}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Sucesso</p>
+                    <p className="font-semibold">{agent.successRate}%</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Tempo Médio</p>
+                    <p className="font-semibold">{agent.avgTime}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
 
         {/* Próximos passos com melhorias visuais */}
@@ -244,6 +258,18 @@ const NextStepCard = ({
     </div>
   </div>
 );
+
+// Utility function for avatar colors
+const getAvatarColor = (name: string) => {
+  const colors = [
+    "bg-blue-100", "bg-purple-100", "bg-green-100", 
+    "bg-yellow-100", "bg-red-100", "bg-pink-100",
+    "bg-indigo-100", "bg-orange-100", "bg-violet-100"
+  ];
+  
+  const index = name.charCodeAt(0) % colors.length;
+  return colors[index];
+};
 
 const Settings = (props: React.SVGAttributes<SVGElement>) => (
   <svg
