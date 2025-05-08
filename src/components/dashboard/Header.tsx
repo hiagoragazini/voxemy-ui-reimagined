@@ -39,7 +39,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5 text-muted-foreground" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full"></span>
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
         </Button>
 
         <div className="relative">

@@ -10,9 +10,9 @@ import { Briefcase } from "lucide-react";
 // Define the navigation items for the sidebar
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: "home" },
-  { name: "Meu Negócio", path: "/business", icon: "briefcase" },
   { name: "Agentes", path: "/agents", icon: "user" },
   { name: "Campanhas", path: "/campaigns", icon: "phone" },
+  { name: "Meu Negócio", path: "/business", icon: "briefcase" },
   { name: "Analytics", path: "/analytics", icon: "bar-chart-2" },
   { name: "Configurações", path: "/settings", icon: "settings" },
 ];
