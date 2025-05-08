@@ -1,26 +1,22 @@
 
-import { useState } from "react";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { Header } from "@/components/dashboard/Header";
+import React from "react";
+import { Sidebar } from "./Sidebar";
+import { Header } from "./Header";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-export const Layout = ({ children }: LayoutProps) => {
-  const [collapsed, setCollapsed] = useState(false);
-
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed);
-  };
-
+export function Layout({ children }: LayoutProps) {
   return (
-    <div className="h-screen flex bg-gray-50/60 dark:bg-slate-950">
-      <Sidebar collapsed={collapsed} toggleSidebar={toggleSidebar} />
-      <main className={`flex-1 transition-all duration-300 overflow-auto ${collapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
-        <Header openSidebar={toggleSidebar} sidebarCollapsed={collapsed} />
-        {children}
-      </main>
+    <div className="flex h-screen">
+      <Sidebar className="w-64 shrink-0" />
+      <div className="flex flex-col flex-1">
+        <Header />
+        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+          {children}
+        </main>
+      </div>
     </div>
   );
-};
+}

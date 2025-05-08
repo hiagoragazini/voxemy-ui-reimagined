@@ -10,11 +10,31 @@ import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Campaign } from "@/integrations/supabase/tables.types";
+
+// Define a type that matches what's coming from the database
+interface CampaignData {
+  agent_id: string;
+  avg_call_duration: string;
+  completed_leads: number;
+  created_at: string;
+  end_date: string;
+  id: string;
+  name: string;
+  origin_phone: string;
+  start_date: string;
+  status: string;
+  success_rate: number;
+  total_leads: number;
+  updated_at: string;
+}
+
+// Define a type for the filtered status
+type CampaignStatus = "active" | "paused" | "scheduled" | "completed";
+type FilterType = "all" | CampaignStatus;
 
 export default function Campaigns() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<"all" | "active" | "paused" | "scheduled" | "completed">("all");
+  const [filter, setFilter] = useState<FilterType>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [agentNames, setAgentNames] = useState<Record<string, string>>({});
@@ -80,13 +100,13 @@ export default function Campaigns() {
   };
 
   // Filter campaigns based on selected filter
-  const filteredCampaigns = campaigns.filter((campaign: Campaign) => {
+  const filteredCampaigns = campaigns.filter((campaign: CampaignData) => {
     if (filter === "all") return true;
     return campaign.status === filter;
   });
 
-  const getFilterCount = (filterType: "active" | "paused" | "scheduled" | "completed") => {
-    return campaigns.filter((campaign: Campaign) => campaign.status === filterType).length;
+  const getFilterCount = (filterType: CampaignStatus) => {
+    return campaigns.filter((campaign: CampaignData) => campaign.status === filterType).length;
   };
 
   const getStatusBadge = (status: string) => {
@@ -213,7 +233,7 @@ export default function Campaigns() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCampaigns.map((campaign: Campaign) => {
+            {filteredCampaigns.map((campaign: CampaignData) => {
               const formattedStartDate = campaign.start_date 
                 ? new Date(campaign.start_date).toLocaleDateString('pt-BR')
                 : "--/--/----";

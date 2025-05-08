@@ -2,7 +2,7 @@
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { useMobileDetect } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Define the navigation items for the sidebar
 const navItems = [
@@ -14,7 +14,7 @@ const navItems = [
 ];
 
 export function Sidebar({ className }: { className?: string }) {
-  const { isMobile } = useMobileDetect();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
 
   return (
