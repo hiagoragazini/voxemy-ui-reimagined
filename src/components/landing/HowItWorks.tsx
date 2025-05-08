@@ -1,4 +1,6 @@
 
+"use client";
+
 const HowItWorks = () => {
   const steps = [
     {

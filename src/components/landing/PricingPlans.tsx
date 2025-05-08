@@ -1,8 +1,13 @@
 
+"use client";
+
 import { Check } from "lucide-react";
-import { Button } from "../../components/ui/button";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 const PricingPlans = () => {
+  const router = useRouter();
+  
   const plans = [
     {
       name: "Starter",
@@ -48,6 +53,10 @@ const PricingPlans = () => {
     }
   ];
 
+  const handlePlanSelect = () => {
+    router.push("/login");
+  };
+
   return (
     <section id="pricing-plans" className="py-20 bg-slate-900/50">
       <div className="container mx-auto px-4">
@@ -88,7 +97,7 @@ const PricingPlans = () => {
                       ? "bg-violet-600 hover:bg-violet-700" 
                       : "bg-slate-700 hover:bg-slate-600"
                   }`}
-                  onClick={() => window.location.href = "/login"}
+                  onClick={handlePlanSelect}
                 >
                   Começar com este plano
                 </Button>
