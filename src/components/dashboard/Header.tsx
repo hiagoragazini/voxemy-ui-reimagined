@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/sonner";
 
 interface HeaderProps {
-  openSidebar: () => void;
+  openSidebar?: () => void;
   userAvatar?: string;
   sidebarCollapsed?: boolean;
 }
@@ -53,7 +53,7 @@ export const Header = ({
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex items-center gap-4">
-        {sidebarCollapsed && (
+        {sidebarCollapsed && openSidebar && (
           <Button variant="ghost" size="icon" onClick={openSidebar} className="h-8 w-8">
             <Menu className="h-4 w-4" />
             <span className="sr-only">Menu</span>
