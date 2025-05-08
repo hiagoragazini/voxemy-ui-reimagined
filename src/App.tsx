@@ -10,6 +10,7 @@ import Settings from "./pages/Settings";
 import Business from "./pages/Business";
 import NotFound from "./pages/NotFound";
 import Campaigns from "./pages/Campaigns";
+import CampaignForm from "./pages/CampaignForm";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function App() {
@@ -26,6 +27,8 @@ function App() {
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/business" element={<ProtectedRoute><Business /></ProtectedRoute>} />
       <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
+      <Route path="/campaigns/new" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
+      <Route path="/campaigns/:id/edit" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
       
       <Route path="/404" element={<NotFound />} />
       <Route path="*" element={<Navigate to="/404" replace />} />

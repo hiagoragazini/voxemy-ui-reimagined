@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -87,16 +86,16 @@ export default function Campaigns() {
   });
 
   const handleNewCampaign = () => {
-    // For React Router, we might redirect to an internal Next.js page
-    window.location.href = '/campanhas/nova';
+    // Use navigate to go to the campaign creation page
+    navigate('/campaigns/new');
   };
 
   const handleEditCampaign = (id: string) => {
-    window.location.href = `/campanhas/${id}/editar`;
+    navigate(`/campaigns/${id}/edit`);
   };
   
   const handleViewDetails = (id: string) => {
-    window.location.href = `/campanhas/${id}`;
+    navigate(`/campaigns/${id}`);
   };
 
   // Filter campaigns based on selected filter
