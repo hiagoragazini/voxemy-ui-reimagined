@@ -11,7 +11,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Agents from "./pages/Agents";
-import AgentConfig from "./pages/AgentConfig"; // Novo componente para configuração dos agentes
+import AgentConfig from "./pages/AgentConfig";
 import Campaigns from "./pages/Campaigns";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
@@ -47,7 +47,7 @@ const App = () => (
             } />
             <Route path="/agents/new" element={
               <ProtectedRoute>
-                <AgentConfig isNew />
+                <AgentConfig isNew={true} />
               </ProtectedRoute>
             } />
             <Route path="/campaigns" element={

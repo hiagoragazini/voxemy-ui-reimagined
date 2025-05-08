@@ -1,6 +1,5 @@
 
-import { AgentCard, AgentCardSkeleton, AgentCardProps } from "./AgentCard";
-import { toast } from "@/components/ui/sonner";
+import { AgentCard, AgentCardSkeleton, AgentCardProps } from "@/components/agents/AgentCard";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,9 +19,15 @@ export const AgentGrid = ({
   onTestVoice,
   onCreateAgent
 }: AgentGridProps) => {
+
   const handleStatusChange = (id: string, isActive: boolean) => {
-    toast.success(`Status do agente ${id} alterado para ${isActive ? 'ativo' : 'inativo'}`);
-    // Aqui você implementaria a lógica real para atualizar o status do agente
+    console.log(`Status do agente ${id} alterado para ${isActive ? 'ativo' : 'inativo'}`);
+  };
+
+  const handleCreateClick = () => {
+    if (onCreateAgent) {
+      onCreateAgent();
+    }
   };
 
   if (isLoading) {
@@ -37,10 +42,9 @@ export const AgentGrid = ({
     );
   }
 
-  // Marcar o primeiro agente como top performer
-  const agentsWithTopPerformer = agents.map((agent, index) => ({
+  // Update agents data to remove isTopPerformer
+  const agentsWithUsage = agents.map((agent) => ({
     ...agent,
-    isTopPerformer: index === 0,
     voiceUsage: {
       current: Math.floor(Math.random() * 8) + 1,
       total: 10
@@ -49,7 +53,7 @@ export const AgentGrid = ({
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-      {agentsWithTopPerformer.map((agent) => (
+      {agentsWithUsage.map((agent) => (
         <AgentCard
           key={agent.id}
           {...agent}
@@ -60,8 +64,8 @@ export const AgentGrid = ({
       ))}
       
       {/* Create agent card with improved visuals */}
-      <Card className="border-dashed border-2 border-gray-200 hover:border-primary/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group">
-        <div className="flex flex-col items-center justify-center h-full p-8 text-center cursor-pointer" onClick={onCreateAgent}>
+      <Card className="border-dashed border-2 border-gray-200 hover:border-primary/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group cursor-pointer" onClick={handleCreateClick}>
+        <div className="flex flex-col items-center justify-center h-full p-8 text-center">
           <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-violet-200 transition-colors">
             <Plus className="h-8 w-8 text-violet-600 group-hover:scale-110 transition-transform" />
           </div>

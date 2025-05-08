@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Loader2, Volume2 } from "lucide-react";
-import { toast } from "sonner";
-import { useVoiceCallSimple } from "@/hooks/use-voice-call-simple";
+import { toast } from "@/components/ui/sonner";
+import { useVoiceCall } from "@/hooks/use-voice-call";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 
 interface AgentVoiceTesterProps {
@@ -22,7 +22,8 @@ export function AgentVoiceTester({
   onClose
 }: AgentVoiceTesterProps) {
   const [text, setText] = useState(`Olá, eu sou ${agentName}, um assistente de voz. Como posso ajudar você hoje?`);
-  const { isLoading, audioContent, textToSpeech } = useVoiceCallSimple();
+  const [audioContent, setAudioContent] = useState<string | null>(null);
+  const { isLoading, textToSpeech, playAudio } = useVoiceCall();
   
   const handleTestVoice = async () => {
     if (!text.trim()) {
@@ -31,18 +32,21 @@ export function AgentVoiceTester({
     }
     
     try {
-      await textToSpeech({ 
+      const audioData = await textToSpeech({ 
         text, 
-        voiceId,
-        model: "eleven_multilingual_v2",
-        stability: 0.75,
-        similarity_boost: 0.85,
-        style: 0.6,
-        use_speaker_boost: true
+        voiceId: voiceId || "EXAVITQu4vr4xnSDxMaL", // Use Sarah as default if no voice ID
+        model: "eleven_multilingual_v2"
       });
+      
+      if (audioData) {
+        setAudioContent(audioData);
+        playAudio(audioData);
+      } else {
+        toast.error("Não foi possível gerar áudio");
+      }
     } catch (err) {
-      // Error already handled in the hook
       console.error("Erro ao testar voz:", err);
+      toast.error("Erro ao testar a voz do agente");
     }
   };
   

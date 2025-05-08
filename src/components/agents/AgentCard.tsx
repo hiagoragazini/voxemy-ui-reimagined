@@ -1,18 +1,16 @@
-
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Settings, PhoneCall, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/sonner";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AgentVoiceTester } from "./AgentVoiceTester";
-import { useNavigate } from "react-router-dom";
 
 export interface AgentCardProps {
   id: string;
@@ -95,8 +93,8 @@ export const AgentCard = ({
     if (onEditClick) {
       onEditClick(id);
     } else {
-      // Usando navegação direta se não houver handler externo
-      navigate(`/agent/${id}/edit`);
+      // Direct navigation if no handler is provided
+      navigate(`/agents/${id}/edit`);
     }
   };
 
