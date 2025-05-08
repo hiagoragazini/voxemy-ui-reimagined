@@ -1,155 +1,152 @@
 
-import { Link } from "react-router-dom";
-import {
-  ChevronLeft,
-  Home,
-  Users,
-  BarChart,
-  Settings,
-  CalendarDays,
-  User,
-  Briefcase,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import Logo from "@/components/shared/Logo";
-import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { useMobileDetect } from "@/hooks/use-mobile";
 
-interface SidebarProps {
-  collapsed: boolean;
-  toggleSidebar: () => void;
-}
+// Define the navigation items for the sidebar
+const navItems = [
+  { name: "Dashboard", path: "/dashboard", icon: "home" },
+  { name: "Agentes", path: "/agents", icon: "user" },
+  { name: "Campanhas", path: "/campaigns", icon: "phone" },
+  { name: "Analytics", path: "/analytics", icon: "bar-chart-2" },
+  { name: "Configurações", path: "/settings", icon: "settings" },
+];
 
-export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
-  const { user } = useAuth();
-  
-  // Get user name from authentication context
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
-  
+export function Sidebar({ className }: { className?: string }) {
+  const { isMobile } = useMobileDetect();
+  const navigate = useNavigate();
+
   return (
-    <aside 
+    <div
       className={cn(
-        "h-screen fixed top-0 left-0 z-20 border-r border-border/40 bg-slate-900/95 transition-all duration-300",
-        collapsed ? "w-[60px]" : "w-[240px]"
+        "flex flex-col border-r bg-white dark:bg-gray-800 dark:border-gray-700 h-full",
+        className
       )}
     >
-      <div className="flex h-16 items-center justify-between border-b border-border/40 px-3">
-        {!collapsed && (
-          <Logo />
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("h-8 w-8", collapsed && "mx-auto")}
-          onClick={toggleSidebar}
-        >
-          <ChevronLeft 
-            className={cn(
-              "h-4 w-4 text-muted-foreground transition-transform", 
-              collapsed && "rotate-180"
-            )} 
-          /> 
-          <span className="sr-only">Alternar Barra Lateral</span>
-        </Button>
-      </div>
-      
-      <nav className="flex flex-col gap-1 p-2">
-        <SidebarItem 
-          icon={<Home className="h-4 w-4" />} 
-          label="Dashboard" 
-          to="/dashboard" 
-          collapsed={collapsed}
-          active={window.location.pathname === "/dashboard"}
-        />
-        <SidebarItem 
-          icon={<Users className="h-4 w-4" />} 
-          label="Agentes" 
-          to="/agents" 
-          collapsed={collapsed}
-          active={window.location.pathname === "/agents"}
-        />
-        <SidebarItem 
-          icon={<CalendarDays className="h-4 w-4" />} 
-          label="Campanhas" 
-          to="/campaigns" 
-          collapsed={collapsed}
-          active={window.location.pathname === "/campaigns"}
-        />
-        <SidebarItem 
-          icon={<Briefcase className="h-4 w-4" />} 
-          label="Meu Negócio" 
-          to="/business" 
-          collapsed={collapsed}
-          active={window.location.pathname === "/business"}
-        />
-        <SidebarItem 
-          icon={<BarChart className="h-4 w-4" />} 
-          label="Análises" 
-          to="/analytics" 
-          collapsed={collapsed}
-          active={window.location.pathname === "/analytics"}
-        />
-        <SidebarItem 
-          icon={<Settings className="h-4 w-4" />} 
-          label="Configurações" 
-          to="/settings" 
-          collapsed={collapsed}
-          active={window.location.pathname === "/settings"}
-        />
-      </nav>
-      
-      <div className="absolute bottom-0 left-0 right-0 border-t border-border/40 p-2">
-        <div className={cn(
-          "flex items-center rounded-md bg-slate-800/60 p-2",
-          collapsed ? "justify-center" : "justify-between"
-        )}>
-          <div className={cn(
-            "flex items-center gap-2",
-            collapsed && "justify-center"
-          )}>
-            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary/10">
-              <User className="h-4 w-4 text-primary" />
-            </div>
-            {!collapsed && (
-              <div className="flex flex-col">
-                <span className="text-xs font-medium text-slate-100">{userName}</span>
-                <span className="text-xs text-slate-300">Plano Pro</span>
-              </div>
-            )}
-          </div>
-          {!collapsed && (
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <Settings className="h-3.5 w-3.5 text-muted-foreground" />
-            </Button>
-          )}
+      <div className="py-2">
+        <div className="px-4 py-2">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Menu
+          </h2>
         </div>
+        <nav className="grid gap-1 px-2">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
+                  isActive
+                    ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-50"
+                    : "text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800"
+                )
+              }
+              onClick={(e) => {
+                if (item.path === "/campaigns") {
+                  e.preventDefault();
+                  window.location.href = "/campanhas";
+                  return;
+                }
+              }}
+            >
+              <span className="flex h-6 w-6 items-center justify-center">
+                <IconComponent name={item.icon} />
+              </span>
+              <span>{item.name}</span>
+            </NavLink>
+          ))}
+        </nav>
       </div>
-    </aside>
+    </div>
   );
-};
-
-interface SidebarItemProps {
-  icon: React.ReactNode;
-  label: string;
-  to: string;
-  collapsed: boolean;
-  active?: boolean;
 }
 
-const SidebarItem = ({ icon, label, to, collapsed, active }: SidebarItemProps) => {
-  return (
-    <Link
-      to={to}
-      className={cn(
-        "flex items-center gap-2 rounded-md px-2 py-2 text-sm text-slate-200/80 transition-colors hover:bg-slate-800 hover:text-slate-200",
-        collapsed ? "justify-center" : "",
-        active && "bg-primary/20 font-medium text-primary hover:bg-primary/30 hover:text-primary"
-      )}
-    >
-      <div className={cn("flex h-5 w-5 items-center justify-center", active && "text-primary")}>
-        {icon}
-      </div>
-      {!collapsed && <span>{label}</span>}
-    </Link>
-  );
-};
+// Simple icon component (you can replace with your own icon system)
+function IconComponent({ name }: { name: string }) {
+  switch (name) {
+    case "home":
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+      );
+    case "user":
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      );
+    case "phone":
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+        </svg>
+      );
+    case "bar-chart-2":
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+        >
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      );
+    default:
+      return <span className="h-4 w-4" />;
+  }
+}

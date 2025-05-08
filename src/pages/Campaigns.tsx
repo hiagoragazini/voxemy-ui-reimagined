@@ -1,103 +1,92 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Plus, Phone, BarChart3, Users, User, Filter } from "lucide-react";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
-
-// Mock data for the campaigns page
-const mockCampaigns = [
-  {
-    id: "1",
-    name: "Campanha Black Friday",
-    status: "active",
-    totalLeads: 2500,
-    completedLeads: 1875,
-    agent: "Sofia Atendente",
-    lastActivity: "Hoje às 15:30",
-    avgCallDuration: "2:10",
-    successRate: 79,
-    startDate: "20/11/2023",
-    endDate: "28/11/2023"
-  },
-  {
-    id: "2",
-    name: "Reengajamento Clientes Inativos",
-    status: "active",
-    totalLeads: 1200,
-    completedLeads: 780,
-    agent: "Carlos Vendas",
-    lastActivity: "Hoje às 14:15",
-    avgCallDuration: "3:22",
-    successRate: 68,
-    startDate: "10/10/2023",
-    endDate: "10/12/2023"
-  },
-  {
-    id: "3",
-    name: "Cobrança Suave Novembro",
-    status: "paused",
-    totalLeads: 850,
-    completedLeads: 245,
-    agent: "Ricardo Cobranças",
-    lastActivity: "Ontem às 17:40",
-    avgCallDuration: "2:45",
-    successRate: 42,
-    startDate: "01/11/2023",
-    endDate: "30/11/2023"
-  },
-  {
-    id: "4",
-    name: "Pesquisa de Satisfação Q4",
-    status: "scheduled",
-    totalLeads: 3000,
-    completedLeads: 0,
-    agent: "Juliana Pesquisas",
-    lastActivity: "Nunca iniciada",
-    avgCallDuration: "-",
-    successRate: 0,
-    startDate: "01/12/2023",
-    endDate: "15/12/2023"
-  },
-  {
-    id: "5",
-    name: "Follow-up Leads Quentes",
-    status: "completed",
-    totalLeads: 500,
-    completedLeads: 500,
-    agent: "Carlos Vendas",
-    lastActivity: "22/10/2023",
-    avgCallDuration: "2:58",
-    successRate: 88,
-    startDate: "01/10/2023",
-    endDate: "22/10/2023"
-  }
-];
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Campaign } from "@/integrations/supabase/tables.types";
 
 export default function Campaigns() {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "scheduled" | "completed">("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [agentNames, setAgentNames] = useState<Record<string, string>>({});
+
+  // Fetch campaigns data from Supabase
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['campaigns'],
+    queryFn: async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const { data, error } = await supabase
+          .from("campaigns")
+          .select("*")
+          .order("created_at", { ascending: false });
+          
+        if (error) throw error;
+        
+        // Get agent IDs to fetch their names
+        const agentIds = Array.from(new Set(data?.filter(c => c.agent_id).map(c => c.agent_id) || []));
+        
+        if (agentIds.length > 0) {
+          const { data: agentsData, error: agentsError } = await supabase
+            .from("agents")
+            .select("id, name")
+            .in("id", agentIds);
+            
+          if (!agentsError && agentsData) {
+            const namesMap: Record<string, string> = {};
+            agentsData.forEach(agent => {
+              if (agent.id) {
+                namesMap[agent.id] = agent.name;
+              }
+            });
+            setAgentNames(namesMap);
+          }
+        }
+        
+        return data || [];
+      } catch (err: any) {
+        console.error("Error fetching campaigns:", err);
+        setError(err.message || "Erro ao carregar campanhas");
+        toast.error("Erro ao carregar campanhas");
+        return [];
+      } finally {
+        setLoading(false);
+      }
+    }
+  });
 
   const handleNewCampaign = () => {
-    toast.success("Redirecionando para criação de nova campanha...");
-    // Aqui seria a navegação real para o formulário de criação
+    // For React Router, we might redirect to an internal Next.js page
+    window.location.href = '/campanhas/nova';
   };
 
   const handleEditCampaign = (id: string) => {
-    toast.success(`Editando campanha ${id}...`);
-    // Aqui seria a navegação real para a edição da campanha
+    window.location.href = `/campanhas/${id}/editar`;
+  };
+  
+  const handleViewDetails = (id: string) => {
+    window.location.href = `/campanhas/${id}`;
   };
 
   // Filter campaigns based on selected filter
-  const filteredCampaigns = mockCampaigns.filter(campaign => {
+  const filteredCampaigns = campaigns.filter((campaign: Campaign) => {
     if (filter === "all") return true;
     return campaign.status === filter;
   });
 
   const getFilterCount = (filterType: "active" | "paused" | "scheduled" | "completed") => {
-    return mockCampaigns.filter(campaign => campaign.status === filterType).length;
+    return campaigns.filter((campaign: Campaign) => campaign.status === filterType).length;
   };
 
   const getStatusBadge = (status: string) => {
@@ -136,7 +125,7 @@ export default function Campaigns() {
               className="flex items-center gap-1.5"
             >
               <Filter className="h-4 w-4" />
-              <span>Todas ({mockCampaigns.length})</span>
+              <span>Todas ({campaigns.length})</span>
             </Button>
             <Button 
               variant={filter === "active" ? "default" : "outline"} 
@@ -184,99 +173,165 @@ export default function Campaigns() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCampaigns.map((campaign) => (
-            <Card key={campaign.id} className="hover:border-primary/30 transition-all duration-300 hover:shadow-md hover:scale-[1.01] group">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-xl font-semibold">{campaign.name}</CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      {getStatusBadge(campaign.status)}
-                      <span className="text-xs text-muted-foreground">
-                        {campaign.startDate} - {campaign.endDate}
-                      </span>
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="flex flex-col items-center">
+              <div className="h-8 w-8 animate-spin text-violet-600 mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                </svg>
+              </div>
+              <p className="text-muted-foreground">Carregando campanhas...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="text-red-500 mb-2">Erro ao carregar campanhas</div>
+            <p className="text-muted-foreground text-center">{error}</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => window.location.reload()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        ) : filteredCampaigns.length === 0 ? (
+          <div className="border-2 border-dashed rounded-lg p-12 text-center">
+            <h3 className="font-medium text-lg mb-2">Nenhuma campanha encontrada</h3>
+            <p className="text-muted-foreground mb-6">
+              {filter === "all" 
+                ? "Crie sua primeira campanha para começar a realizar chamadas automatizadas." 
+                : "Não há campanhas com o filtro selecionado."}
+            </p>
+            {filter === "all" && (
+              <Button onClick={handleNewCampaign}>
+                <Plus className="h-4 w-4 mr-1" />
+                <span>Nova Campanha</span>
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCampaigns.map((campaign: Campaign) => {
+              const formattedStartDate = campaign.start_date 
+                ? new Date(campaign.start_date).toLocaleDateString('pt-BR')
+                : "--/--/----";
+                
+              const formattedEndDate = campaign.end_date
+                ? new Date(campaign.end_date).toLocaleDateString('pt-BR')
+                : "--/--/----";
+                
+              const formattedLastActivity = campaign.updated_at
+                ? new Date(campaign.updated_at).toLocaleString('pt-BR')
+                : "Nunca";
+              
+              const completionPercentage = campaign.total_leads 
+                ? Math.round((campaign.completed_leads / campaign.total_leads) * 100) 
+                : 0;
+              
+              return (
+                <Card key={campaign.id} className="hover:border-primary/30 transition-all duration-300 hover:shadow-md hover:scale-[1.01] group">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-xl font-semibold">{campaign.name}</CardTitle>
+                        <div className="flex items-center gap-2 mt-1">
+                          {getStatusBadge(campaign.status)}
+                          <span className="text-xs text-muted-foreground">
+                            {formattedStartDate} - {formattedEndDate}
+                          </span>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-muted-foreground h-8 w-8"
+                        onClick={() => handleEditCampaign(campaign.id)}
+                      >
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          width="16" 
+                          height="16" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        >
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                      </Button>
                     </div>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="text-muted-foreground h-8 w-8"
-                    onClick={() => handleEditCampaign(campaign.id)}
-                  >
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      width="16" 
-                      height="16" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round"
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-1 text-sm">
+                          <span className="text-muted-foreground">Progresso</span>
+                          <span className="font-medium">
+                            {completionPercentage}%
+                          </span>
+                        </div>
+                        <Progress 
+                          value={completionPercentage} 
+                          className="h-2 bg-gray-100" 
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Total de Leads</p>
+                          <div className="flex items-center gap-1.5">
+                            <Users className="h-3.5 w-3.5 text-violet-500" />
+                            <p className="font-semibold">{campaign.total_leads || 0}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Agente</p>
+                          <div className="flex items-center gap-1.5">
+                            <User className="h-3.5 w-3.5 text-violet-500" />
+                            <p className="font-semibold">{agentNames[campaign.agent_id] || "Sem agente"}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Tempo Médio</p>
+                          <div className="flex items-center gap-1.5">
+                            <CalendarDays className="h-3.5 w-3.5 text-violet-500" />
+                            <p className="font-semibold">{campaign.avg_call_duration || "0:00"}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Taxa Sucesso</p>
+                          <div className="flex items-center gap-1.5">
+                            <BarChart3 className="h-3.5 w-3.5 text-violet-500" />
+                            <p className="font-semibold">{campaign.success_rate || 0}%</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="pt-0">
+                    <div className="text-xs text-muted-foreground flex items-center">
+                      <CalendarDays className="w-3.5 h-3.5 mr-1 text-gray-400" />
+                      <span>Última atividade: {formattedLastActivity}</span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="ml-auto"
+                      onClick={() => handleViewDetails(campaign.id)}
                     >
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1 text-sm">
-                      <span className="text-muted-foreground">Progresso</span>
-                      <span className="font-medium">
-                        {Math.round((campaign.completedLeads / campaign.totalLeads) * 100)}%
-                      </span>
-                    </div>
-                    <Progress 
-                      value={(campaign.completedLeads / campaign.totalLeads) * 100} 
-                      className="h-2 bg-gray-100" 
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Total de Leads</p>
-                      <div className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-violet-500" />
-                        <p className="font-semibold">{campaign.totalLeads}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Agente</p>
-                      <div className="flex items-center gap-1.5">
-                        <User className="h-3.5 w-3.5 text-violet-500" />
-                        <p className="font-semibold">{campaign.agent}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Tempo Médio</p>
-                      <div className="flex items-center gap-1.5">
-                        <CalendarDays className="h-3.5 w-3.5 text-violet-500" />
-                        <p className="font-semibold">{campaign.avgCallDuration}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Taxa Sucesso</p>
-                      <div className="flex items-center gap-1.5">
-                        <BarChart3 className="h-3.5 w-3.5 text-violet-500" />
-                        <p className="font-semibold">{campaign.successRate}%</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="pt-0">
-                <div className="text-xs text-muted-foreground flex items-center">
-                  <CalendarDays className="w-3.5 h-3.5 mr-1 text-gray-400" />
-                  <span>Última atividade: {campaign.lastActivity}</span>
-                </div>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+                      Ver detalhes
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </Layout>
   );
