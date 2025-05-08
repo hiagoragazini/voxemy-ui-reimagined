@@ -5,10 +5,16 @@ import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 
 export default function CampaignForm() {
   const { id } = useParams();
@@ -137,16 +143,16 @@ export default function CampaignForm() {
                 value={formData.agentId}
                 onValueChange={(value) => setFormData({...formData, agentId: value})}
               >
-                <Select.Trigger id="agent">
-                  <Select.Value placeholder="Selecione um agente" />
-                </Select.Trigger>
-                <Select.Content>
+                <SelectTrigger id="agent">
+                  <SelectValue placeholder="Selecione um agente" />
+                </SelectTrigger>
+                <SelectContent>
                   {agents.map((agent) => (
-                    <Select.Item key={agent.id} value={agent.id}>
+                    <SelectItem key={agent.id} value={agent.id}>
                       {agent.name}
-                    </Select.Item>
+                    </SelectItem>
                   ))}
-                </Select.Content>
+                </SelectContent>
               </Select>
             </div>
 
