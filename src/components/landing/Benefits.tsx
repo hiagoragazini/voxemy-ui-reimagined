@@ -1,6 +1,4 @@
 
-"use client";
-
 import { Users, MessageSquare, Calendar, Star } from "lucide-react";
 
 const Benefits = () => {

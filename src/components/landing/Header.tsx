@@ -1,9 +1,7 @@
 
-"use client";
-
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { Button } from "../../components/ui/button";
 import Logo from "../shared/Logo";
 
 const Header = () => {
@@ -30,7 +28,7 @@ const Header = () => {
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Logo />
         
-        <Link href="/login">
+        <Link to="/login">
           <Button 
             variant="outline" 
             className="border-violet-500 bg-violet-500/20 text-white hover:bg-violet-600 hover:text-white"

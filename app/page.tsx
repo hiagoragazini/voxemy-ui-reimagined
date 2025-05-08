@@ -1,11 +1,11 @@
 
-import Hero from "@/src/components/landing/Hero";
-import Benefits from "@/src/components/landing/Benefits";
-import HowItWorks from "@/src/components/landing/HowItWorks";
-import PricingPlans from "@/src/components/landing/PricingPlans";
-import Testimonials from "@/src/components/landing/Testimonials";
-import Header from "@/src/components/landing/Header";
-import Footer from "@/src/components/landing/Footer";
+import Hero from "../src/components/landing/Hero";
+import Benefits from "../src/components/landing/Benefits";
+import HowItWorks from "../src/components/landing/HowItWorks";
+import PricingPlans from "../src/components/landing/PricingPlans";
+import Testimonials from "../src/components/landing/Testimonials";
+import Header from "../src/components/landing/Header";
+import Footer from "../src/components/landing/Footer";
 
 export default function HomePage() {
   return (
