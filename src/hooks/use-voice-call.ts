@@ -78,73 +78,163 @@ export function useVoiceCall() {
     }
   };
 
-  // Função para reproduzir áudio base64
+  // Função para reproduzir áudio base64 com melhor gerenciamento de erro
   const playAudio = (base64Audio: string) => {
     try {
       console.log('Iniciando reprodução de áudio...');
-      setIsPlaying(true);
       
       // Se já existir um elemento de áudio, pare-o
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
       }
+
+      // Verificar se o base64 está correto
+      if (!base64Audio || base64Audio.trim() === '') {
+        throw new Error('Áudio inválido recebido');
+      }
       
-      // Criar novo elemento de áudio
+      // Criar novo elemento de áudio para evitar problemas de cache
       const audio = new Audio();
-      audio.src = `data:audio/mp3;base64,${base64Audio}`;
       
-      // Definir volume para garantir que não esteja mudo
-      audio.volume = 1.0;
+      // Adicionar event listeners antes de definir a fonte para evitar race conditions
+      audio.onloadedmetadata = () => {
+        console.log('Áudio carregado:', audio.duration, 'segundos');
+        // Forçar um layout reflow para garantir que o navegador reconheça o elemento de áudio
+        document.body.appendChild(audio);
+        document.body.removeChild(audio);
+      };
       
-      // Configurar eventos para debug
-      audio.onloadedmetadata = () => console.log('Áudio carregado:', audio.duration, 'segundos');
-      audio.onplay = () => console.log('Reprodução iniciada');
+      audio.onplay = () => {
+        console.log('Reprodução iniciada');
+        setIsPlaying(true);
+      };
+      
       audio.onended = () => {
         console.log('Reprodução finalizada');
         setIsPlaying(false);
       };
-      audio.onpause = () => console.log('Reprodução pausada');
       
-      // Configurar evento de erro
-      audio.onerror = (e) => {
-        console.error('Erro ao reproduzir áudio:', e);
-        toast.error('Erro ao reproduzir áudio. Verifique suas configurações de áudio.');
+      audio.onpause = () => {
+        console.log('Reprodução pausada');
         setIsPlaying(false);
       };
+      
+      // Configurar evento de erro com detalhes
+      audio.onerror = (e) => {
+        console.error('Erro ao reproduzir áudio:', e);
+        console.error('Código do erro:', audio.error ? audio.error.code : 'desconhecido');
+        console.error('Mensagem do erro:', audio.error ? audio.error.message : 'desconhecido');
+        
+        toast.error(`Erro ao reproduzir áudio: ${audio.error?.message || 'Erro desconhecido'}`);
+        setIsPlaying(false);
+      };
+
+      // Definir volume alto para garantir que não esteja mudo
+      audio.volume = 1.0;
+      
+      // Forçar o carregamento do áudio de forma síncrona
+      audio.preload = "auto";
+      
+      // Definir a fonte do áudio
+      audio.src = `data:audio/mp3;base64,${base64Audio}`;
       
       // Armazenar referência
       audioRef.current = audio;
       
-      // Reproduzir áudio
-      console.log('Tentando reproduzir áudio...');
-      const playPromise = audio.play();
-      
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log('Reprodução iniciada com sucesso');
-            // Verificar se há áudio sendo reproduzido após 500ms
-            setTimeout(() => {
-              if (audio.currentTime > 0) {
-                console.log('Áudio está progredindo:', audio.currentTime);
-              } else {
-                console.log('Áudio não está progredindo');
-              }
-            }, 500);
-          })
-          .catch(err => {
-            console.error('Erro ao iniciar reprodução:', err);
-            setIsPlaying(false);
-            toast.error('Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som.');
-          });
+      // Tentativa 1: Usar a API de áudio Web
+      console.log('Tentando reproduzir com API Web Audio...');
+      try {
+        // Criar contexto de áudio
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        
+        // Decodificar base64 para array buffer
+        const binaryString = atob(base64Audio);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Decodificar array buffer para áudio
+        audioContext.decodeAudioData(
+          bytes.buffer,
+          (buffer) => {
+            console.log('Áudio decodificado com sucesso');
+            // Criar source node
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            
+            // Conectar ao destino (alto-falantes)
+            source.connect(audioContext.destination);
+            
+            // Iniciar reprodução
+            source.start(0);
+            setIsPlaying(true);
+            
+            // Definir evento para quando a reprodução terminar
+            source.onended = () => {
+              console.log('Reprodução Web Audio finalizada');
+              setIsPlaying(false);
+            };
+          },
+          (err) => {
+            console.error('Erro ao decodificar áudio com Web Audio API:', err);
+            console.log('Tentando método alternativo...');
+            
+            // Tentativa 2: Usar a API de áudio HTML5 padrão
+            const playPromise = audio.play();
+            
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  console.log('Reprodução iniciada com sucesso (método HTML5)');
+                  setIsPlaying(true);
+                  // Verificar se há áudio sendo reproduzido após 500ms
+                  setTimeout(() => {
+                    if (audio.currentTime > 0) {
+                      console.log('Áudio está progredindo:', audio.currentTime);
+                    } else {
+                      console.log('Áudio não está progredindo');
+                    }
+                  }, 500);
+                })
+                .catch(err => {
+                  console.error('Erro ao iniciar reprodução (método HTML5):', err);
+                  setIsPlaying(false);
+                  toast.error('Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som.');
+                });
+            }
+          }
+        );
+        
+        return true;
+      } catch (webAudioErr) {
+        console.error('Falha ao usar Web Audio API:', webAudioErr);
+        console.log('Tentando método HTML5 padrão...');
+        
+        // Tentativa 2: Usar a API de áudio HTML5 padrão
+        const playPromise = audio.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('Reprodução iniciada com sucesso (método HTML5)');
+              setIsPlaying(true);
+            })
+            .catch(err => {
+              console.error('Erro ao iniciar reprodução (método HTML5):', err);
+              setIsPlaying(false);
+              toast.error('Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som e se o volume está ativado.');
+            });
+        }
       }
       
       return true;
     } catch (err) {
       console.error('Falha ao reproduzir áudio:', err);
       setIsPlaying(false);
-      toast.error('Erro ao reproduzir áudio');
+      toast.error('Erro ao reproduzir áudio. Verifique as configurações de áudio do seu navegador.');
       return false;
     }
   };

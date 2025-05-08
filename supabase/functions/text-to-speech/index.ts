@@ -82,6 +82,9 @@ serve(async (req) => {
     );
 
     console.log("Áudio gerado com sucesso, tamanho:", audioBuffer.byteLength);
+    console.log("Primeiros bytes do áudio (para verificação):", 
+      new Uint8Array(audioBuffer.slice(0, 20)).join(', '));
+    console.log("Tipo MIME do áudio: audio/mpeg");
 
     return new Response(
       JSON.stringify({ 
@@ -91,7 +94,9 @@ serve(async (req) => {
           voiceId: selectedVoiceId,
           model: selectedModel,
           textLength: text.length,
-          audioSize: audioBuffer.byteLength
+          audioSize: audioBuffer.byteLength,
+          format: "mp3",
+          timestamp: new Date().toISOString()
         }
       }),
       {
@@ -104,7 +109,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || "Erro ao processar a solicitação" 
+        error: error.message || "Erro ao processar a solicitação",
+        timestamp: new Date().toISOString()
       }),
       {
         status: 400,
