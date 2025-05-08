@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { Settings, PhoneCall, Headphones, Award, BarChart } from "lucide-react";
+import { Settings, PhoneCall, Award, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ export interface AgentCardProps {
   onTestVoice?: (id: string) => void;
   isTopPerformer?: boolean;
   voiceUsage?: {current: number, total: number}; // For voice usage progress
+  voiceId?: string; // ID da voz do Eleven Labs
 }
 
 export const AgentCard = ({
@@ -50,6 +52,7 @@ export const AgentCard = ({
   onTestVoice,
   isTopPerformer = id === "1", // Make first agent top performer by default
   voiceUsage = {current: 6, total: 10}, // Default voice usage values
+  voiceId,
 }: AgentCardProps) => {
   const [isActive] = useState(status === "active");
   const [showVoiceTester, setShowVoiceTester] = useState(false);
@@ -215,24 +218,8 @@ export const AgentCard = ({
               )}
               {!lastActivity && 'Nunca usado'}
             </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    size="sm" 
-                    variant="default"
-                    className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all duration-200"
-                    onClick={handleTestVoice}
-                  >
-                    <Headphones className="h-3.5 w-3.5 mr-1.5" /> 
-                    Testar Voz
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Ouça o agente em ação</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            
+            {/* Removendo o botão "Testar Voz" conforme solicitado */}
           </div>
         </div>
       </Card>
@@ -242,7 +229,7 @@ export const AgentCard = ({
           <AgentVoiceTester
             agentName={name}
             agentId={id}
-            voiceId="pFZP5JQG7iQjIQuC4Bku" // Using Lily as default voice
+            voiceId={voiceId}
             onClose={() => setShowVoiceTester(false)}
           />
         </DialogContent>
@@ -293,7 +280,6 @@ export const AgentCardSkeleton = () => (
 
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-8 w-24 rounded-md" />
       </div>
     </div>
   </Card>

@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState } from "react";
-import { Clock, CheckCircle2, XCircle, BarChart3, Phone, Play, Settings } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, BarChart3, Phone, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { VoiceTester } from "@/components/ui/voice-tester";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 
 export interface AgentCardProps {
   id: string;
@@ -194,14 +196,6 @@ export const AgentCard = ({
           </div>
           
           <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-violet-600"
-              onClick={handleTestVoice}
-            >
-              <Play className="h-4 w-4" />
-            </Button>
             <Button
               variant="ghost"
               size="icon"

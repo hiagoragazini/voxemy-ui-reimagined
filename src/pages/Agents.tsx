@@ -9,7 +9,14 @@ import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { AgentCardProps } from "@/components/agents/AgentCard";
 
-// Mock data for the agents page with correctly typed status
+// Lista de vozes de qualidade do Eleven Labs com seus IDs
+const VOICES = {
+  SARAH: "EXAVITQu4vr4xnSDxMaL", // Sarah - voz feminina
+  ROGER: "CwhRBWXzGAHq8TQ4Fs17", // Roger - voz masculina
+  THOMAS: "GBv7mTt0atIp3Br8iCZE", // Thomas - voz masculina britânica
+};
+
+// Mock data com apenas 3 agentes, cada um com uma voz diferente
 const mockAgents: AgentCardProps[] = [
   {
     id: "1",
@@ -23,6 +30,7 @@ const mockAgents: AgentCardProps[] = [
     lastActivity: "Hoje às 14:25",
     avatarLetter: "S",
     avatarColor: "bg-violet-100",
+    voiceId: VOICES.SARAH, // Voz feminina
   },
   {
     id: "2",
@@ -36,45 +44,21 @@ const mockAgents: AgentCardProps[] = [
     lastActivity: "Hoje às 12:10",
     avatarLetter: "C",
     avatarColor: "bg-blue-100",
+    voiceId: VOICES.ROGER, // Voz masculina
   },
   {
     id: "3",
-    name: "Ana Suporte",
-    description: "Especialista em resolução de problemas técnicos e escalação para níveis superiores.",
+    name: "Thomas Suporte",
+    description: "Especialista em resolução de problemas técnicos com sotaque britânico, perfeito para atendimento internacional.",
     category: "Suporte",
-    status: "inactive",
+    status: "active",
     calls: 94,
     avgTime: "4:05",
     successRate: 81,
     lastActivity: "Ontem às 16:42",
-    avatarLetter: "A",
+    avatarLetter: "T",
     avatarColor: "bg-green-100",
-  },
-  {
-    id: "4",
-    name: "Ricardo Cobranças",
-    description: "Focado em renegociação de dívidas e cobranças amigáveis.",
-    category: "Financeiro",
-    status: "paused",
-    calls: 142,
-    avgTime: "2:38",
-    successRate: 65,
-    lastActivity: "Hoje às 9:15",
-    avatarLetter: "R",
-    avatarColor: "bg-yellow-100",
-  },
-  {
-    id: "5",
-    name: "Juliana Pesquisas",
-    description: "Especializada em conduzir pesquisas de satisfação e feedback de clientes.",
-    category: "Pesquisa",
-    status: "active",
-    calls: 78,
-    avgTime: "1:47",
-    successRate: 94,
-    lastActivity: "Hoje às 11:30",
-    avatarLetter: "J",
-    avatarColor: "bg-pink-100",
+    voiceId: VOICES.THOMAS, // Voz masculina britânica
   }
 ];
 
@@ -89,7 +73,8 @@ export default function Agents() {
   };
 
   const handleTestVoice = (id: string) => {
-    toast.success(`Testando voz do agente ${id}...`);
+    // Esta função não será mais chamada pois removemos o botão,
+    // mas mantemos por compatibilidade de interface
   };
 
   const handleEditAgent = (id: string) => {

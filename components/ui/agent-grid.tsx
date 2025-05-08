@@ -29,14 +29,6 @@ export const AgentGrid = ({
     console.log(`Status do agente ${id} alterado para ${isActive ? 'ativo' : 'inativo'}`);
   };
 
-  const handleTestVoice = (id: string) => {
-    if (onTestVoice) {
-      onTestVoice(id);
-    } else {
-      console.log(`Teste de voz iniciado para o agente ${id}`);
-    }
-  };
-
   const handleCreateClick = () => {
     if (onCreateAgent) {
       onCreateAgent();
@@ -75,7 +67,7 @@ export const AgentGrid = ({
           {...agent}
           onStatusChange={handleStatusChange}
           onEditClick={onAgentEditClick}
-          onTestVoice={handleTestVoice}
+          onTestVoice={onTestVoice}
         />
       ))}
       

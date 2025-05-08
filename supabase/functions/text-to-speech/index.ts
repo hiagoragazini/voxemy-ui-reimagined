@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voiceId, model } = await req.json();
+    const { text, voiceId, model, voice_settings } = await req.json();
 
     if (!text) {
       throw new Error("O texto é obrigatório");
@@ -35,6 +35,16 @@ serve(async (req) => {
 
     console.log(`Enviando requisição para Eleven Labs com voice ID ${selectedVoiceId} e modelo ${selectedModel}`);
 
+    // Configurações de voz otimizadas para melhor qualidade
+    const settings = {
+      stability: voice_settings?.stability ?? 0.8,
+      similarity_boost: voice_settings?.similarity_boost ?? 0.9,
+      style: voice_settings?.style ?? 0.5,
+      use_speaker_boost: voice_settings?.use_speaker_boost ?? true,
+    };
+
+    console.log("Configurações de voz:", settings);
+
     // Fazer a requisição para a API do Eleven Labs
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`,
@@ -47,12 +57,7 @@ serve(async (req) => {
         body: JSON.stringify({
           text: text,
           model_id: selectedModel,
-          voice_settings: {
-            stability: 0.7, // Aumentando estabilidade
-            similarity_boost: 0.8, // Aumentando a similaridade
-            style: 0.0,
-            use_speaker_boost: true,
-          },
+          voice_settings: settings,
         }),
       }
     );
@@ -92,11 +97,6 @@ serve(async (req) => {
     
     // Logar o tamanho do base64 para verificação
     console.log("Tamanho do base64:", base64Audio.length);
-    
-    // Verificar se o base64 tem um tamanho razoável
-    if (base64Audio.length < 100) {
-      console.error("Base64 do áudio muito pequeno, pode estar corrompido");
-    }
 
     return new Response(
       JSON.stringify({ 
@@ -109,6 +109,7 @@ serve(async (req) => {
           audioSize: audioBuffer.byteLength,
           format: "mp3",
           base64Length: base64Audio.length,
+          settings,
           timestamp: new Date().toISOString()
         }
       }),

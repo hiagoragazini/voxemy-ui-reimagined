@@ -25,14 +25,6 @@ export const AgentGrid = ({
     // Aqui você implementaria a lógica real para atualizar o status do agente
   };
 
-  const handleTestVoice = (id: string) => {
-    if (onTestVoice) {
-      onTestVoice(id);
-    } else {
-      toast.success(`Teste de voz iniciado para o agente ${id}`);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -63,7 +55,7 @@ export const AgentGrid = ({
           {...agent}
           onStatusChange={handleStatusChange}
           onEditClick={onAgentEditClick}
-          onTestVoice={handleTestVoice}
+          onTestVoice={onTestVoice}
         />
       ))}
       

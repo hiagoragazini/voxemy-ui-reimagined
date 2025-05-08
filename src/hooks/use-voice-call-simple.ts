@@ -7,6 +7,10 @@ interface TextToSpeechParams {
   text: string;
   voiceId?: string;
   model?: string;
+  stability?: number;
+  similarity_boost?: number;
+  style?: number;
+  use_speaker_boost?: boolean;
 }
 
 export function useVoiceCallSimple() {
@@ -14,8 +18,16 @@ export function useVoiceCallSimple() {
   const [error, setError] = useState<string | null>(null);
   const [audioContent, setAudioContent] = useState<string | null>(null);
 
-  // Função para converter texto em áudio usando Eleven Labs
-  const textToSpeech = async ({ text, voiceId, model }: TextToSpeechParams) => {
+  // Função para converter texto em áudio usando Eleven Labs com qualidade aprimorada
+  const textToSpeech = async ({ 
+    text, 
+    voiceId, 
+    model, 
+    stability = 0.8, 
+    similarity_boost = 0.9, 
+    style = 0.5,
+    use_speaker_boost = true
+  }: TextToSpeechParams) => {
     setIsLoading(true);
     setError(null);
     setAudioContent(null);
@@ -29,7 +41,13 @@ export function useVoiceCallSimple() {
         body: { 
           text, 
           voiceId,
-          model
+          model,
+          voice_settings: {
+            stability,
+            similarity_boost,
+            style,
+            use_speaker_boost
+          }
         }
       });
 
