@@ -1,121 +1,91 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Layout } from "@/components/ui/layout";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Plus, Phone, BarChart3, Filter } from "lucide-react";
+import { CalendarDays, Plus, Phone, BarChart3, Filter, Loader2 } from "lucide-react";
 import { CampaignCard } from "@/components/ui/campaign-card";
-
-// Lista de vozes de qualidade do Eleven Labs com seus IDs
-const VOICES = {
-  SARAH: "EXAVITQu4vr4xnSDxMaL", // Sarah - voz feminina
-  ROGER: "CwhRBWXzGAHq8TQ4Fs17", // Roger - voz masculina
-  THOMAS: "GBv7mTt0atIp3Br8iCZE", // Thomas - voz masculina britânica
-};
-
-// Mock data for the campaigns page
-const mockCampaigns = [
-  {
-    id: "1",
-    name: "Campanha Black Friday",
-    status: "active" as const,
-    totalLeads: 2500,
-    completedLeads: 1875,
-    agent: "Sofia Atendente",
-    agentId: "1", // ID do agente (correspondente ao Sofia)
-    lastActivity: "Hoje às 15:30",
-    avgCallDuration: "2:10",
-    successRate: 79,
-    startDate: "20/11/2023",
-    endDate: "28/11/2023"
-  },
-  {
-    id: "2",
-    name: "Reengajamento Clientes Inativos",
-    status: "active" as const,
-    totalLeads: 1200,
-    completedLeads: 780,
-    agent: "Carlos Vendas",
-    agentId: "2", // ID do agente (correspondente ao Carlos)
-    lastActivity: "Hoje às 14:15",
-    avgCallDuration: "3:22",
-    successRate: 68,
-    startDate: "10/10/2023",
-    endDate: "10/12/2023"
-  },
-  {
-    id: "3",
-    name: "Cobrança Suave Novembro",
-    status: "paused" as const,
-    totalLeads: 850,
-    completedLeads: 245,
-    agent: "Thomas Suporte",
-    agentId: "3", // ID do agente (correspondente ao Thomas)
-    lastActivity: "Ontem às 17:40",
-    avgCallDuration: "2:45",
-    successRate: 42,
-    startDate: "01/11/2023",
-    endDate: "30/11/2023"
-  },
-  {
-    id: "4",
-    name: "Pesquisa de Satisfação Q4",
-    status: "scheduled" as const,
-    totalLeads: 3000,
-    completedLeads: 0,
-    agent: "Sofia Atendente",
-    agentId: "1", // ID do agente (correspondente ao Sofia)
-    lastActivity: "Nunca iniciada",
-    avgCallDuration: "-",
-    successRate: 0,
-    startDate: "01/12/2023",
-    endDate: "15/12/2023"
-  },
-  {
-    id: "5",
-    name: "Follow-up Leads Quentes",
-    status: "completed" as const,
-    totalLeads: 500,
-    completedLeads: 500,
-    agent: "Carlos Vendas",
-    agentId: "2", // ID do agente (correspondente ao Carlos)
-    lastActivity: "22/10/2023",
-    avgCallDuration: "2:58",
-    successRate: 88,
-    startDate: "01/10/2023",
-    endDate: "22/10/2023"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Campaign } from "@/integrations/supabase/tables.types";
 
 export default function CampanhasPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "scheduled" | "completed">("all");
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [agentNames, setAgentNames] = useState<Record<string, string>>({});
+
+  // Fetch campaigns on component mount
+  useEffect(() => {
+    async function fetchCampaigns() {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const { data, error } = await supabase
+          .from("campaigns")
+          .select("*")
+          .order("created_at", { ascending: false });
+          
+        if (error) throw error;
+        
+        setCampaigns(data || []);
+        
+        // Get agent IDs to fetch their names
+        const agentIds = Array.from(new Set(data?.filter(c => c.agent_id).map(c => c.agent_id) || []));
+        
+        if (agentIds.length > 0) {
+          const { data: agentsData, error: agentsError } = await supabase
+            .from("agents")
+            .select("id, name")
+            .in("id", agentIds);
+            
+          if (!agentsError && agentsData) {
+            const namesMap: Record<string, string> = {};
+            agentsData.forEach(agent => {
+              if (agent.id) {
+                namesMap[agent.id] = agent.name;
+              }
+            });
+            setAgentNames(namesMap);
+          }
+        }
+      } catch (err: any) {
+        console.error("Error fetching campaigns:", err);
+        setError(err.message || "Erro ao carregar campanhas");
+        toast.error("Erro ao carregar campanhas");
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchCampaigns();
+  }, []);
 
   const handleNewCampaign = () => {
-    console.log("Redirecionando para criação de nova campanha...");
     router.push('/campanhas/nova');
   };
 
   const handleEditCampaign = (id: string) => {
-    console.log(`Editando campanha ${id}...`);
     router.push(`/campanhas/${id}/editar`);
   };
   
   const handleViewDetails = (id: string) => {
-    console.log(`Visualizando detalhes da campanha ${id}...`);
     router.push(`/campanhas/${id}`);
   };
 
   // Filter campaigns based on selected filter
-  const filteredCampaigns = mockCampaigns.filter(campaign => {
+  const filteredCampaigns = campaigns.filter(campaign => {
     if (filter === "all") return true;
     return campaign.status === filter;
   });
 
   const getFilterCount = (filterType: "active" | "paused" | "scheduled" | "completed") => {
-    return mockCampaigns.filter(campaign => campaign.status === filterType).length;
+    return campaigns.filter(campaign => campaign.status === filterType).length;
   };
 
   return (
@@ -139,7 +109,7 @@ export default function CampanhasPage() {
               className="flex items-center gap-1.5"
             >
               <Filter className="h-4 w-4" />
-              <span>Todas ({mockCampaigns.length})</span>
+              <span>Todas ({campaigns.length})</span>
             </Button>
             <Button 
               variant={filter === "active" ? "default" : "outline"} 
@@ -187,27 +157,77 @@ export default function CampanhasPage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCampaigns.map((campaign) => (
-            <CampaignCard 
-              key={campaign.id}
-              id={campaign.id}
-              name={campaign.name}
-              status={campaign.status}
-              totalLeads={campaign.totalLeads}
-              completedLeads={campaign.completedLeads}
-              agent={campaign.agent}
-              agentId={campaign.agentId}
-              lastActivity={campaign.lastActivity}
-              avgCallDuration={campaign.avgCallDuration}
-              successRate={campaign.successRate}
-              startDate={campaign.startDate}
-              endDate={campaign.endDate}
-              onEditClick={handleEditCampaign}
-              onViewDetails={handleViewDetails}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="flex flex-col items-center">
+              <Loader2 className="h-8 w-8 animate-spin text-violet-600 mb-4" />
+              <p className="text-muted-foreground">Carregando campanhas...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="text-red-500 mb-2">Erro ao carregar campanhas</div>
+            <p className="text-muted-foreground text-center">{error}</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => window.location.reload()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        ) : filteredCampaigns.length === 0 ? (
+          <div className="border-2 border-dashed rounded-lg p-12 text-center">
+            <h3 className="font-medium text-lg mb-2">Nenhuma campanha encontrada</h3>
+            <p className="text-muted-foreground mb-6">
+              {filter === "all" 
+                ? "Crie sua primeira campanha para começar a realizar chamadas automatizadas." 
+                : "Não há campanhas com o filtro selecionado."}
+            </p>
+            {filter === "all" && (
+              <Button onClick={handleNewCampaign}>
+                <Plus className="h-4 w-4 mr-1" />
+                <span>Nova Campanha</span>
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCampaigns.map((campaign) => {
+              const formattedStartDate = campaign.start_date 
+                ? new Date(campaign.start_date).toLocaleDateString('pt-BR')
+                : "--/--/----";
+                
+              const formattedEndDate = campaign.end_date
+                ? new Date(campaign.end_date).toLocaleDateString('pt-BR')
+                : "--/--/----";
+                
+              const formattedLastActivity = campaign.updated_at
+                ? new Date(campaign.updated_at).toLocaleString('pt-BR')
+                : "Nunca";
+              
+              return (
+                <CampaignCard 
+                  key={campaign.id}
+                  id={campaign.id}
+                  name={campaign.name}
+                  status={campaign.status as any}
+                  totalLeads={campaign.total_leads || 0}
+                  completedLeads={campaign.completed_leads || 0}
+                  agent={agentNames[campaign.agent_id || ""] || "Sem agente"}
+                  agentId={campaign.agent_id || undefined}
+                  lastActivity={formattedLastActivity}
+                  avgCallDuration={campaign.avg_call_duration || "0:00"}
+                  successRate={campaign.success_rate || 0}
+                  startDate={formattedStartDate}
+                  endDate={formattedEndDate}
+                  onEditClick={handleEditCampaign}
+                  onViewDetails={handleViewDetails}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
     </Layout>
   );

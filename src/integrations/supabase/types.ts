@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agents: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: string | null
+          updated_at: string
+          voice_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string | null
+          updated_at?: string
+          voice_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string | null
+          updated_at?: string
+          voice_id?: string
+        }
+        Relationships: []
+      }
       business_info: {
         Row: {
           business_area: string
@@ -50,6 +83,101 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      campaigns: {
+        Row: {
+          agent_id: string | null
+          avg_call_duration: string | null
+          completed_leads: number | null
+          created_at: string
+          end_date: string | null
+          id: string
+          name: string
+          origin_phone: string | null
+          start_date: string | null
+          status: string
+          success_rate: number | null
+          total_leads: number | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          avg_call_duration?: string | null
+          completed_leads?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name: string
+          origin_phone?: string | null
+          start_date?: string | null
+          status?: string
+          success_rate?: number | null
+          total_leads?: number | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          avg_call_duration?: string | null
+          completed_leads?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name?: string
+          origin_phone?: string | null
+          start_date?: string | null
+          status?: string
+          success_rate?: number | null
+          total_leads?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          call_duration: string | null
+          call_result: string | null
+          campaign_id: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          call_duration?: string | null
+          call_result?: string | null
+          campaign_id: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          call_duration?: string | null
+          call_result?: string | null
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
