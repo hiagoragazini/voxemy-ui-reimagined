@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Search, Bell, User, Menu, LogOut, Settings as SettingsIcon, UserCog } from "lucide-react";
+import { Search, Bell, Menu, LogOut, Settings as SettingsIcon, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -14,22 +14,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   openSidebar: () => void;
-  userName?: string;
   userAvatar?: string;
   sidebarCollapsed?: boolean;
 }
 
 export const Header = ({ 
   openSidebar, 
-  userName = "João", 
   userAvatar,
   sidebarCollapsed = false
 }: HeaderProps) => {
   const [showSearch, setShowSearch] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Get the user's name from authentication context
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
 
   const handleProfileClick = (path: string) => {
     navigate(path);

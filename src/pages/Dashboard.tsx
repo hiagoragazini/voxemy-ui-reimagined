@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Header } from "@/components/dashboard/Header";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -104,7 +103,6 @@ const Dashboard = () => {
       )}>
         <Header 
           openSidebar={toggleSidebar}
-          userName="Usuário"
           sidebarCollapsed={sidebarCollapsed}
         />
         
