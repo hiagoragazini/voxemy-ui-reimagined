@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,21 +9,113 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
-import { Check, Crown, CreditCard, User, UserCheck, Settings as SettingsIcon, Upload, Phone, Database, Bot, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Check,
+  Crown,
+  CreditCard,
+  User,
+  UserCheck,
+  Settings as SettingsIcon,
+  Upload,
+  Phone,
+  Database,
+  Bot,
+  ExternalLink,
+} from "lucide-react";
 
 export default function Settings() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [managePlanLoading, setManagePlanLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    company: "",
+    role: ""
+  });
 
-  const handleSaveProfile = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      toast.success("Perfil atualizado com sucesso!");
-    }, 1000);
+  // Carregar dados do perfil do usuário
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.user_metadata?.full_name?.split(' ')[0] || "",
+        lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || "",
+        email: user.email || "",
+        company: user.user_metadata?.company || "Empresa",
+        role: user.user_metadata?.role || "Diretor"
+      });
+    }
+  }, [user]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
   };
 
-  const handleUpgrade = () => {
-    toast.success("Redirecionando para página de planos...");
+  const handleSaveProfile = async () => {
+    setProfileLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: `${formData.firstName} ${formData.lastName}`,
+          company: formData.company,
+          role: formData.role
+        }
+      });
+
+      if (error) throw error;
+      toast.success("Perfil atualizado com sucesso!");
+    } catch (error: any) {
+      toast.error(`Erro ao atualizar perfil: ${error.message}`);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleCheckout = async (planType: string) => {
+    setCheckoutLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { planType }
+      });
+
+      if (error) throw error;
+      
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("URL de checkout não retornada");
+      }
+    } catch (error: any) {
+      toast.error(`Erro ao iniciar checkout: ${error.message}`);
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setManagePlanLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+
+      if (error) throw error;
+      
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("URL do portal não retornada");
+      }
+    } catch (error: any) {
+      toast.error(`Erro ao acessar portal: ${error.message}`);
+    } finally {
+      setManagePlanLoading(false);
+    }
   };
 
   return (
@@ -83,34 +175,56 @@ export default function Settings() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">Nome</Label>
-                    <Input id="firstName" defaultValue="João" />
+                    <Input 
+                      id="firstName" 
+                      value={formData.firstName} 
+                      onChange={handleInputChange}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Sobrenome</Label>
-                    <Input id="lastName" defaultValue="Silva" />
+                    <Input 
+                      id="lastName" 
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue="joao.silva@exemplo.com" />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    value={formData.email} 
+                    disabled
+                    className="bg-slate-100"
+                  />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="company">Empresa</Label>
-                    <Input id="company" defaultValue="Minhas Vendas Ltda." />
+                    <Input 
+                      id="company" 
+                      value={formData.company}
+                      onChange={handleInputChange}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="role">Cargo</Label>
-                    <Input id="role" defaultValue="Diretor Comercial" />
+                    <Input 
+                      id="role" 
+                      value={formData.role}
+                      onChange={handleInputChange}
+                    />
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between border-t p-6">
                 <Button variant="outline">Cancelar</Button>
-                <Button onClick={handleSaveProfile} disabled={loading}>
-                  {loading ? "Salvando..." : "Salvar alterações"}
+                <Button onClick={handleSaveProfile} disabled={profileLoading}>
+                  {profileLoading ? "Salvando..." : "Salvar alterações"}
                 </Button>
               </CardFooter>
             </Card>
@@ -237,15 +351,201 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
+                
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold mb-4">Alterar seu plano</h3>
+                  
+                  <div className="grid gap-6 md:grid-cols-3">
+                    <Card className="border-2 border-transparent hover:border-violet-300 transition-all">
+                      <CardHeader className="pb-3">
+                        <CardTitle>Inicial</CardTitle>
+                        <div className="text-2xl font-bold">R$99<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+                      </CardHeader>
+                      <CardContent className="pb-3">
+                        <ul className="space-y-2 text-sm">
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>3 agentes de voz</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>20 horas de chamadas</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Estatísticas básicas</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Suporte por email</span>
+                          </li>
+                        </ul>
+                      </CardContent>
+                      <CardFooter>
+                        <Button onClick={() => handleCheckout('basic')} variant="outline" className="w-full">
+                          Fazer Downgrade
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                    
+                    <Card className="border-2 border-violet-500 relative">
+                      <div className="absolute -top-3 left-0 right-0 flex justify-center">
+                        <Badge className="bg-violet-500 text-white">Seu plano atual</Badge>
+                      </div>
+                      <CardHeader className="pb-3">
+                        <CardTitle>Pro</CardTitle>
+                        <div className="text-2xl font-bold">R$199<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+                      </CardHeader>
+                      <CardContent className="pb-3">
+                        <ul className="space-y-2 text-sm">
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>10 agentes de voz</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>50 horas de chamadas</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Estatísticas avançadas</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Suporte prioritário</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>API de integração</span>
+                          </li>
+                        </ul>
+                      </CardContent>
+                      <CardFooter>
+                        <Button onClick={handleManageSubscription} disabled={managePlanLoading} className="w-full bg-violet-50 text-violet-700 hover:bg-violet-100">
+                          {managePlanLoading ? "Carregando..." : "Gerenciar Plano"}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                    
+                    <Card className="border-2 border-transparent hover:border-violet-300 transition-all">
+                      <CardHeader className="pb-3">
+                        <CardTitle>Enterprise</CardTitle>
+                        <div className="text-2xl font-bold">R$399<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+                      </CardHeader>
+                      <CardContent className="pb-3">
+                        <ul className="space-y-2 text-sm">
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Agentes ilimitados</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>100 horas de chamadas</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Estatísticas premium</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Suporte VIP</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>API avançada</span>
+                          </li>
+                          <li className="flex items-center">
+                            <Check className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Integrações personalizadas</span>
+                          </li>
+                        </ul>
+                      </CardContent>
+                      <CardFooter>
+                        <Button onClick={() => handleCheckout('enterprise')} variant="default" className="w-full bg-violet-600 hover:bg-violet-700">
+                          Fazer Upgrade
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold mb-4">Histórico de Faturas</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Recibo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>10/05/2024</TableCell>
+                        <TableCell>R$ 199,00</TableCell>
+                        <TableCell><Badge className="bg-green-100 text-green-800 border-0">Pago</Badge></TableCell>
+                        <TableCell className="text-right"><Button variant="link" size="sm">Visualizar</Button></TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>10/04/2024</TableCell>
+                        <TableCell>R$ 199,00</TableCell>
+                        <TableCell><Badge className="bg-green-100 text-green-800 border-0">Pago</Badge></TableCell>
+                        <TableCell className="text-right"><Button variant="link" size="sm">Visualizar</Button></TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>10/03/2024</TableCell>
+                        <TableCell>R$ 199,00</TableCell>
+                        <TableCell><Badge className="bg-green-100 text-green-800 border-0">Pago</Badge></TableCell>
+                        <TableCell className="text-right"><Button variant="link" size="sm">Visualizar</Button></TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
               <CardFooter className="border-t p-6 flex flex-col gap-2">
-                <Button className="w-full bg-violet-600 hover:bg-violet-700" onClick={handleUpgrade}>
-                  <Crown className="h-4 w-4 mr-2" />
-                  Alterar para Plano Enterprise
-                </Button>
                 <Button variant="outline" className="w-full">
-                  Ver histórico de faturas
+                  Ver histórico completo de faturas
                 </Button>
+              </CardFooter>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Cancelamento</CardTitle>
+                <CardDescription>
+                  Informações sobre como cancelar sua assinatura
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Você pode cancelar sua assinatura a qualquer momento através do portal de cliente.
+                  Após o cancelamento, você terá acesso ao serviço até o final do período faturado atual.
+                </p>
+              </CardContent>
+              <CardFooter className="border-t p-6">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" className="w-full">
+                      Cancelar assinatura
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Você tem certeza?</DialogTitle>
+                      <DialogDescription>
+                        Ao cancelar sua assinatura, você perderá acesso a todos os recursos premium
+                        após o término do período atual. Esta ação não pode ser desfeita.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                      <Button variant="outline">Voltar</Button>
+                      <Button variant="destructive" onClick={handleManageSubscription}>
+                        Confirmar Cancelamento
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardFooter>
             </Card>
           </TabsContent>
