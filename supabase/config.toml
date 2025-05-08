@@ -6,3 +6,13 @@ verify_jwt = true
 
 [functions.customer-portal]
 verify_jwt = true
+
+[functions.text-to-speech]
+verify_jwt = true
+
+[functions.make-call]
+verify_jwt = true
+
+[functions.call-status]
+verify_jwt = false
+
