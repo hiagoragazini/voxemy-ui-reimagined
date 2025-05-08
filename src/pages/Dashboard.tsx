@@ -1,230 +1,237 @@
 import { useState } from "react";
-import { Header } from "@/components/dashboard/Header";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { AgentGrid, getAvatarColor } from "@/components/agents/AgentGrid";
+import { useNavigate } from "react-router-dom";
+import { Layout } from "@/components/ui/layout";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronRight, PhoneCall, Clock, CheckCircle2 } from "lucide-react";
-import { toast } from "@/components/ui/sonner";
-import { cn } from "@/lib/utils";
+import { Plus, ChevronRight, PhoneCall, Clock, CheckCircle2, ArrowRight, Settings } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AgentCardProps } from "@/components/ui/agent-card";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { VOICES } from "../Agents"; // Import the shared VOICES object
 
-// Dados de exemplo para os agentes baseados na imagem
-const mockAgents = [
-  {
-    id: "1",
-    name: "Assistente de Vendas",
-    category: "Comercial",
-    description: "Agente inteligente para atendimento e qualificação de leads de vendas.",
-    status: "active" as const,
-    calls: 127,
-    avgTime: "4:32",
-    successRate: 68,
-    successChange: "+5.2%",
-    lastActivity: "Hoje, 14:30",
-  },
-  {
-    id: "2",
-    name: "Atendente de Suporte",
-    category: "Suporte",
-    description: "Responde dúvidas e resolve problemas de clientes automaticamente.",
-    status: "active" as const,
-    calls: 85,
-    avgTime: "5:15",
-    successRate: 92,
-    successChange: "+5.2%",
-    lastActivity: "Ontem, 17:20",
-  },
-  {
-    id: "3",
-    name: "Pesquisador de Mercado",
-    category: "Pesquisa",
-    description: "Realiza pesquisas de mercado e coleta feedback de clientes.",
-    status: "paused" as const,
-    calls: 42,
-    avgTime: "2:48",
-    successRate: 75,
-    successChange: "+5.2%",
-    lastActivity: "22/04/2025",
-  },
-  {
-    id: "4",
-    name: "Agendador",
-    category: "Agendamentos",
-    description: "Agenda compromissos e gerencia calendários de forma automática.",
-    status: "inactive" as const,
-    calls: 0,
-    avgTime: "0:00",
-    successRate: 0,
-    successChange: "+5.2%",
-    lastActivity: "",
-  }
-];
-
-const Dashboard = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
-
-  const handleAgentEditClick = (id: string) => {
-    toast.info(`Editar agente ${id}`);
-    // Implementação real abriria um modal ou redirecionaria para página de edição
-  };
-
-  const handleCreateAgent = () => {
-    toast.info("Criar novo agente");
-    // Implementação real abriria um modal ou redirecionaria para página de criação
-  };
-
-  const handleTestVoice = (id: string) => {
-    const agent = mockAgents.find(agent => agent.id === id);
-    if (agent) {
-      toast.success(`Iniciando teste de voz para ${agent.name}`);
+export default function Dashboard() {
+  const navigate = useNavigate();
+  
+  // Fetch agents from Supabase
+  const { data: agentsData, isLoading } = useQuery({
+    queryKey: ['agents'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('agents')
+        .select('*')
+        .eq('status', 'active')
+        .limit(3);
+      
+      if (error) {
+        console.error('Error fetching agents:', error);
+        return [];
+      }
+      
+      return data || [];
     }
+  });
+
+  // Transform Supabase data to AgentCardProps
+  const agents: AgentCardProps[] = agentsData?.map(agent => ({
+    id: agent.id,
+    name: agent.name,
+    category: agent.category,
+    description: agent.description || "",
+    status: agent.status as "active" | "paused" | "inactive",
+    calls: Math.floor(Math.random() * 200), // Placeholder data
+    avgTime: `${Math.floor(Math.random() * 5)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`, // Placeholder
+    successRate: Math.floor(Math.random() * 100), // Placeholder
+    successChange: `+${(Math.random() * 10).toFixed(1)}%`, // Placeholder
+    lastActivity: getRandomActivity(), // Placeholder
+    avatarLetter: agent.name.charAt(0),
+    avatarColor: getAvatarColor(agent.name),
+    voiceId: agent.voice_id || VOICES.ROGER,
+  })) || [];
+
+  // Top agentes (versão resumida para não repetir a página completa)
+  const topAgents = agents.slice(0, 2);
+
+  // Navegar para a página de todos os agentes
+  const viewAllAgents = () => {
+    navigate('/agents');
   };
 
-  // Preparar agentes com avatar letters e cores
-  const agentsWithAvatars = mockAgents.map(agent => ({
-    ...agent,
-    avatarLetter: agent.name.split(' ')[0][0] + (agent.name.split(' ')[1]?.[0] || ''),
-    avatarColor: getAvatarColor(agent.name)
-  }));
+  // Navegar para a página de criação de agente
+  const handleCreateAgent = () => {
+    navigate('/agents/new');
+  };
+
+  // Navegar para a página de edição de agente
+  const handleAgentEditClick = (id: string) => {
+    navigate(`/agents/${id}/edit`);
+  };
 
   return (
-    <div className="flex h-screen">
-      <Sidebar collapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} />
-      
-      <div className={cn(
-        "flex flex-col flex-1 transition-all duration-300",
-        sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"
-      )}>
-        <Header 
-          openSidebar={toggleSidebar}
-          sidebarCollapsed={sidebarCollapsed}
-        />
+    <Layout>
+      <div className="container mx-auto p-6">
+        <div className="flex flex-col mb-8">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-muted-foreground max-w-3xl">
+            Acompanhe o desempenho do seu sistema de atendimento por voz em tempo real.
+          </p>
+        </div>
         
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
-          <div className="container mx-auto p-6">
-            <div className="flex flex-col mb-8">
-              <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
-                Visão Geral dos seus Agentes de Voz
-              </h1>
-              <p className="mt-1 text-muted-foreground max-w-3xl">
-                Acompanhe seu time de IA em ação e veja o desempenho das chamadas em tempo real.
-              </p>
-            </div>
-            
-            {/* Estatísticas do topo */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total de Chamadas Hoje</p>
-                    <p className="text-2xl font-bold">254</p>
-                    <p className="text-xs text-green-600 flex items-center mt-1">
-                      <span className="inline-block mr-1">↑</span> 12% em relação a ontem
-                    </p>
-                  </div>
-                  <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-full">
-                    <PhoneCall className="w-5 h-5 text-violet-700 dark:text-violet-400" />
-                  </div>
-                </div>
-              </Card>
-              
-              <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Tempo Médio de Chamada</p>
-                    <p className="text-2xl font-bold">3:24</p>
-                    <p className="text-xs text-amber-600 flex items-center mt-1">
-                      <span className="inline-block mr-1">↔</span> Estável em relação a ontem
-                    </p>
-                  </div>
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-                    <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                  </div>
-                </div>
-              </Card>
-              
-              <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Taxa de Sucesso Global</p>
-                    <p className="text-2xl font-bold">78.5%</p>
-                    <p className="text-xs text-green-600 flex items-center mt-1">
-                      <span className="inline-block mr-1">↑</span> 3.2% em relação a ontem
-                    </p>
-                  </div>
-                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
-                    <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            <div className="flex items-center justify-between mb-6">
+        {/* Estatísticas do topo */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
+            <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Seus Agentes</h2>
-                <p className="text-sm text-muted-foreground">
-                  Gerenciamento e monitoramento de seus assistentes virtuais
+                <p className="text-sm text-muted-foreground mb-1">Total de Chamadas Hoje</p>
+                <p className="text-2xl font-bold">254</p>
+                <p className="text-xs text-green-600 flex items-center mt-1">
+                  <span className="inline-block mr-1">↑</span> 12% em relação a ontem
                 </p>
               </div>
-              
-              <Button 
-                className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
-                onClick={handleCreateAgent}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Novo Agente
-              </Button>
-            </div>
-
-            <div className="mb-10">
-              <AgentGrid 
-                agents={agentsWithAvatars}
-                isLoading={isLoading}
-                onAgentEditClick={handleAgentEditClick}
-                onTestVoice={handleTestVoice}
-                onCreateAgent={handleCreateAgent}
-              />
-            </div>
-
-            {/* Próximos passos com melhorias visuais */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Próximos Passos</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <NextStepCard 
-                  number={1}
-                  title="Testar uma chamada real"
-                  description="Selecione um agente e faça uma ligação para testar o sistema."
-                  icon={<PhoneCallIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
-                />
-                
-                <NextStepCard 
-                  number={2}
-                  title="Adicionar leads"
-                  description="Importe seus contatos para o sistema realizar chamadas automatizadas."
-                  icon={<Plus className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
-                />
-                
-                <NextStepCard 
-                  number={3}
-                  title="Configurar integrações"
-                  description="Conecte seu CRM ou outras ferramentas para sincronizar dados."
-                  icon={<SettingsIcon className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
-                />
+              <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-full">
+                <PhoneCall className="w-5 h-5 text-violet-700 dark:text-violet-400" />
               </div>
             </div>
+          </Card>
+          
+          <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Tempo Médio de Chamada</p>
+                <p className="text-2xl font-bold">3:24</p>
+                <p className="text-xs text-amber-600 flex items-center mt-1">
+                  <span className="inline-block mr-1">↔</span> Estável em relação a ontem
+                </p>
+              </div>
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Taxa de Sucesso Global</p>
+                <p className="text-2xl font-bold">78.5%</p>
+                <p className="text-xs text-green-600 flex items-center mt-1">
+                  <span className="inline-block mr-1">↑</span> 3.2% em relação a ontem
+                </p>
+              </div>
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Agentes Mais Ativos</h2>
+            <p className="text-sm text-muted-foreground">
+              Agentes com maior volume de chamadas nas últimas 24 horas
+            </p>
           </div>
-        </main>
+          
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline"
+              onClick={viewAllAgents}
+              className="flex items-center gap-1 text-sm"
+            >
+              Ver Todos
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+            
+            <Button 
+              className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
+              onClick={handleCreateAgent}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Novo Agente
+            </Button>
+          </div>
+        </div>
+
+        {/* Top agentes cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+          {isLoading ? (
+            <p>Carregando agentes...</p>
+          ) : topAgents.length > 0 ? (
+            topAgents.map(agent => (
+              <Card 
+                key={agent.id}
+                className="flex p-4 gap-4 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleAgentEditClick(agent.id)}
+              >
+                <div className={`${agent.avatarColor} h-12 w-12 rounded-full flex items-center justify-center font-medium text-lg`}>
+                  {agent.avatarLetter}
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">{agent.name}</h3>
+                      <p className="text-sm text-muted-foreground">{agent.category}</p>
+                    </div>
+                    <Badge variant={agent.status === "active" ? "success" : agent.status === "paused" ? "warning" : "outline"}>
+                      {agent.status === "active" ? "Ativo" : agent.status === "paused" ? "Pausado" : "Inativo"}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-1">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Chamadas</p>
+                      <p className="font-semibold">{agent.calls}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Sucesso</p>
+                      <p className="font-semibold">{agent.successRate}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Tempo Médio</p>
+                      <p className="font-semibold">{agent.avgTime}</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))
+          ) : (
+            <p>Nenhum agente ativo encontrado. <Button variant="link" onClick={handleCreateAgent} className="p-0">Criar agente</Button></p>
+          )}
+        </div>
+
+        {/* Próximos passos com melhorias visuais */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Próximos Passos</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <NextStepCard 
+              number={1}
+              title="Testar uma chamada real"
+              description="Selecione um agente e faça uma ligação para testar o sistema."
+              icon={<PhoneCall className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
+            />
+            
+            <NextStepCard 
+              number={2}
+              title="Adicionar leads"
+              description="Importe seus contatos para o sistema realizar chamadas automatizadas."
+              icon={<Plus className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
+            />
+            
+            <NextStepCard 
+              number={3}
+              title="Configurar integrações"
+              description="Conecte seu CRM ou outras ferramentas para sincronizar dados."
+              icon={<Settings className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
+            />
+          </div>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
-};
+}
 
 // NextStepCard component for improved "Próximos Passos"
 const NextStepCard = ({ 
@@ -261,40 +268,24 @@ const NextStepCard = ({
   </div>
 );
 
-// Components para ícones customizados
-const PhoneCallIcon = (props: React.SVGAttributes<SVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-  </svg>
-);
-
-const SettingsIcon = (props: React.SVGAttributes<SVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-);
-
-export default Dashboard;
+// Utility function for avatar colors
+function getAvatarColor(name: string) {
+  const colors = [
+    "bg-blue-100", "bg-purple-100", "bg-green-100", 
+    "bg-yellow-100", "bg-red-100", "bg-pink-100",
+    "bg-indigo-100", "bg-orange-100", "bg-violet-100"
+  ];
+  
+  const index = name.charCodeAt(0) % colors.length;
+  return colors[index];
+}
+function getRandomActivity() {
+  const activities = [
+    "Hoje, 14:30", 
+    "Ontem, 17:20", 
+    "22/04/2025", 
+    "15/04/2025", 
+    "10/04/2025"
+  ];
+  return activities[Math.floor(Math.random() * activities.length)];
+}

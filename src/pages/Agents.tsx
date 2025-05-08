@@ -1,16 +1,17 @@
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { AgentGrid } from "@/components/agents/AgentGrid";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
+import { AgentCard, AgentCardProps } from "@/components/agents/AgentCard";
+import { AgentGrid } from "@/components/agents/AgentGrid";
+import { useNavigate } from "react-router-dom";
 import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
-import { AgentCardProps } from "@/components/agents/AgentCard";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { AgentVoiceTester } from "@/components/agents/AgentVoiceTester";
+import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 // Lista de vozes de qualidade do Eleven Labs com seus IDs
-const VOICES = {
+export const VOICES = {
   SARAH: "EXAVITQu4vr4xnSDxMaL", // Sarah - voz feminina
   ROGER: "CwhRBWXzGAHq8TQ4Fs17", // Roger - voz masculina
   THOMAS: "GBv7mTt0atIp3Br8iCZE", // Thomas - voz masculina britânica
@@ -18,87 +19,54 @@ const VOICES = {
   LAURA: "FGY2WhTYpPnrIDTdsKH5", // Laura - voz feminina
 };
 
-// Mock data com os agentes consistentes com o dashboard
-const mockAgents: AgentCardProps[] = [
-  {
-    id: "1",
-    name: "Assistente de Vendas",
-    category: "Comercial",
-    description: "Agente inteligente para atendimento e qualificação de leads de vendas.",
-    status: "active",
-    calls: 127,
-    avgTime: "4:32",
-    successRate: 68,
-    successChange: "+5.2%",
-    lastActivity: "Hoje, 14:30",
-    avatarLetter: "A",
-    avatarColor: "bg-violet-100",
-    voiceId: VOICES.ROGER,
-  },
-  {
-    id: "2",
-    name: "Atendente de Suporte",
-    category: "Suporte",
-    description: "Responde dúvidas e resolve problemas de clientes automaticamente.",
-    status: "active",
-    calls: 85,
-    avgTime: "5:15",
-    successRate: 92,
-    successChange: "+1.2%",
-    lastActivity: "Ontem, 17:20",
-    avatarLetter: "A",
-    avatarColor: "bg-blue-100",
-    voiceId: VOICES.SARAH,
-  },
-  {
-    id: "3",
-    name: "Pesquisador de Mercado",
-    category: "Pesquisa",
-    description: "Realiza pesquisas de mercado e coleta feedback de clientes.",
-    status: "paused",
-    calls: 42,
-    avgTime: "2:48",
-    successRate: 75,
-    successChange: "-0.7%",
-    lastActivity: "22/04/2025",
-    avatarLetter: "P",
-    avatarColor: "bg-green-100",
-    voiceId: VOICES.THOMAS,
-  },
-  {
-    id: "4",
-    name: "Agendador",
-    category: "Agendamentos",
-    description: "Agenda compromissos e gerencia calendários de forma automática.",
-    status: "inactive",
-    calls: 0,
-    avgTime: "0:00",
-    successRate: 0,
-    successChange: "0%",
-    lastActivity: "",
-    avatarLetter: "A",
-    avatarColor: "bg-red-100",
-    voiceId: VOICES.ARIA,
-  }
-];
-
 export default function Agents() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
-  const [isLoading, setIsLoading] = useState(false);
-  const [showVoiceTester, setShowVoiceTester] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState<AgentCardProps | null>(null);
+  
+  // Fetch agents from Supabase
+  const { data: agentsData, isLoading } = useQuery({
+    queryKey: ['agents'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('agents')
+        .select('*');
+      
+      if (error) {
+        console.error('Error fetching agents:', error);
+        toast.error('Erro ao carregar agentes');
+        return [];
+      }
+      
+      return data || [];
+    }
+  });
+
+  // Transform Supabase data to AgentCardProps
+  const agents: AgentCardProps[] = agentsData?.map(agent => ({
+    id: agent.id,
+    name: agent.name,
+    category: agent.category,
+    description: agent.description || "",
+    status: agent.status as "active" | "paused" | "inactive",
+    calls: Math.floor(Math.random() * 200), // Placeholder data
+    avgTime: `${Math.floor(Math.random() * 5)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`, // Placeholder
+    successRate: Math.floor(Math.random() * 100), // Placeholder
+    successChange: `+${(Math.random() * 10).toFixed(1)}%`, // Placeholder
+    lastActivity: getRandomActivity(), // Placeholder
+    avatarLetter: agent.name.charAt(0),
+    avatarColor: getAvatarColor(agent.name),
+    voiceId: agent.voice_id || VOICES.ROGER,
+  })) || [];
 
   const handleCreateAgent = () => {
-    navigate('/agents/new');
+    navigate("/agents/new");
   };
 
   const handleTestVoice = (id: string) => {
-    const agent = mockAgents.find(agent => agent.id === id);
-    if (!agent || !agent.voiceId) return;
-    
-    setSelectedAgent(agent);
-    setShowVoiceTester(true);
+    const agent = agents.find(a => a.id === id);
+    if (agent) {
+      toast.success(`Testando voz do agente ${agent.name}`);
+    }
   };
 
   const handleEditAgent = (id: string) => {
@@ -106,13 +74,13 @@ export default function Agents() {
   };
 
   // Filter agents based on selected filter
-  const filteredAgents = mockAgents.filter(agent => {
+  const filteredAgents = agents.filter(agent => {
     if (filter === "all") return true;
     return agent.status === filter;
   });
 
   const getFilterCount = (filterType: "active" | "paused" | "inactive") => {
-    return mockAgents.filter(agent => agent.status === filterType).length;
+    return agents.filter(agent => agent.status === filterType).length;
   };
 
   return (
@@ -136,7 +104,7 @@ export default function Agents() {
               className="flex items-center gap-1.5"
             >
               <Filter className="h-4 w-4" />
-              <span>Todos ({mockAgents.length})</span>
+              <span>Todos ({agents.length})</span>
             </Button>
             <Button 
               variant={filter === "active" ? "default" : "outline"} 
@@ -182,20 +150,30 @@ export default function Agents() {
           onTestVoice={handleTestVoice}
           onCreateAgent={handleCreateAgent}
         />
-
-        <Dialog open={showVoiceTester} onOpenChange={setShowVoiceTester}>
-          <DialogContent className="sm:max-w-[450px]">
-            {selectedAgent && (
-              <AgentVoiceTester 
-                agentName={selectedAgent.name}
-                agentId={selectedAgent.id}
-                voiceId={selectedAgent.voiceId}
-                onClose={() => setShowVoiceTester(false)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </Layout>
   );
+}
+
+// Helper functions
+function getRandomActivity() {
+  const activities = [
+    "Hoje, 14:30", 
+    "Ontem, 17:20", 
+    "22/04/2025", 
+    "15/04/2025", 
+    "10/04/2025"
+  ];
+  return activities[Math.floor(Math.random() * activities.length)];
+}
+
+function getAvatarColor(name: string) {
+  const colors = [
+    "bg-blue-100", "bg-purple-100", "bg-green-100", 
+    "bg-yellow-100", "bg-red-100", "bg-pink-100",
+    "bg-indigo-100", "bg-orange-100", "bg-violet-100"
+  ];
+  
+  const index = name.charCodeAt(0) % colors.length;
+  return colors[index];
 }
