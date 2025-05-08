@@ -99,7 +99,7 @@ export default function CampaignForm() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
             {isEditing ? "Editar Campanha" : "Nova Campanha"}
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
@@ -198,7 +198,7 @@ export default function CampaignForm() {
               
               <Button 
                 type="submit"
-                className="bg-violet-600 hover:bg-violet-700 text-white"
+                className="bg-blue-900 hover:bg-blue-800 text-white"
                 disabled={loading}
               >
                 {loading ? "Salvando..." : isEditing ? "Salvar Alterações" : "Criar Campanha"}
