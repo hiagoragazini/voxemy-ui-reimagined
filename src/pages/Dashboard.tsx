@@ -1,14 +1,23 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Layout } from "@/components/ui/layout";
+import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { Plus, ChevronRight, PhoneCall, Clock, CheckCircle2, ArrowRight, Settings } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AgentCardProps } from "@/components/ui/agent-card";
+import { AgentCardProps } from "@/components/agents/AgentCard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { VOICES } from "../Agents"; // Import the shared VOICES object
+
+// Lista de vozes de qualidade do Eleven Labs com seus IDs
+export const VOICES = {
+  SARAH: "EXAVITQu4vr4xnSDxMaL", // Sarah - voz feminina
+  ROGER: "CwhRBWXzGAHq8TQ4Fs17", // Roger - voz masculina
+  THOMAS: "GBv7mTt0atIp3Br8iCZE", // Thomas - voz masculina britânica
+  ARIA: "9BWtsMINqrJLrRacOk9x", // Aria - voz feminina
+  LAURA: "FGY2WhTYpPnrIDTdsKH5", // Laura - voz feminina
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -175,7 +184,7 @@ export default function Dashboard() {
                       <h3 className="font-semibold">{agent.name}</h3>
                       <p className="text-sm text-muted-foreground">{agent.category}</p>
                     </div>
-                    <Badge variant={agent.status === "active" ? "success" : agent.status === "paused" ? "warning" : "outline"}>
+                    <Badge variant={agent.status === "active" ? "default" : agent.status === "paused" ? "secondary" : "outline"}>
                       {agent.status === "active" ? "Ativo" : agent.status === "paused" ? "Pausado" : "Inativo"}
                     </Badge>
                   </div>
@@ -289,3 +298,4 @@ function getRandomActivity() {
   ];
   return activities[Math.floor(Math.random() * activities.length)];
 }
+
