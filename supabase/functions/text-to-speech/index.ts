@@ -29,7 +29,7 @@ serve(async (req) => {
     console.log(`Model: ${model || 'usando padrão'}`);
 
     // Usar o voiceId fornecido ou um padrão
-    const selectedVoiceId = voiceId || "pFZP5JQG7iQjIQuC4Bku"; // Lily - voz padrão
+    const selectedVoiceId = voiceId || "EXAVITQu4vr4xnSDxMaL"; // Sarah - voz feminina de alta qualidade
     // Usar o modelo fornecido ou um padrão
     const selectedModel = model || "eleven_multilingual_v2";
 
@@ -37,9 +37,9 @@ serve(async (req) => {
 
     // Configurações de voz otimizadas para melhor qualidade
     const settings = {
-      stability: voice_settings?.stability ?? 0.8,
-      similarity_boost: voice_settings?.similarity_boost ?? 0.9,
-      style: voice_settings?.style ?? 0.5,
+      stability: voice_settings?.stability ?? 0.75,
+      similarity_boost: voice_settings?.similarity_boost ?? 0.85,
+      style: voice_settings?.style ?? 0.6,
       use_speaker_boost: voice_settings?.use_speaker_boost ?? true,
     };
 

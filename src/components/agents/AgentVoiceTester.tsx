@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Loader2, Headphones } from "lucide-react";
+import { Loader2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useVoiceCallSimple } from "@/hooks/use-voice-call-simple";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
@@ -30,11 +30,20 @@ export function AgentVoiceTester({
       return;
     }
     
-    await textToSpeech({ 
-      text, 
-      voiceId,
-      model: "eleven_multilingual_v2"
-    });
+    try {
+      await textToSpeech({ 
+        text, 
+        voiceId,
+        model: "eleven_multilingual_v2",
+        stability: 0.75,
+        similarity_boost: 0.85,
+        style: 0.6,
+        use_speaker_boost: true
+      });
+    } catch (err) {
+      // Error already handled in the hook
+      console.error("Erro ao testar voz:", err);
+    }
   };
   
   return (
@@ -54,26 +63,40 @@ export function AgentVoiceTester({
       />
 
       <div className="flex flex-col space-y-3">
-        <Button 
-          onClick={handleTestVoice}
-          disabled={isLoading || !text}
-          className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700"
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Headphones className="h-4 w-4" />
-          )}
-          <span>Testar Voz</span>
-        </Button>
+        {!audioContent && (
+          <Button 
+            onClick={handleTestVoice}
+            disabled={isLoading || !text}
+            className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Volume2 className="h-4 w-4" />
+            )}
+            <span>Testar Voz</span>
+          </Button>
+        )}
         
-        {audioContent && !isLoading && (
+        {audioContent && (
           <div className="flex items-center justify-center p-2 bg-slate-50 rounded-md">
             <AudioPlayer 
               audioData={audioContent} 
               isLoading={isLoading} 
             />
           </div>
+        )}
+
+        {audioContent && (
+          <Button 
+            onClick={handleTestVoice}
+            disabled={isLoading}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Volume2 className="h-4 w-4" />
+            <span>Testar com outro texto</span>
+          </Button>
         )}
       </div>
 

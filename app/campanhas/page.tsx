@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, Plus, Phone, BarChart3, Filter } from "lucide-react";
 import { CampaignCard } from "@/components/ui/campaign-card";
 
+// Lista de vozes de qualidade do Eleven Labs com seus IDs
+const VOICES = {
+  SARAH: "EXAVITQu4vr4xnSDxMaL", // Sarah - voz feminina
+  ROGER: "CwhRBWXzGAHq8TQ4Fs17", // Roger - voz masculina
+  THOMAS: "GBv7mTt0atIp3Br8iCZE", // Thomas - voz masculina britânica
+};
+
 // Mock data for the campaigns page
 const mockCampaigns = [
   {
@@ -17,6 +24,7 @@ const mockCampaigns = [
     totalLeads: 2500,
     completedLeads: 1875,
     agent: "Sofia Atendente",
+    agentId: "1", // ID do agente (correspondente ao Sofia)
     lastActivity: "Hoje às 15:30",
     avgCallDuration: "2:10",
     successRate: 79,
@@ -30,6 +38,7 @@ const mockCampaigns = [
     totalLeads: 1200,
     completedLeads: 780,
     agent: "Carlos Vendas",
+    agentId: "2", // ID do agente (correspondente ao Carlos)
     lastActivity: "Hoje às 14:15",
     avgCallDuration: "3:22",
     successRate: 68,
@@ -42,7 +51,8 @@ const mockCampaigns = [
     status: "paused" as const,
     totalLeads: 850,
     completedLeads: 245,
-    agent: "Ricardo Cobranças",
+    agent: "Thomas Suporte",
+    agentId: "3", // ID do agente (correspondente ao Thomas)
     lastActivity: "Ontem às 17:40",
     avgCallDuration: "2:45",
     successRate: 42,
@@ -55,7 +65,8 @@ const mockCampaigns = [
     status: "scheduled" as const,
     totalLeads: 3000,
     completedLeads: 0,
-    agent: "Juliana Pesquisas",
+    agent: "Sofia Atendente",
+    agentId: "1", // ID do agente (correspondente ao Sofia)
     lastActivity: "Nunca iniciada",
     avgCallDuration: "-",
     successRate: 0,
@@ -69,6 +80,7 @@ const mockCampaigns = [
     totalLeads: 500,
     completedLeads: 500,
     agent: "Carlos Vendas",
+    agentId: "2", // ID do agente (correspondente ao Carlos)
     lastActivity: "22/10/2023",
     avgCallDuration: "2:58",
     successRate: 88,
@@ -185,6 +197,7 @@ export default function CampanhasPage() {
               totalLeads={campaign.totalLeads}
               completedLeads={campaign.completedLeads}
               agent={campaign.agent}
+              agentId={campaign.agentId}
               lastActivity={campaign.lastActivity}
               avgCallDuration={campaign.avgCallDuration}
               successRate={campaign.successRate}

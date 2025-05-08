@@ -219,7 +219,16 @@ export const AgentCard = ({
               {!lastActivity && 'Nunca usado'}
             </div>
             
-            {/* Removendo o botão "Testar Voz" conforme solicitado */}
+            {/* Adding back the Test Voice button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-1.5 text-xs"
+              onClick={handleTestVoice}
+            >
+              <PhoneCall className="h-3 w-3" />
+              <span>Testar Voz</span>
+            </Button>
           </div>
         </div>
       </Card>

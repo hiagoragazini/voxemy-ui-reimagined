@@ -23,19 +23,19 @@ export function useVoiceCallSimple() {
     text, 
     voiceId, 
     model, 
-    stability = 0.8, 
-    similarity_boost = 0.9, 
-    style = 0.5,
+    stability = 0.75, 
+    similarity_boost = 0.85, 
+    style = 0.6,
     use_speaker_boost = true
   }: TextToSpeechParams) => {
     setIsLoading(true);
     setError(null);
-    setAudioContent(null);
     
     try {
       console.log('Enviando texto para conversão:', text);
       console.log('Usando voice ID:', voiceId || 'padrão');
       console.log('Usando model:', model || 'padrão');
+      console.log('Configurações de voz:', { stability, similarity_boost, style, use_speaker_boost });
       
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { 
