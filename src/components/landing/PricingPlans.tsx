@@ -10,7 +10,7 @@ const PricingPlans = () => {
   
   const plans = [
     {
-      name: "Starter",
+      name: "Inicial",
       price: "R$97",
       period: "/mês",
       description: "Ideal para pequenas empresas iniciando com IA.",

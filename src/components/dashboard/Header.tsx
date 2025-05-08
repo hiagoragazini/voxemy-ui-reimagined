@@ -43,6 +43,7 @@ export const Header = ({
     try {
       await signOut();
       navigate('/'); // Redirect to home page after logout
+      toast.success('Você saiu com sucesso!');
     } catch (error) {
       toast.error('Erro ao sair. Tente novamente.');
       console.error('Logout error:', error);
@@ -90,7 +91,7 @@ export const Header = ({
           onClick={() => setShowSearch(!showSearch)}
         >
           <Search className="h-5 w-5" />
-          <span className="sr-only">Search</span>
+          <span className="sr-only">Buscar</span>
         </Button>
         
         <Button variant="ghost" size="icon" className="relative">

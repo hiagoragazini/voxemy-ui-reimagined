@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import {
   ChevronLeft,
@@ -47,7 +48,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
               collapsed && "rotate-180"
             )} 
           /> 
-          <span className="sr-only">Toggle Sidebar</span>
+          <span className="sr-only">Alternar Barra Lateral</span>
         </Button>
       </div>
       
@@ -73,7 +74,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
         />
         <SidebarItem 
           icon={<BarChart className="h-4 w-4" />} 
-          label="Analytics" 
+          label="Análises" 
           to="/analytics" 
           collapsed={collapsed}
         />
@@ -100,7 +101,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
             {!collapsed && (
               <div className="flex flex-col">
                 <span className="text-xs font-medium text-slate-100">{userName}</span>
-                <span className="text-xs text-slate-300">Pro Plan</span>
+                <span className="text-xs text-slate-300">Plano Pro</span>
               </div>
             )}
           </div>
