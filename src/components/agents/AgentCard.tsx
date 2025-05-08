@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Settings, PhoneCall, Award, BarChart } from "lucide-react";
+import { Settings, PhoneCall, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -8,10 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AgentVoiceTester } from "./AgentVoiceTester";
+import { useNavigate } from "react-router-dom";
 
 export interface AgentCardProps {
   id: string;
@@ -29,7 +30,6 @@ export interface AgentCardProps {
   onStatusChange?: (id: string, isActive: boolean) => void;
   onEditClick?: (id: string) => void;
   onTestVoice?: (id: string) => void;
-  isTopPerformer?: boolean;
   voiceUsage?: {current: number, total: number}; // For voice usage progress
   voiceId?: string; // ID da voz do Eleven Labs
 }
@@ -50,12 +50,12 @@ export const AgentCard = ({
   onStatusChange,
   onEditClick,
   onTestVoice,
-  isTopPerformer = id === "1", // Make first agent top performer by default
   voiceUsage = {current: 6, total: 10}, // Default voice usage values
   voiceId,
 }: AgentCardProps) => {
   const [isActive] = useState(status === "active");
   const [showVoiceTester, setShowVoiceTester] = useState(false);
+  const navigate = useNavigate();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -91,6 +91,15 @@ export const AgentCard = ({
     setShowVoiceTester(true);
   };
 
+  const handleEditClick = () => {
+    if (onEditClick) {
+      onEditClick(id);
+    } else {
+      // Usando navegação direta se não houver handler externo
+      navigate(`/agent/${id}/edit`);
+    }
+  };
+
   const statusColor = getStatusColor(status);
   const statusDot = getStatusDot(status);
   const statusLabel = getStatusLabel(status);
@@ -109,12 +118,6 @@ export const AgentCard = ({
               <div>
                 <div className="flex items-center">
                   <h3 className="font-medium text-lg">{name}</h3>
-                  {isTopPerformer && (
-                    <Badge className="ml-2 bg-amber-100 hover:bg-amber-200 text-amber-800 border-0 flex items-center gap-1 py-1">
-                      <Award className="h-3 w-3" />
-                      <span className="text-[10px]">Mais ativo hoje</span>
-                    </Badge>
-                  )}
                 </div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <span>{category}</span>
@@ -162,14 +165,21 @@ export const AgentCard = ({
                 </HoverCardContent>
               </HoverCard>
               
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-muted-foreground h-8 w-8"
-                onClick={() => onEditClick?.(id)}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-muted-foreground h-8 w-8 hover:bg-violet-50 hover:text-violet-700"
+                    onClick={handleEditClick}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Configurar agente</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
 
@@ -219,7 +229,6 @@ export const AgentCard = ({
               {!lastActivity && 'Nunca usado'}
             </div>
             
-            {/* Adding back the Test Voice button */}
             <Button 
               variant="outline" 
               size="sm" 

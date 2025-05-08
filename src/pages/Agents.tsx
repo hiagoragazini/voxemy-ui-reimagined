@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { AgentGrid } from "@/components/agents/AgentGrid";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { AgentCardProps } from "@/components/agents/AgentCard";
+import { useVoiceCall } from "@/hooks/use-voice-call";
 
 // Lista de vozes de qualidade do Eleven Labs com seus IDs
 const VOICES = {
@@ -66,20 +66,43 @@ export default function Agents() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [isLoading, setIsLoading] = useState(false);
+  const { textToSpeech, playAudio } = useVoiceCall();
 
   const handleCreateAgent = () => {
     toast.success("Redirecionando para criação de novo agente...");
     // Aqui seria a navegação real para o formulário de criação
+    navigate('/agents/new');
   };
 
-  const handleTestVoice = (id: string) => {
-    // Esta função não será mais chamada pois removemos o botão,
-    // mas mantemos por compatibilidade de interface
+  const handleTestVoice = async (id: string) => {
+    const agent = mockAgents.find(agent => agent.id === id);
+    if (!agent || !agent.voiceId) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const welcomeText = `Olá, eu sou ${agent.name}, um assistente virtual especializado ${agent.category ? `em ${agent.category}` : 'em atendimento'}.`;
+      
+      const audioContent = await textToSpeech({
+        text: welcomeText,
+        voiceId: agent.voiceId
+      });
+      
+      if (audioContent) {
+        playAudio(audioContent);
+      }
+    } catch (error) {
+      console.error('Erro ao testar voz:', error);
+      toast.error('Não foi possível testar a voz do agente.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEditAgent = (id: string) => {
     toast.success(`Editando agente ${id}...`);
     // Aqui seria a navegação real para a edição do agente
+    navigate(`/agents/${id}/edit`);
   };
 
   // Filter agents based on selected filter
