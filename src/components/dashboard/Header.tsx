@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/components/ui/sonner";
 
 interface HeaderProps {
   openSidebar: () => void;
@@ -29,13 +30,23 @@ export const Header = ({
 }: HeaderProps) => {
   const [showSearch, setShowSearch] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   
   // Get the user's name from authentication context
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
 
   const handleProfileClick = (path: string) => {
     navigate(path);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/'); // Redirect to home page after logout
+    } catch (error) {
+      toast.error('Erro ao sair. Tente novamente.');
+      console.error('Logout error:', error);
+    }
   };
 
   return (
@@ -115,7 +126,7 @@ export const Header = ({
               <span>Configurações</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleProfileClick('/login')} className="cursor-pointer text-destructive">
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Sair</span>
             </DropdownMenuItem>

@@ -20,7 +20,7 @@ export const Layout = ({ children }: LayoutProps) => {
     <div className="h-screen flex bg-gray-50/60 dark:bg-slate-950">
       <Sidebar collapsed={collapsed} toggleSidebar={toggleSidebar} />
       <main className={`flex-1 transition-all duration-300 overflow-auto ${collapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
-        <Header openSidebar={toggleSidebar} sidebarCollapsed={collapsed} userName="João" />
+        <Header openSidebar={toggleSidebar} sidebarCollapsed={collapsed} />
         {children}
       </main>
     </div>

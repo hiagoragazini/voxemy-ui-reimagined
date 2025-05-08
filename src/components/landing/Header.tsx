@@ -1,13 +1,14 @@
 
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import Logo from "../shared/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   // Detecta scroll para mudar o estilo do header
   useEffect(() => {
@@ -25,6 +26,15 @@ const Header = () => {
       pricingSection.scrollIntoView({ behavior: "smooth" });
     }
   };
+  
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
     <header 
@@ -39,14 +49,23 @@ const Header = () => {
         
         <div className="flex items-center gap-4">
           {user ? (
-            <Link to="/dashboard">
+            <div className="flex gap-2">
+              <Link to="/dashboard">
+                <Button 
+                  variant="outline" 
+                  className="border-violet-500 bg-violet-500/20 text-white hover:bg-violet-600 hover:text-white"
+                >
+                  Acessar Dashboard
+                </Button>
+              </Link>
               <Button 
-                variant="outline" 
-                className="border-violet-500 bg-violet-500/20 text-white hover:bg-violet-600 hover:text-white"
+                variant="ghost" 
+                className="text-white hover:bg-violet-600/20"
+                onClick={handleLogout}
               >
-                Acessar Dashboard
+                Sair
               </Button>
-            </Link>
+            </div>
           ) : (
             <div className="flex gap-2">
               <Link to="/auth">
