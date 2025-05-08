@@ -31,7 +31,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <input
             type="search"
             placeholder="Buscar..."
-            className="w-full bg-secondary/50 py-2 pl-8 pr-4 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full bg-gray-100 py-2 pl-8 pr-4 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600"
           />
         </div>
       </div>
@@ -49,8 +49,8 @@ export function Header({ onMenuClick }: HeaderProps) {
             className="flex items-center gap-2"
             onClick={() => setShowProfileMenu(!showProfileMenu)}
           >
-            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center">
-              <User className="h-4 w-4 text-primary" />
+            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+              <User className="h-4 w-4 text-gray-600" />
             </div>
             <span className="text-sm font-medium hidden md:block">
               {user?.email?.split("@")[0] || "Usuário"}
@@ -62,13 +62,13 @@ export function Header({ onMenuClick }: HeaderProps) {
               <div className="py-1">
                 <a
                   href="/settings"
-                  className="block px-4 py-2 text-sm text-foreground hover:bg-secondary"
+                  className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100"
                 >
                   Configurações
                 </a>
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary"
+                  className="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-gray-100"
                 >
                   Sair
                 </button>
