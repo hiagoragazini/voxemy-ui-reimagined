@@ -52,7 +52,8 @@ const PricingPlans = () => {
   ];
 
   const handlePlanSelect = () => {
-    navigate("/login");
+    // Redireciona diretamente para o dashboard ao selecionar um plano
+    navigate("/dashboard");
   };
 
   return (
