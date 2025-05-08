@@ -48,8 +48,8 @@ serve(async (req) => {
           text: text,
           model_id: selectedModel,
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
+            stability: 0.7, // Aumentando estabilidade
+            similarity_boost: 0.8, // Aumentando a similaridade
             style: 0.0,
             use_speaker_boost: true,
           },
@@ -76,15 +76,27 @@ serve(async (req) => {
 
     // Obter o buffer de áudio
     const audioBuffer = await response.arrayBuffer();
+    
+    // Verificar se temos dados de áudio
+    if (audioBuffer.byteLength === 0) {
+      throw new Error("Eleven Labs retornou um arquivo de áudio vazio");
+    }
+    
+    // Logar o tamanho dos dados para verificação
+    console.log("Áudio gerado com sucesso, tamanho:", audioBuffer.byteLength, "bytes");
+    
     // Converter para base64 para transporte seguro
     const base64Audio = btoa(
       String.fromCharCode(...new Uint8Array(audioBuffer))
     );
-
-    console.log("Áudio gerado com sucesso, tamanho:", audioBuffer.byteLength);
-    console.log("Primeiros bytes do áudio (para verificação):", 
-      new Uint8Array(audioBuffer.slice(0, 20)).join(', '));
-    console.log("Tipo MIME do áudio: audio/mpeg");
+    
+    // Logar o tamanho do base64 para verificação
+    console.log("Tamanho do base64:", base64Audio.length);
+    
+    // Verificar se o base64 tem um tamanho razoável
+    if (base64Audio.length < 100) {
+      console.error("Base64 do áudio muito pequeno, pode estar corrompido");
+    }
 
     return new Response(
       JSON.stringify({ 
@@ -96,11 +108,16 @@ serve(async (req) => {
           textLength: text.length,
           audioSize: audioBuffer.byteLength,
           format: "mp3",
+          base64Length: base64Audio.length,
           timestamp: new Date().toISOString()
         }
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { 
+          ...corsHeaders, 
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate"
+        },
       }
     );
   } catch (error) {

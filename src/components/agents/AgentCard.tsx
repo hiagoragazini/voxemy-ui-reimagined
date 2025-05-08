@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Settings, PhoneCall, Headphones, Award, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AgentVoiceTester } from "./AgentVoiceTester";
 
 export interface AgentCardProps {
   id: string;
@@ -51,6 +52,7 @@ export const AgentCard = ({
   voiceUsage = {current: 6, total: 10}, // Default voice usage values
 }: AgentCardProps) => {
   const [isActive] = useState(status === "active");
+  const [showVoiceTester, setShowVoiceTester] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -82,9 +84,8 @@ export const AgentCard = ({
   const handleTestVoice = () => {
     if (onTestVoice) {
       onTestVoice(id);
-    } else {
-      toast.success(`Teste de voz iniciado para ${name}`);
     }
+    setShowVoiceTester(true);
   };
 
   const statusColor = getStatusColor(status);
@@ -94,146 +95,159 @@ export const AgentCard = ({
   const usagePercentage = (voiceUsage.current / voiceUsage.total) * 100;
 
   return (
-    <Card className="hover:border-primary/20 transition-all duration-300 border-border/40 hover:shadow-md hover:scale-[1.01] group">
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <div className={cn("w-10 h-10 flex items-center justify-center rounded-md text-center", avatarColor)}>
-              <span className="text-lg font-semibold">{avatarLetter}</span>
-            </div>
-            <div>
-              <div className="flex items-center">
-                <h3 className="font-medium text-lg">{name}</h3>
-                {isTopPerformer && (
-                  <Badge className="ml-2 bg-amber-100 hover:bg-amber-200 text-amber-800 border-0 flex items-center gap-1 py-1">
-                    <Award className="h-3 w-3" />
-                    <span className="text-[10px]">Mais ativo hoje</span>
-                  </Badge>
-                )}
+    <>
+      <Card className="hover:border-primary/20 transition-all duration-300 border-border/40 hover:shadow-md hover:scale-[1.01] group">
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className={cn("w-10 h-10 flex items-center justify-center rounded-md text-center", avatarColor)}>
+                <span className="text-lg font-semibold">{avatarLetter}</span>
               </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span>{category}</span>
-                {category && status && <span className="mx-1">•</span>}
+              <div>
                 <div className="flex items-center">
-                  <div className={cn("h-1.5 w-1.5 rounded-full mr-1", statusDot)} />
-                  <span className={statusColor}>{statusLabel}</span>
+                  <h3 className="font-medium text-lg">{name}</h3>
+                  {isTopPerformer && (
+                    <Badge className="ml-2 bg-amber-100 hover:bg-amber-200 text-amber-800 border-0 flex items-center gap-1 py-1">
+                      <Award className="h-3 w-3" />
+                      <span className="text-[10px]">Mais ativo hoje</span>
+                    </Badge>
+                  )}
                 </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="text-muted-foreground h-8 w-8"
-                >
-                  <BarChart className="h-4 w-4" />
-                </Button>
-              </HoverCardTrigger>
-              <HoverCardContent className="w-80">
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Estatísticas detalhadas</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Total de chamadas</p>
-                      <p className="font-medium">{calls}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Tempo médio</p>
-                      <p className="font-medium">{avgTime}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Taxa de sucesso</p>
-                      <p className="font-medium">{successRate}%</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Última atividade</p>
-                      <p className="font-medium">{lastActivity || "Nunca usado"}</p>
-                    </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>{category}</span>
+                  {category && status && <span className="mx-1">•</span>}
+                  <div className="flex items-center">
+                    <div className={cn("h-1.5 w-1.5 rounded-full mr-1", statusDot)} />
+                    <span className={statusColor}>{statusLabel}</span>
                   </div>
                 </div>
-              </HoverCardContent>
-            </HoverCard>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-muted-foreground h-8 w-8"
-              onClick={() => onEditClick?.(id)}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {description && (
-          <div className="mb-4">
-            <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
-          </div>
-        )}
-        
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Chamadas</p>
-            <p className="font-semibold">{calls}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Tempo Médio</p>
-            <p className="font-semibold">{avgTime}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Taxa Sucesso</p>
-            <div className="flex items-center">
-              <p className="font-semibold">{successRate}%</p>
-              <span className="text-xs text-green-600 ml-1">{successChange}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-muted-foreground h-8 w-8"
+                  >
+                    <BarChart className="h-4 w-4" />
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Estatísticas detalhadas</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Total de chamadas</p>
+                        <p className="font-medium">{calls}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Tempo médio</p>
+                        <p className="font-medium">{avgTime}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Taxa de sucesso</p>
+                        <p className="font-medium">{successRate}%</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Última atividade</p>
+                        <p className="font-medium">{lastActivity || "Nunca usado"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+              
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-muted-foreground h-8 w-8"
+                onClick={() => onEditClick?.(id)}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-        </div>
 
-        {/* Voice usage progress */}
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-1 text-xs">
-            <span className="text-muted-foreground">Uso de voz</span>
-            <span className="font-medium">{voiceUsage.current}h de {voiceUsage.total}h</span>
+          {description && (
+            <div className="mb-4">
+              <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
+            </div>
+          )}
+          
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Chamadas</p>
+              <p className="font-semibold">{calls}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Tempo Médio</p>
+              <p className="font-semibold">{avgTime}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Taxa Sucesso</p>
+              <div className="flex items-center">
+                <p className="font-semibold">{successRate}%</p>
+                <span className="text-xs text-green-600 ml-1">{successChange}</span>
+              </div>
+            </div>
           </div>
-          <Progress value={usagePercentage} className="h-1.5 bg-gray-100" />
-        </div>
 
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-muted-foreground flex items-center">
-            {lastActivity && (
-              <>
-                <svg className="w-3.5 h-3.5 mr-1 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span>{lastActivity}</span>
-              </>
-            )}
-            {!lastActivity && 'Nunca usado'}
+          {/* Voice usage progress */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-1 text-xs">
+              <span className="text-muted-foreground">Uso de voz</span>
+              <span className="font-medium">{voiceUsage.current}h de {voiceUsage.total}h</span>
+            </div>
+            <Progress value={usagePercentage} className="h-1.5 bg-gray-100" />
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  size="sm" 
-                  variant="default"
-                  className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all duration-200"
-                  onClick={handleTestVoice}
-                >
-                  <Headphones className="h-3.5 w-3.5 mr-1.5" /> 
-                  Testar Voz
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Ouça o agente em ação</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground flex items-center">
+              {lastActivity && (
+                <>
+                  <svg className="w-3.5 h-3.5 mr-1 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>{lastActivity}</span>
+                </>
+              )}
+              {!lastActivity && 'Nunca usado'}
+            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="sm" 
+                    variant="default"
+                    className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all duration-200"
+                    onClick={handleTestVoice}
+                  >
+                    <Headphones className="h-3.5 w-3.5 mr-1.5" /> 
+                    Testar Voz
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Ouça o agente em ação</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      <Dialog open={showVoiceTester} onOpenChange={setShowVoiceTester}>
+        <DialogContent className="sm:max-w-[450px]">
+          <AgentVoiceTester
+            agentName={name}
+            agentId={id}
+            voiceId="pFZP5JQG7iQjIQuC4Bku" // Using Lily as default voice
+            onClose={() => setShowVoiceTester(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
