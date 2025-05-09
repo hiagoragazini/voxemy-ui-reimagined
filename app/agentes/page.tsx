@@ -32,7 +32,7 @@ const mockAgents: AgentCardProps[] = [
     successChange: "+5.2%",
     lastActivity: "Hoje, 14:30",
     avatarLetter: "A",
-    avatarColor: "bg-violet-100",
+    avatarColor: "bg-blue-100",
     voiceId: VOICES.ROGER,
   },
   {
@@ -116,7 +116,7 @@ export default function AgentesPage() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
             Seus Agentes de Voz
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
@@ -165,7 +165,7 @@ export default function AgentesPage() {
           </div>
           <Button 
             onClick={handleCreateAgent}
-            className="bg-violet-600 hover:bg-violet-700 text-white font-medium flex items-center gap-2"
+            className="bg-blue-800 hover:bg-blue-900 text-white font-medium flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             Criar Novo Agente

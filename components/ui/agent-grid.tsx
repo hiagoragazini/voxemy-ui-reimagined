@@ -71,13 +71,13 @@ export const AgentGrid = ({
         />
       ))}
       
-      {/* Create agent card with improved visuals */}
+      {/* Create agent card with improved visuals - Updated to blue */}
       <Card className="border-dashed border-2 border-gray-200 hover:border-primary/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group">
         <div className="flex flex-col items-center justify-center h-full p-8 text-center cursor-pointer" onClick={handleCreateClick}>
-          <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-violet-200 transition-colors">
-            <Plus className="h-8 w-8 text-violet-600 group-hover:scale-110 transition-transform" />
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
+            <Plus className="h-8 w-8 text-blue-800 group-hover:scale-110 transition-transform" />
           </div>
-          <h3 className="text-lg font-medium mb-2 group-hover:text-violet-700 transition-colors">Criar Novo Agente</h3>
+          <h3 className="text-lg font-medium mb-2 group-hover:text-blue-800 transition-colors">Criar Novo Agente</h3>
           <p className="text-muted-foreground text-sm">
             Configure um novo assistente de voz para suas chamadas
           </p>
@@ -90,9 +90,9 @@ export const AgentGrid = ({
 // Função para gerar cores de avatar baseadas no nome
 export const getAvatarColor = (name: string) => {
   const colors = [
-    "bg-blue-100", "bg-purple-100", "bg-green-100", 
-    "bg-yellow-100", "bg-red-100", "bg-pink-100",
-    "bg-indigo-100", "bg-orange-100", "bg-violet-100"
+    "bg-blue-100", "bg-blue-100", "bg-green-100", 
+    "bg-yellow-100", "bg-red-100", "bg-blue-100",
+    "bg-indigo-100", "bg-orange-100", "bg-blue-100"
   ];
   
   const index = name.charCodeAt(0) % colors.length;
