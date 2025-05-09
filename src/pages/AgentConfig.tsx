@@ -8,13 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import { Loader2, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { VOICES } from "@/constants/voices";
 
 // Lista expandida de vozes disponíveis
-const VOICES = [
+const VOICES_OPTIONS = [
   { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah (Feminina)" },
   { id: "CwhRBWXzGAHq8TQ4Fs17", name: "Roger (Masculina)" },
   { id: "GBv7mTt0atIp3Br8iCZE", name: "Thomas (Britânica)" },
@@ -79,28 +81,49 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
 
   useEffect(() => {
     if (!isNew && id) {
-      // Simulação de carregamento de dados do agente
+      // Carregamento real de dados do agente do Supabase
       setIsLoading(true);
-      setTimeout(() => {
-        // Simulando dados de exemplo
-        setFormState({
-          name: `Agente ${id}`,
-          description: "Descrição do agente exemplo",
-          category: "Atendimento",
-          voiceId: "EXAVITQu4vr4xnSDxMaL",
-          status: "active",
-          instructions: "Este agente deve ser polido e direto nas respostas.",
-          responseStyle: "Formal e detalhado",
-          defaultGreeting: "Olá, como posso ajudar você hoje?",
-          maxResponseLength: "200",
-          knowledge: "Informações sobre produtos e serviços da empresa.\n\nPerguntas frequentes sobre atendimento ao cliente.",
-          aiModel: "gpt-4o-mini",
-          conversationPrompt: "Você é um assistente virtual especializado em atendimento ao cliente.",
-          webhookUrl: "",
-          phoneNumber: "",
-        });
-        setIsLoading(false);
-      }, 1000);
+      
+      const fetchAgent = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('agents')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (error) {
+            console.error('Erro ao carregar agente:', error);
+            toast.error('Erro ao carregar dados do agente');
+            setIsLoading(false);
+            return;
+          }
+          
+          if (data) {
+            // Preencher o formulário com os dados do agente
+            setFormState({
+              name: data.name || '',
+              description: data.description || '',
+              category: data.category || 'Atendimento',
+              voiceId: data.voice_id || VOICES.SARAH,
+              status: data.status || 'active',
+              instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',
+              responseStyle: data.response_style || 'Formal e detalhado',
+              defaultGreeting: data.default_greeting || 'Olá, como posso ajudar você hoje?',
+              maxResponseLength: data.max_response_length?.toString() || '200',
+              knowledge: data.knowledge || 'Informações sobre produtos e serviços da empresa.\n\nPerguntas frequentes sobre atendimento ao cliente.',
+              aiModel: data.ai_model || 'gpt-4o-mini',
+              conversationPrompt: data.conversation_prompt || 'Você é um assistente virtual especializado em atendimento ao cliente.',
+              webhookUrl: data.webhook_url || '',
+              phoneNumber: data.phone_number || '',
+            });
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      fetchAgent();
     } else {
       // Valores padrão para um novo agente
       setFormState({
@@ -137,16 +160,66 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulação de salvamento
-    setTimeout(() => {
+    try {
+      // Preparar os dados para salvar no Supabase
+      const agentData = {
+        name: formState.name,
+        description: formState.description,
+        category: formState.category,
+        voice_id: formState.voiceId,
+        status: formState.status,
+        instructions: formState.instructions,
+        response_style: formState.responseStyle,
+        default_greeting: formState.defaultGreeting,
+        max_response_length: parseInt(formState.maxResponseLength),
+        knowledge: formState.knowledge,
+        ai_model: formState.aiModel,
+        conversation_prompt: formState.conversationPrompt,
+        webhook_url: formState.webhookUrl,
+        phone_number: formState.phoneNumber,
+      };
+      
+      let result;
+      
+      if (isNew) {
+        // Inserir novo agente
+        result = await supabase
+          .from('agents')
+          .insert(agentData)
+          .select();
+      } else if (id) {
+        // Atualizar agente existente
+        result = await supabase
+          .from('agents')
+          .update(agentData)
+          .eq('id', id)
+          .select();
+      }
+      
+      const { data, error } = result || {};
+      
+      if (error) {
+        console.error('Erro ao salvar agente:', error);
+        toast.error(`Erro ao ${isNew ? 'criar' : 'atualizar'} agente: ${error.message}`);
+        return;
+      }
+      
+      const agentId = isNew ? data?.[0]?.id : id;
+      
       toast.success(isNew ? 'Agente criado com sucesso!' : 'Agente atualizado com sucesso!');
+      
+      // Redirecionar para a página de agentes com parâmetros de URL para indicar o sucesso
+      navigate(`/agents?${isNew ? 'created=true' : 'updated=true'}${agentId ? `&id=${agentId}` : ''}`);
+    } catch (error) {
+      console.error('Exceção ao salvar agente:', error);
+      toast.error(`Erro ao ${isNew ? 'criar' : 'atualizar'} agente`);
+    } finally {
       setIsLoading(false);
-      navigate('/agents');
-    }, 1000);
+    }
   };
 
   if (isLoading && !isNew) {
@@ -461,3 +534,4 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
 };
 
 export default AgentConfig;
+
