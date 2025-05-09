@@ -80,14 +80,12 @@ export async function forceRefreshAgents() {
       console.log("Nenhum agente encontrado após atualização forçada.");
       toast.warning("Nenhum agente encontrado no banco de dados");
       
-      // Check if the agents table exists using a raw SQL query instead
-      // Since we can't directly query pg_tables with the typed client
+      // Check if the agents table exists using the table_exists RPC function
       try {
         console.log("Verificando a existência da tabela 'agents'...");
         
         const { data: tableExists, error: tableCheckError } = await supabase
-          .rpc('table_exists', { table_name: 'agents' })
-          .single();
+          .rpc('table_exists', { table_name: 'agents' });
           
         if (tableCheckError) {
           console.error("Erro ao verificar existência da tabela:", tableCheckError);

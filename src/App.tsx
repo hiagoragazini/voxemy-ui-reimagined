@@ -21,23 +21,30 @@ function App() {
       {/* Protected routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       
-      {/* Agent routes - consolidated to avoid duplication */}
+      {/* Agent routes */}
       <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
       <Route path="/agents/new" element={<ProtectedRoute><AgentConfig /></ProtectedRoute>} />
       <Route path="/agents/:id/edit" element={<ProtectedRoute><AgentConfig /></ProtectedRoute>} />
       
-      {/* Using Portuguese routes for Next.js app */}
+      {/* Portuguese routes redirects */}
       <Route path="/agentes" element={<Navigate to="/agents" replace />} />
       <Route path="/agentes/novo" element={<Navigate to="/agents/new" replace />} />
+      <Route path="/agentes/:id/editar" element={<Navigate to={({ params }) => `/agents/${params.id}/edit`} replace />} />
       
       {/* Other routes */}
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/business" element={<ProtectedRoute><Business /></ProtectedRoute>} />
+      
+      {/* Campaign routes */}
       <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
-      <Route path="/campanhas" element={<Navigate to="/campaigns" replace />} />
       <Route path="/campaigns/new" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
       <Route path="/campaigns/:id/edit" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
+      
+      {/* Portuguese campaign routes redirects */}
+      <Route path="/campanhas" element={<Navigate to="/campaigns" replace />} />
+      <Route path="/campanhas/nova" element={<Navigate to="/campaigns/new" replace />} />
+      <Route path="/campanhas/:id/editar" element={<Navigate to={({ params }) => `/campaigns/${params.id}/edit`} replace />} />
       
       <Route path="/404" element={<NotFound />} />
       <Route path="*" element={<Navigate to="/404" replace />} />
