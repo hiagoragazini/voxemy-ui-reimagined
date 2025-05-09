@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -127,7 +128,7 @@ export default function Campaigns() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
             Campanhas de Chamadas
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
@@ -185,7 +186,7 @@ export default function Campaigns() {
           </div>
           <Button 
             onClick={handleNewCampaign}
-            className="bg-violet-600 hover:bg-violet-700 text-white font-medium flex items-center gap-2"
+            className="bg-blue-800 hover:bg-blue-900 text-white font-medium flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             Nova Campanha
