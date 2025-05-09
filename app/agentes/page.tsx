@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -22,13 +21,112 @@ const VOICES = {
   LAURA: "FGY2WhTYpPnrIDTdsKH5", // Laura - voz feminina
 };
 
+/**
+ * Diagnose database connection and permission issues
+ */
+async function diagnoseAgentIssues() {
+  try {
+    toast.info("Iniciando diagnóstico de problemas com agentes...");
+    
+    // 1. Verificar autenticação
+    const { data: user, error: authError } = await supabase.auth.getUser();
+    if (authError) {
+      console.error("Erro de autenticação:", authError);
+      toast.error("Problema de autenticação detectado");
+      return false;
+    }
+    
+    if (!user || !user.user) {
+      console.warn("Usuário não autenticado");
+      toast.warning("Você não está autenticado. Faça login para visualizar seus agentes.");
+      return false;
+    }
+    
+    console.log("Usuário autenticado:", user.user.email);
+    
+    // 2. Tentar inserir um agente de teste
+    const testAgentName = `Agente de Teste ${new Date().toISOString()}`;
+    toast.info("Tentando criar um agente de teste para diagnóstico...");
+    
+    const { data: insertedAgent, error: insertError } = await supabase
+      .from('agents')
+      .insert({
+        name: testAgentName,
+        status: 'testing',
+        description: 'Agente criado para diagnóstico',
+        category: 'Teste',
+        voice_id: 'EXAVITQu4vr4xnSDxMaL' // ID da voz Sarah
+      })
+      .select();
+    
+    if (insertError) {
+      console.error("Erro ao inserir agente de teste:", insertError);
+      toast.error("Não foi possível criar agente de teste: " + insertError.message);
+      
+      if (insertError.code === '42P01') {
+        toast.error("A tabela 'agents' não existe no banco de dados!");
+      } else if (insertError.code === '23505') {
+        toast.warning("Já existe um agente com esse nome");
+      } else if (insertError.code === '42501') {
+        toast.error("Você não tem permissão para inserir dados");
+      }
+      
+      return false;
+    }
+    
+    console.log("Agente de teste criado com sucesso:", insertedAgent);
+    toast.success("Agente de teste criado com sucesso!");
+    
+    // 3. Buscar o agente de teste que acabamos de criar
+    const { data: fetchedAgent, error: fetchError } = await supabase
+      .from('agents')
+      .select('*')
+      .eq('name', testAgentName)
+      .maybeSingle();
+    
+    if (fetchError) {
+      console.error("Erro ao buscar agente de teste:", fetchError);
+      toast.error("Erro ao buscar agente de teste após criação");
+      return false;
+    }
+    
+    if (!fetchedAgent) {
+      console.error("Agente de teste não encontrado após criação");
+      toast.error("O agente foi criado mas não pode ser recuperado - possível problema de permissões");
+      return false;
+    }
+    
+    console.log("Agente de teste recuperado com sucesso:", fetchedAgent);
+    toast.success("Sistema funcionando corretamente! O agente pode ser criado e recuperado.");
+    
+    // Limpeza - remover o agente de teste
+    const { error: deleteError } = await supabase
+      .from('agents')
+      .delete()
+      .eq('name', testAgentName);
+    
+    if (deleteError) {
+      console.warn("Não foi possível limpar o agente de teste:", deleteError);
+    } else {
+      console.log("Agente de teste removido com sucesso");
+    }
+    
+    return true;
+  } catch (err) {
+    console.error("Erro no diagnóstico:", err);
+    toast.error("Falha no processo de diagnóstico");
+    return false;
+  }
+}
+
 export default function AgentesPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [agentsData, setAgentsData] = useState<any[]>([]);
-
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  
   // Check if we're coming from agent creation
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -217,16 +315,32 @@ export default function AgentesPage() {
               <span>Inativos ({getFilterCount("inactive")})</span>
             </Button>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleManualRefresh}
-              disabled={isRefreshing}
-              className="ml-2"
-            >
-              <RefreshCcw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>Atualizar</span>
-            </Button>
+            <div className="flex gap-2 mt-2 sm:mt-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCcw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>Atualizar</span>
+              </Button>
+              
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleDiagnose}
+                disabled={isDiagnosing}
+              >
+                {isDiagnosing ? 
+                  <span className="flex items-center">
+                    <RefreshCcw className="h-4 w-4 mr-1 animate-spin" />
+                    Diagnosticando...
+                  </span> : 
+                  "Diagnosticar problemas"
+                }
+              </Button>
+            </div>
           </div>
           <Button 
             onClick={handleCreateAgent}

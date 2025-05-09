@@ -9,7 +9,7 @@ import { Filter, Plus, UserCheck, UserX, Clock, RefreshCcw } from "lucide-react"
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { verifyAgentCreation, forceRefreshAgents } from "@/utils/dbVerify";
+import { verifyAgentCreation, forceRefreshAgents, diagnoseAgentIssues } from "@/utils/dbVerify";
 
 // Lista de vozes de qualidade do Eleven Labs com seus IDs
 export const VOICES = {
@@ -26,6 +26,7 @@ export default function Agents() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
   
   // Check if we're coming from agent creation or edit
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function Agents() {
       
       if (error) {
         console.error('Error fetching agents:', error);
-        toast.error('Erro ao carregar agentes');
+        toast.error('Erro ao carregar agentes: ' + error.message);
         throw error;
       }
       
@@ -101,6 +102,19 @@ export default function Agents() {
       await refetch();
     } finally {
       setIsRefreshing(false);
+    }
+  };
+  
+  // Diagnose function
+  const handleDiagnose = async () => {
+    setIsDiagnosing(true);
+    toast.info("Iniciando diagnóstico do sistema...");
+    
+    try {
+      await diagnoseAgentIssues();
+      await refetch();
+    } finally {
+      setIsDiagnosing(false);
     }
   };
 
@@ -214,16 +228,32 @@ export default function Agents() {
               <span>Inativos ({getFilterCount("inactive")})</span>
             </Button>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleManualRefresh}
-              disabled={isRefreshing}
-              className="ml-2"
-            >
-              <RefreshCcw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>Atualizar</span>
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+              >
+                <RefreshCcw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>Atualizar</span>
+              </Button>
+              
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleDiagnose}
+                disabled={isDiagnosing}
+              >
+                {isDiagnosing ? 
+                  <span className="flex items-center">
+                    <RefreshCcw className="h-4 w-4 mr-1 animate-spin" />
+                    Diagnosticando...
+                  </span> : 
+                  "Diagnosticar problemas"
+                }
+              </Button>
+            </div>
           </div>
           <Button 
             onClick={handleCreateAgent}
