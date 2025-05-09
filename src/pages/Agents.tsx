@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { AgentCard, AgentCardProps } from "@/components/agents/AgentCard";
@@ -24,9 +24,10 @@ export default function Agents() {
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   
   // Fetch agents from Supabase
-  const { data: agentsData, isLoading } = useQuery({
+  const { data: agentsData, isLoading, refetch } = useQuery({
     queryKey: ['agents'],
     queryFn: async () => {
+      console.log("Fetching agents data from Supabase...");
       const { data, error } = await supabase
         .from('agents')
         .select('*');
@@ -37,9 +38,15 @@ export default function Agents() {
         return [];
       }
       
+      console.log("Agents data retrieved:", data);
       return data || [];
     }
   });
+
+  // Fetch data on component mount to ensure we have the latest data
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   // Transform Supabase data to AgentCardProps
   const agents: AgentCardProps[] = agentsData?.map(agent => ({
@@ -66,6 +73,13 @@ export default function Agents() {
     const agent = agents.find(a => a.id === id);
     if (agent) {
       toast.success(`Testando voz do agente ${agent.name}`);
+    }
+  };
+
+  const handleTestCall = (id: string) => {
+    const agent = agents.find(a => a.id === id);
+    if (agent) {
+      toast.info(`Iniciando chamada de teste com ${agent.name}`);
     }
   };
 
@@ -149,6 +163,7 @@ export default function Agents() {
           onAgentEditClick={handleEditAgent}
           onTestVoice={handleTestVoice}
           onCreateAgent={handleCreateAgent}
+          onTestCall={handleTestCall}
         />
       </div>
     </Layout>

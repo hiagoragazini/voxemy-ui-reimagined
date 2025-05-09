@@ -1,13 +1,15 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AgentGrid } from "@/components/ui/agent-grid";
 import { Layout } from "@/components/ui/layout";
 import { Button } from "@/components/ui/button";
 import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
 import { AgentCardProps } from "@/components/ui/agent-card";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Lista de vozes de qualidade do Eleven Labs com seus IDs
 const VOICES = {
@@ -18,74 +20,56 @@ const VOICES = {
   LAURA: "FGY2WhTYpPnrIDTdsKH5", // Laura - voz feminina
 };
 
-// Mock data com os mesmos agentes que na dashboard, garantindo consistência
-const mockAgents: AgentCardProps[] = [
-  {
-    id: "1",
-    name: "Assistente de Vendas",
-    category: "Comercial",
-    description: "Agente inteligente para atendimento e qualificação de leads de vendas.",
-    status: "active",
-    calls: 127,
-    avgTime: "4:32",
-    successRate: 68,
-    successChange: "+5.2%",
-    lastActivity: "Hoje, 14:30",
-    avatarLetter: "A",
-    avatarColor: "bg-blue-100",
-    voiceId: VOICES.ROGER,
-  },
-  {
-    id: "2",
-    name: "Atendente de Suporte",
-    category: "Suporte",
-    description: "Responde dúvidas e resolve problemas de clientes automaticamente.",
-    status: "active",
-    calls: 85,
-    avgTime: "5:15",
-    successRate: 92,
-    successChange: "+1.2%",
-    lastActivity: "Ontem, 17:20",
-    avatarLetter: "A",
-    avatarColor: "bg-blue-100",
-    voiceId: VOICES.SARAH,
-  },
-  {
-    id: "3",
-    name: "Pesquisador de Mercado",
-    category: "Pesquisa",
-    description: "Realiza pesquisas de mercado e coleta feedback de clientes.",
-    status: "paused",
-    calls: 42,
-    avgTime: "2:48",
-    successRate: 75,
-    successChange: "-0.7%",
-    lastActivity: "22/04/2025",
-    avatarLetter: "P",
-    avatarColor: "bg-green-100",
-    voiceId: VOICES.THOMAS,
-  },
-  {
-    id: "4",
-    name: "Agendador",
-    category: "Agendamentos",
-    description: "Agenda compromissos e gerencia calendários de forma automática.",
-    status: "inactive",
-    calls: 0,
-    avgTime: "0:00",
-    successRate: 0,
-    successChange: "0%",
-    lastActivity: "",
-    avatarLetter: "A",
-    avatarColor: "bg-red-100",
-    voiceId: VOICES.ARIA,
-  }
-];
-
 export default function AgentesPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [agentsData, setAgentsData] = useState<any[]>([]);
+  
+  // Fetch agents data from Supabase
+  useEffect(() => {
+    async function fetchAgents() {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('agents')
+          .select('*');
+          
+        if (error) {
+          console.error('Error fetching agents:', error);
+          toast.error('Erro ao carregar agentes');
+          setAgentsData([]);
+        } else {
+          console.log("Fetched agents:", data);
+          setAgentsData(data || []);
+        }
+      } catch (err) {
+        console.error('Error in fetchAgents:', err);
+        toast.error('Ocorreu um erro ao buscar os agentes');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchAgents();
+  }, []);
+
+  // Transform Supabase data to AgentCardProps
+  const agents: AgentCardProps[] = agentsData.map(agent => ({
+    id: agent.id,
+    name: agent.name,
+    category: agent.category,
+    description: agent.description || "",
+    status: agent.status as "active" | "paused" | "inactive",
+    calls: Math.floor(Math.random() * 200), // Placeholder data
+    avgTime: `${Math.floor(Math.random() * 5)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`, // Placeholder
+    successRate: Math.floor(Math.random() * 100), // Placeholder
+    successChange: `+${(Math.random() * 10).toFixed(1)}%`, // Placeholder
+    lastActivity: "Hoje, 14:30", // Placeholder
+    avatarLetter: agent.name.charAt(0),
+    avatarColor: getAvatarColor(agent.name),
+    voiceId: agent.voice_id || VOICES.ROGER,
+  }));
 
   const handleCreateAgent = () => {
     console.log("Redirecionando para criação de novo agente...");
@@ -97,19 +81,26 @@ export default function AgentesPage() {
     // mas mantemos por compatibilidade de interface
   };
 
+  const handleTestCall = (id: string) => {
+    const agent = agents.find(a => a.id === id);
+    if (agent) {
+      toast.info(`Iniciando chamada de teste com ${agent.name}`);
+    }
+  };
+
   const handleEditAgent = (id: string) => {
     console.log(`Editando agente ${id}...`);
     router.push(`/agentes/${id}/editar`);
   };
 
   // Filter agents based on selected filter
-  const filteredAgents = mockAgents.filter(agent => {
+  const filteredAgents = agents.filter(agent => {
     if (filter === "all") return true;
     return agent.status === filter;
   });
 
   const getFilterCount = (filterType: "active" | "paused" | "inactive") => {
-    return mockAgents.filter(agent => agent.status === filterType).length;
+    return agents.filter(agent => agent.status === filterType).length;
   };
 
   return (
@@ -133,7 +124,7 @@ export default function AgentesPage() {
               className="flex items-center gap-1.5"
             >
               <Filter className="h-4 w-4" />
-              <span>Todos ({mockAgents.length})</span>
+              <span>Todos ({agents.length})</span>
             </Button>
             <Button 
               variant={filter === "active" ? "default" : "outline"} 
@@ -178,8 +169,21 @@ export default function AgentesPage() {
           onAgentEditClick={handleEditAgent}
           onTestVoice={handleTestVoice}
           onCreateAgent={handleCreateAgent}
+          onTestCall={handleTestCall}
         />
       </div>
     </Layout>
   );
 }
+
+// Função para gerar cores de avatar baseadas no nome
+export const getAvatarColor = (name: string) => {
+  const colors = [
+    "bg-blue-100", "bg-blue-100", "bg-green-100", 
+    "bg-yellow-100", "bg-red-100", "bg-blue-100",
+    "bg-indigo-100", "bg-orange-100", "bg-blue-100"
+  ];
+  
+  const index = name.charCodeAt(0) % colors.length;
+  return colors[index];
+};

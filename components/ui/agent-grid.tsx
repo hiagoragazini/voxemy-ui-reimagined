@@ -13,6 +13,7 @@ interface AgentGridProps {
   onAgentEditClick?: (id: string) => void;
   onTestVoice?: (id: string) => void;
   onCreateAgent?: () => void;
+  onTestCall?: (id: string) => void;
 }
 
 export const AgentGrid = ({ 
@@ -20,7 +21,8 @@ export const AgentGrid = ({
   isLoading = false, 
   onAgentEditClick,
   onTestVoice,
-  onCreateAgent
+  onCreateAgent,
+  onTestCall
 }: AgentGridProps) => {
   const router = useRouter();
 
@@ -49,10 +51,9 @@ export const AgentGrid = ({
     );
   }
 
-  // Marcar o primeiro agente como top performer
-  const agentsWithTopPerformer = agents.map((agent, index) => ({
+  // Process agent data for display
+  const processedAgents = agents.map((agent) => ({
     ...agent,
-    isTopPerformer: index === 0,
     voiceUsage: {
       current: Math.floor(Math.random() * 8) + 1,
       total: 10
@@ -61,18 +62,19 @@ export const AgentGrid = ({
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-      {agentsWithTopPerformer.map((agent) => (
+      {processedAgents.map((agent) => (
         <AgentCard
           key={agent.id}
           {...agent}
           onStatusChange={handleStatusChange}
           onEditClick={onAgentEditClick}
           onTestVoice={onTestVoice}
+          onTestCall={onTestCall}
         />
       ))}
       
       {/* Create agent card with improved visuals - Updated to blue */}
-      <Card className="border-dashed border-2 border-gray-200 hover:border-primary/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group">
+      <Card className="border-dashed border-2 border-gray-200 hover:border-blue-800/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group">
         <div className="flex flex-col items-center justify-center h-full p-8 text-center cursor-pointer" onClick={handleCreateClick}>
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
             <Plus className="h-8 w-8 text-blue-800 group-hover:scale-110 transition-transform" />

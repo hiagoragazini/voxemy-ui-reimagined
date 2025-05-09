@@ -13,6 +13,7 @@ interface AgentGridProps {
   onAgentEditClick?: (id: string) => void;
   onTestVoice?: (id: string) => void;
   onCreateAgent?: () => void;
+  onTestCall?: (id: string) => void;
 }
 
 export const AgentGrid = ({ 
@@ -20,7 +21,8 @@ export const AgentGrid = ({
   isLoading = false, 
   onAgentEditClick,
   onTestVoice,
-  onCreateAgent
+  onCreateAgent,
+  onTestCall
 }: AgentGridProps) => {
   const [showCallTester, setShowCallTester] = useState<string | null>(null);
 
@@ -36,6 +38,9 @@ export const AgentGrid = ({
   
   const handleTestCall = (agentId: string) => {
     setShowCallTester(agentId);
+    if (onTestCall) {
+      onTestCall(agentId);
+    }
   };
 
   if (isLoading) {
@@ -50,8 +55,8 @@ export const AgentGrid = ({
     );
   }
 
-  // Update agents data to remove isTopPerformer
-  const agentsWithUsage = agents.map((agent) => ({
+  // Process agent data for display
+  const processedAgents = agents.map((agent) => ({
     ...agent,
     voiceUsage: {
       current: Math.floor(Math.random() * 8) + 1,
@@ -60,12 +65,12 @@ export const AgentGrid = ({
   }));
 
   const selectedAgent = showCallTester ? 
-    agentsWithUsage.find(agent => agent.id === showCallTester) : null;
+    processedAgents.find(agent => agent.id === showCallTester) : null;
 
   return (
     <>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-        {agentsWithUsage.map((agent) => (
+        {processedAgents.map((agent) => (
           <AgentCard
             key={agent.id}
             {...agent}
