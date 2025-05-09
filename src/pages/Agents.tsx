@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
@@ -95,8 +96,8 @@ export default function Agents() {
     queryFn: fetchAgentsData,
     // Configure query for more aggressive refetching
     refetchOnWindowFocus: true,
-    refetchInterval: 3000, // Refetch every 3 seconds (more aggressive)
-    staleTime: 1000, // Data becomes stale faster
+    refetchInterval: 1000, // Refetch every second (mais agressivo)
+    staleTime: 500, // Data becomes stale faster
   });
 
   // Manual refresh function
@@ -107,6 +108,26 @@ export default function Agents() {
     try {
       await forceRefreshAgents();
       await refetch();
+      
+      // Force a hard reload if we still have issues
+      if (agentsData && agentsData.length === 0) {
+        toast.info("Tentando recarregar a página para resolver problemas de renderização...", {
+          duration: 3000,
+          action: {
+            label: "Recarregar Agora",
+            onClick: () => window.location.reload()
+          }
+        });
+        
+        // Suggest reload after a short delay
+        setTimeout(() => {
+          if (document.hidden) return; // Don't prompt if page is not visible
+          const shouldReload = window.confirm("Problemas persistem. Deseja recarregar a página?");
+          if (shouldReload) {
+            window.location.reload();
+          }
+        }, 5000);
+      }
     } finally {
       setIsRefreshing(false);
     }
@@ -121,7 +142,7 @@ export default function Agents() {
       const result = await diagnoseAgentIssues();
       await refetch();
       if (result) {
-        toast.info("Diagnóstico concluído. Tente recarregar a página se os agentes ainda não aparecerem.", {
+        toast.info("Diagnóstico concluído. Se os agentes ainda não aparecerem, clique em Recarregar.", {
           duration: 10000,
           action: {
             label: "Recarregar",
@@ -315,10 +336,12 @@ export default function Agents() {
         <AgentGrid 
           agents={filteredAgents}
           isLoading={isLoading || isRefreshing} 
+          isRefreshing={isRefreshing}
           onAgentEditClick={handleEditAgent}
           onTestVoice={handleTestVoice}
           onCreateAgent={handleCreateAgent}
           onTestCall={handleTestCall}
+          onRefresh={handleManualRefresh}
         />
       </div>
     </Layout>

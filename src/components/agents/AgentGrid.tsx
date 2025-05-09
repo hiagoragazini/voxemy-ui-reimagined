@@ -1,7 +1,8 @@
 
 import { AgentCard, AgentCardSkeleton, AgentCardProps } from "@/components/agents/AgentCard";
-import { Plus, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, AlertCircle, Loader2, RefreshCcw } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CampaignCallTester } from "@/components/campaign/CampaignCallTester";
@@ -14,15 +15,19 @@ interface AgentGridProps {
   onTestVoice?: (id: string) => void;
   onCreateAgent?: () => void;
   onTestCall?: (id: string) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export const AgentGrid = ({ 
   agents, 
-  isLoading = false, 
+  isLoading = false,
+  isRefreshing = false,
   onAgentEditClick,
   onTestVoice,
   onCreateAgent,
-  onTestCall
+  onTestCall,
+  onRefresh
 }: AgentGridProps) => {
   const [showCallTester, setShowCallTester] = useState<string | null>(null);
 
@@ -40,6 +45,12 @@ export const AgentGrid = ({
     setShowCallTester(agentId);
     if (onTestCall) {
       onTestCall(agentId);
+    }
+  };
+  
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
     }
   };
 
@@ -73,6 +84,16 @@ export const AgentGrid = ({
               Não encontramos nenhum agente no sistema. Verifique se criou corretamente o agente ou crie um novo agora mesmo.
             </AlertDescription>
           </Alert>
+          
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            className="mt-4 w-full"
+            disabled={isRefreshing}
+          >
+            <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Verificar Agentes no Banco de Dados
+          </Button>
         </div>
         
         <Card className="border-dashed border-2 border-gray-200 hover:border-blue-800/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group cursor-pointer" onClick={handleCreateClick}>
@@ -104,6 +125,17 @@ export const AgentGrid = ({
 
   return (
     <>
+      <div className="flex justify-end mb-4">
+        <Button
+          onClick={handleRefresh}
+          variant="outline"
+          size="sm"
+          disabled={isRefreshing}
+        >
+          <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Atualizar Lista
+        </Button>
+      </div>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
         {processedAgents.map((agent) => (
           <AgentCard
