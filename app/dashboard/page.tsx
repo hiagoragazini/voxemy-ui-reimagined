@@ -56,6 +56,7 @@ export default function DashboardPage() {
 
   // Navegar para a página de criação de agente
   const handleCreateAgent = () => {
+    console.log("Redirecionando para criação de novo agente...");
     router.push('/agentes/novo');
   };
 

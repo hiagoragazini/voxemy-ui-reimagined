@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { AgentCard, AgentCardProps } from "@/components/agents/AgentCard";
@@ -23,28 +23,34 @@ export default function Agents() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   
+  // Define the fetch function separately so we can reuse it
+  const fetchAgentsData = useCallback(async () => {
+    console.log("Fetching agents data from Supabase in React Router app...");
+    const { data, error } = await supabase
+      .from('agents')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching agents:', error);
+      toast.error('Erro ao carregar agentes');
+      throw error;
+    }
+    
+    console.log("Agents data retrieved:", data);
+    if (data && data.length === 0) {
+      console.log("No agents found in database. Please create one.");
+    }
+    return data || [];
+  }, []);
+
   // Fetch agents from Supabase
   const { data: agentsData, isLoading, error, refetch } = useQuery({
     queryKey: ['agents'],
-    queryFn: async () => {
-      console.log("Fetching agents data from Supabase...");
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*');
-      
-      if (error) {
-        console.error('Error fetching agents:', error);
-        toast.error('Erro ao carregar agentes');
-        return [];
-      }
-      
-      console.log("Agents data retrieved:", data);
-      return data || [];
-    },
+    queryFn: fetchAgentsData,
     // Configure query for more aggressive refetching
     refetchOnWindowFocus: true,
-    refetchInterval: 30000, // Refetch every 30 seconds
-    staleTime: 10000, // Data becomes stale after 10 seconds
+    refetchInterval: 5000, // Refetch every 5 seconds (more aggressive)
+    staleTime: 1000, // Data becomes stale faster
   });
 
   // Fetch data on component mount to ensure we have the latest data

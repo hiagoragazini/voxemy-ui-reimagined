@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -25,11 +24,25 @@ export default function AgentesPage() {
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [agentsData, setAgentsData] = useState<any[]>([]);
+
+  // Check if we're coming from agent creation
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const agentCreated = params.get('created');
+    
+    if (agentCreated === 'true') {
+      toast.success("Agente criado com sucesso! Aguarde alguns instantes para ver na lista.");
+      
+      // Remove the query parameter
+      router.replace('/agentes');
+    }
+  }, [router]);
   
   // Fetch agents data from Supabase
   useEffect(() => {
     async function fetchAgents() {
       try {
+        console.log("Fetching agents data in Next.js app/agentes/page.tsx");
         setIsLoading(true);
         const { data, error } = await supabase
           .from('agents')
@@ -40,8 +53,11 @@ export default function AgentesPage() {
           toast.error('Erro ao carregar agentes');
           setAgentsData([]);
         } else {
-          console.log("Fetched agents:", data);
+          console.log("Agents data from Supabase:", data);
           setAgentsData(data || []);
+          if (data && data.length === 0) {
+            console.log("No agents found in database. Please create one.");
+          }
         }
       } catch (err) {
         console.error('Error in fetchAgents:', err);
@@ -52,6 +68,13 @@ export default function AgentesPage() {
     }
     
     fetchAgents();
+    
+    // Set up a refresh interval
+    const interval = setInterval(() => {
+      fetchAgents();
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Transform Supabase data to AgentCardProps
