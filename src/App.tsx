@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -11,6 +11,17 @@ import NotFound from "./pages/NotFound";
 import Campaigns from "./pages/Campaigns";
 import CampaignForm from "./pages/CampaignForm";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+
+// Wrapper components to handle dynamic redirects
+const AgentEditRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/agents/${id}/edit`} replace />;
+};
+
+const CampaignEditRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/campaigns/${id}/edit`} replace />;
+};
 
 function App() {
   return (
@@ -29,7 +40,7 @@ function App() {
       {/* Portuguese routes redirects */}
       <Route path="/agentes" element={<Navigate to="/agents" replace />} />
       <Route path="/agentes/novo" element={<Navigate to="/agents/new" replace />} />
-      <Route path="/agentes/:id/editar" element={<Navigate to={({ params }) => `/agents/${params.id}/edit`} replace />} />
+      <Route path="/agentes/:id/editar" element={<AgentEditRedirect />} />
       
       {/* Other routes */}
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
@@ -44,7 +55,7 @@ function App() {
       {/* Portuguese campaign routes redirects */}
       <Route path="/campanhas" element={<Navigate to="/campaigns" replace />} />
       <Route path="/campanhas/nova" element={<Navigate to="/campaigns/new" replace />} />
-      <Route path="/campanhas/:id/editar" element={<Navigate to={({ params }) => `/campaigns/${params.id}/edit`} replace />} />
+      <Route path="/campanhas/:id/editar" element={<CampaignEditRedirect />} />
       
       <Route path="/404" element={<NotFound />} />
       <Route path="*" element={<Navigate to="/404" replace />} />
