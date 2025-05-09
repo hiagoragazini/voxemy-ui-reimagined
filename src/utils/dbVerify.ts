@@ -99,47 +99,20 @@ export async function forceRefreshAgents() {
       try {
         console.log("Verificando a existência da tabela 'agents'...");
         
-        // Verificar no esquema information_schema se a tabela existe
-        const { data: tableData, error: tableError } = await supabase
-          .from('information_schema.tables')
-          .select('table_name')
-          .eq('table_schema', 'public')
-          .eq('table_name', 'agents')
-          .single();
-        
-        if (tableError) {
-          if (tableError.code === 'PGRST116') {
-            console.log("Erro ao verificar tabela: Permissão negada para acessar information_schema");
-            
-            // Tentar verificar usando a função table_exists
-            try {
-              const { data: tableExists, error: funcError } = await supabase
-                .rpc('table_exists', { table_name: 'agents' });
-                
-              if (funcError) {
-                console.error("Erro ao verificar existência da tabela usando função:", funcError);
-                toast.error("Não foi possível verificar se a tabela 'agents' existe");
-              } else {
-                console.log(`Tabela 'agents' ${tableExists ? 'existe' : 'não existe'} no banco de dados.`);
-                
-                if (!tableExists) {
-                  toast.error("A tabela 'agents' não existe no banco de dados!");
-                } else {
-                  toast.info("A tabela 'agents' existe, mas não há registros ou você não tem permissão para vê-los");
-                }
-              }
-            } catch (rpcErr) {
-              console.error("Erro ao chamar função RPC:", rpcErr);
-            }
-          } else {
-            console.error("Erro ao verificar existência da tabela:", tableError);
-          }
+        // Use the table_exists RPC function instead of direct schema query
+        const { data: tableExists, error: funcError } = await supabase
+          .rpc('table_exists', { table_name: 'agents' });
+          
+        if (funcError) {
+          console.error("Erro ao verificar existência da tabela:", funcError);
+          toast.error("Não foi possível verificar se a tabela 'agents' existe");
         } else {
-          console.log("Resultado da verificação da tabela:", tableData);
-          if (tableData) {
-            toast.info("A tabela 'agents' existe, mas não há registros ou você não tem permissão para vê-los");
+          console.log(`Tabela 'agents' ${tableExists ? 'existe' : 'não existe'} no banco de dados.`);
+          
+          if (!tableExists) {
+            toast.error("A tabela 'agents' não existe no banco de dados!");
           } else {
-            toast.error("A tabela 'agents' não foi encontrada no banco de dados!");
+            toast.info("A tabela 'agents' existe, mas não há registros ou você não tem permissão para vê-los");
           }
         }
       } catch (tableErr) {

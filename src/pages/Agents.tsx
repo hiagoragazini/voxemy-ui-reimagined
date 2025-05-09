@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
@@ -207,7 +206,7 @@ export default function Agents() {
         </div>
 
         {showDiagnosticsAlert && (
-          <Alert variant="warning" className="mb-6">
+          <Alert variant="default" className="mb-6 border-amber-200 bg-amber-50 text-amber-800">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Problemas com a exibição de agentes</AlertTitle>
             <AlertDescription>
