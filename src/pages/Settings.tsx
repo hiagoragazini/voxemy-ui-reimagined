@@ -122,7 +122,7 @@ export default function Settings() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-500">
             Configurações
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
@@ -157,7 +157,7 @@ export default function Settings() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-full bg-violet-100 flex items-center justify-center text-violet-600">
+                    <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                       <User className="h-8 w-8" />
                     </div>
                     <div>
@@ -280,41 +280,41 @@ export default function Settings() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       Plano Atual
-                      <Badge className="bg-violet-100 text-violet-800 border-0">Pro</Badge>
+                      <Badge className="bg-blue-100 text-blue-800 border-0">Pro</Badge>
                     </CardTitle>
                     <CardDescription>
                       Você está no plano Pro com faturamento mensal
                     </CardDescription>
                   </div>
-                  <CreditCard className="h-10 w-10 text-violet-500" />
+                  <CreditCard className="h-10 w-10 text-blue-500" />
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="bg-violet-50 rounded-lg p-4">
+                  <div className="bg-blue-50 rounded-lg p-4">
                     <div className="font-medium mb-1 flex items-center">
-                      <UserCheck className="h-4 w-4 mr-2 text-violet-700" />
+                      <UserCheck className="h-4 w-4 mr-2 text-blue-700" />
                       Agentes de Voz
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground text-sm">5 de 10 utilizados</span>
                       <span className="text-sm font-medium">50%</span>
                     </div>
-                    <div className="w-full bg-violet-100 rounded-full h-1.5 mt-1">
-                      <div className="bg-violet-600 h-1.5 rounded-full" style={{ width: "50%" }}></div>
+                    <div className="w-full bg-blue-100 rounded-full h-1.5 mt-1">
+                      <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: "50%" }}></div>
                     </div>
                   </div>
-                  <div className="bg-violet-50 rounded-lg p-4">
+                  <div className="bg-blue-50 rounded-lg p-4">
                     <div className="font-medium mb-1 flex items-center">
-                      <Phone className="h-4 w-4 mr-2 text-violet-700" />
+                      <Phone className="h-4 w-4 mr-2 text-blue-700" />
                       Horas de Chamadas
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground text-sm">24 de 50 utilizadas</span>
                       <span className="text-sm font-medium">48%</span>
                     </div>
-                    <div className="w-full bg-violet-100 rounded-full h-1.5 mt-1">
-                      <div className="bg-violet-600 h-1.5 rounded-full" style={{ width: "48%" }}></div>
+                    <div className="w-full bg-blue-100 rounded-full h-1.5 mt-1">
+                      <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: "48%" }}></div>
                     </div>
                   </div>
                 </div>
@@ -356,7 +356,7 @@ export default function Settings() {
                   <h3 className="text-lg font-semibold mb-4">Alterar seu plano</h3>
                   
                   <div className="grid gap-6 md:grid-cols-3">
-                    <Card className="border-2 border-transparent hover:border-violet-300 transition-all">
+                    <Card className="border-2 border-transparent hover:border-blue-300 transition-all">
                       <CardHeader className="pb-3">
                         <CardTitle>Inicial</CardTitle>
                         <div className="text-2xl font-bold">R$99<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
@@ -388,9 +388,9 @@ export default function Settings() {
                       </CardFooter>
                     </Card>
                     
-                    <Card className="border-2 border-violet-500 relative">
+                    <Card className="border-2 border-blue-500 relative">
                       <div className="absolute -top-3 left-0 right-0 flex justify-center">
-                        <Badge className="bg-violet-500 text-white">Seu plano atual</Badge>
+                        <Badge className="bg-blue-500 text-white">Seu plano atual</Badge>
                       </div>
                       <CardHeader className="pb-3">
                         <CardTitle>Pro</CardTitle>
@@ -421,13 +421,13 @@ export default function Settings() {
                         </ul>
                       </CardContent>
                       <CardFooter>
-                        <Button onClick={handleManageSubscription} disabled={managePlanLoading} className="w-full bg-violet-50 text-violet-700 hover:bg-violet-100">
+                        <Button onClick={handleManageSubscription} disabled={managePlanLoading} className="w-full bg-blue-50 text-blue-700 hover:bg-blue-100">
                           {managePlanLoading ? "Carregando..." : "Gerenciar Plano"}
                         </Button>
                       </CardFooter>
                     </Card>
                     
-                    <Card className="border-2 border-transparent hover:border-violet-300 transition-all">
+                    <Card className="border-2 border-transparent hover:border-blue-300 transition-all">
                       <CardHeader className="pb-3">
                         <CardTitle>Enterprise</CardTitle>
                         <div className="text-2xl font-bold">R$399<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
@@ -461,7 +461,7 @@ export default function Settings() {
                         </ul>
                       </CardContent>
                       <CardFooter>
-                        <Button onClick={() => handleCheckout('enterprise')} variant="default" className="w-full bg-violet-600 hover:bg-violet-700">
+                        <Button onClick={() => handleCheckout('enterprise')} variant="default" className="w-full bg-blue-600 hover:bg-blue-700">
                           Fazer Upgrade
                         </Button>
                       </CardFooter>
@@ -585,7 +585,7 @@ export default function Settings() {
                 <div className="rounded-lg border p-4">
                   <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 bg-violet-100 rounded-md flex items-center justify-center text-violet-600">
+                      <div className="h-10 w-10 bg-blue-100 rounded-md flex items-center justify-center text-blue-600">
                         <Phone className="h-5 w-5" />
                       </div>
                       <div>
