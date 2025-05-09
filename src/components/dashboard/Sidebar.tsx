@@ -10,8 +10,8 @@ import { Briefcase, Home, User, Phone, BarChart2, Settings } from "lucide-react"
 // Define the navigation items for the sidebar
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: Home },
-  { name: "Agentes", path: "/agents", icon: User },
-  { name: "Campanhas", path: "/campaigns", icon: Phone },
+  { name: "Agentes", path: "/agentes", icon: User }, // Updated path to match Next.js routes
+  { name: "Campanhas", path: "/campanhas", icon: Phone }, // Updated path to match Next.js routes
   { name: "Meu Negócio", path: "/business", icon: Briefcase },
   { name: "Analytics", path: "/analytics", icon: BarChart2 },
   { name: "Configurações", path: "/settings", icon: Settings },

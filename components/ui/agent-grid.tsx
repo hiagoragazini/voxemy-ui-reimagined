@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CampaignCallTester } from "@/components/campaign/CampaignCallTester";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AgentGridProps {
   agents: AgentCardProps[];
@@ -34,6 +36,59 @@ export const AgentGrid = ({
 }: AgentGridProps) => {
   const router = useRouter();
   const [showCallTester, setShowCallTester] = useState<string | null>(null);
+  const [localAgents, setLocalAgents] = useState<AgentCardProps[]>(agents);
+
+  // Sync local state with props
+  useEffect(() => {
+    if (agents && agents.length > 0) {
+      console.log("Agents received in agent-grid:", agents);
+      setLocalAgents(agents);
+    }
+  }, [agents]);
+
+  // Direct data check from DB if no agents received
+  useEffect(() => {
+    const checkAgentsDirectly = async () => {
+      if (!agents || agents.length === 0) {
+        try {
+          console.log("No agents found in props, checking database directly...");
+          const { data, error } = await supabase
+            .from('agents')
+            .select('*');
+            
+          if (error) {
+            console.error("Error fetching agents directly:", error);
+          } else if (data && data.length > 0) {
+            console.log("Found agents directly from DB:", data);
+            toast.info(`${data.length} agente(s) encontrado(s) diretamente do banco`);
+            
+            // Transform agents to expected format
+            const formattedAgents = data.map(agent => ({
+              id: agent.id,
+              name: agent.name,
+              category: agent.category || 'Geral',
+              description: agent.description || "",
+              status: agent.status as "active" | "paused" | "inactive" || "active",
+              calls: 0,
+              avgTime: "0:00",
+              successRate: 0,
+              successChange: "+0.0%",
+              lastActivity: "Hoje",
+              avatarLetter: agent.name.charAt(0),
+              avatarColor: getAvatarColor(agent.name),
+              voiceId: agent.voice_id
+            }));
+            
+            setLocalAgents(formattedAgents);
+          }
+        } catch (err) {
+          console.error("Error in direct agent check:", err);
+        }
+      }
+    };
+    
+    checkAgentsDirectly();
+  }, [agents]);
 
   const handleStatusChange = (id: string, isActive: boolean) => {
     console.log(`Status do agente ${id} alterado para ${isActive ? 'ativo' : 'inativo'}`);
@@ -51,6 +106,56 @@ export const AgentGrid = ({
     setShowCallTester(agentId);
     if (onTestCall) {
       onTestCall(agentId);
+    }
+  };
+  
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      toast.info("Atualizando agentes...");
+      // If no refresh handler provided, fetch directly
+      const fetchDirectly = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('agents')
+            .select('*');
+            
+          if (error) {
+            console.error("Error refreshing agents:", error);
+            toast.error("Erro ao atualizar agentes");
+          } else if (data && data.length > 0) {
+            console.log("Agents refreshed directly:", data);
+            toast.success(`${data.length} agente(s) atualizado(s)`);
+            
+            // Transform agents to expected format
+            const formattedAgents = data.map(agent => ({
+              id: agent.id,
+              name: agent.name,
+              category: agent.category || 'Geral',
+              description: agent.description || "",
+              status: agent.status as "active" | "paused" | "inactive" || "active",
+              calls: 0,
+              avgTime: "0:00",
+              successRate: 0,
+              successChange: "+0.0%",
+              lastActivity: "Hoje",
+              avatarLetter: agent.name.charAt(0),
+              avatarColor: getAvatarColor(agent.name),
+              voiceId: agent.voice_id
+            }));
+            
+            setLocalAgents(formattedAgents);
+          } else {
+            toast.warning("Nenhum agente encontrado");
+          }
+        } catch (err) {
+          console.error("Error in refresh:", err);
+          toast.error("Falha ao atualizar agentes");
+        }
+      };
+      
+      fetchDirectly();
     }
   };
 
@@ -73,7 +178,7 @@ export const AgentGrid = ({
   }
 
   // Se não houver agentes, mostre uma mensagem
-  if (agents.length === 0) {
+  if (!localAgents || localAgents.length === 0) {
     return (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
         <div className="col-span-full mb-4">
@@ -84,6 +189,16 @@ export const AgentGrid = ({
               Não encontramos nenhum agente no sistema. Verifique se criou corretamente o agente ou crie um novo agora mesmo.
             </AlertDescription>
           </Alert>
+          
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            className="mt-4 w-full"
+            disabled={isRefreshing}
+          >
+            <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Verificar Agentes no Banco de Dados
+          </Button>
         </div>
         
         <Card className="border-dashed border-2 border-gray-200 hover:border-blue-800/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group cursor-pointer" onClick={handleCreateClick}>
@@ -102,7 +217,7 @@ export const AgentGrid = ({
   }
 
   // Process agent data for display
-  const processedAgents = agents.map((agent) => ({
+  const processedAgents = localAgents.map((agent) => ({
     ...agent,
     voiceUsage: agent.voiceUsage || {
       current: Math.floor(Math.random() * 8) + 1,
@@ -115,6 +230,17 @@ export const AgentGrid = ({
 
   return (
     <>
+      <div className="flex justify-end mb-4">
+        <Button
+          onClick={handleRefresh}
+          variant="outline"
+          size="sm"
+          disabled={isRefreshing}
+        >
+          <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Atualizar Lista
+        </Button>
+      </div>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
         {processedAgents.map((agent) => (
           <AgentCard

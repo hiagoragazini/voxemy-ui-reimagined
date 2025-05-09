@@ -1,4 +1,3 @@
-
 import { Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -19,14 +18,24 @@ function App() {
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
       
+      {/* Protected routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      
+      {/* Agent routes - consolidated to avoid duplication */}
       <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
       <Route path="/agents/new" element={<ProtectedRoute><AgentConfig /></ProtectedRoute>} />
       <Route path="/agents/:id/edit" element={<ProtectedRoute><AgentConfig /></ProtectedRoute>} />
+      
+      {/* Using Portuguese routes for Next.js app */}
+      <Route path="/agentes" element={<Navigate to="/agents" replace />} />
+      <Route path="/agentes/novo" element={<Navigate to="/agents/new" replace />} />
+      
+      {/* Other routes */}
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/business" element={<ProtectedRoute><Business /></ProtectedRoute>} />
       <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
+      <Route path="/campanhas" element={<Navigate to="/campaigns" replace />} />
       <Route path="/campaigns/new" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
       <Route path="/campaigns/:id/edit" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
       
