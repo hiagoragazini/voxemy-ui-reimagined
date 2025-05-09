@@ -3,6 +3,9 @@ import { AgentCard, AgentCardSkeleton, AgentCardProps } from "@/components/agent
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { CampaignCallTester } from "@/components/campaign/CampaignCallTester";
 
 interface AgentGridProps {
   agents: AgentCardProps[];
@@ -19,6 +22,7 @@ export const AgentGrid = ({
   onTestVoice,
   onCreateAgent
 }: AgentGridProps) => {
+  const [showCallTester, setShowCallTester] = useState<string | null>(null);
 
   const handleStatusChange = (id: string, isActive: boolean) => {
     console.log(`Status do agente ${id} alterado para ${isActive ? 'ativo' : 'inativo'}`);
@@ -28,6 +32,10 @@ export const AgentGrid = ({
     if (onCreateAgent) {
       onCreateAgent();
     }
+  };
+  
+  const handleTestCall = (agentId: string) => {
+    setShowCallTester(agentId);
   };
 
   if (isLoading) {
@@ -51,31 +59,53 @@ export const AgentGrid = ({
     }
   }));
 
+  const selectedAgent = showCallTester ? 
+    agentsWithUsage.find(agent => agent.id === showCallTester) : null;
+
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-      {agentsWithUsage.map((agent) => (
-        <AgentCard
-          key={agent.id}
-          {...agent}
-          onStatusChange={handleStatusChange}
-          onEditClick={onAgentEditClick}
-          onTestVoice={onTestVoice}
-        />
-      ))}
-      
-      {/* Create agent card with improved visuals - Updated to blue */}
-      <Card className="border-dashed border-2 border-gray-200 hover:border-blue-800/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group cursor-pointer" onClick={handleCreateClick}>
-        <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
-            <Plus className="h-8 w-8 text-blue-800 group-hover:scale-110 transition-transform" />
+    <>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        {agentsWithUsage.map((agent) => (
+          <AgentCard
+            key={agent.id}
+            {...agent}
+            onStatusChange={handleStatusChange}
+            onEditClick={onAgentEditClick}
+            onTestVoice={onTestVoice}
+            onTestCall={() => handleTestCall(agent.id)}
+          />
+        ))}
+        
+        {/* Create agent card with improved visuals - Updated to blue */}
+        <Card className="border-dashed border-2 border-gray-200 hover:border-blue-800/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group cursor-pointer" onClick={handleCreateClick}>
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
+              <Plus className="h-8 w-8 text-blue-800 group-hover:scale-110 transition-transform" />
+            </div>
+            <h3 className="text-lg font-medium mb-2 group-hover:text-blue-800 transition-colors">Criar Novo Agente</h3>
+            <p className="text-muted-foreground text-sm">
+              Configure um novo assistente de voz para suas chamadas
+            </p>
           </div>
-          <h3 className="text-lg font-medium mb-2 group-hover:text-blue-800 transition-colors">Criar Novo Agente</h3>
-          <p className="text-muted-foreground text-sm">
-            Configure um novo assistente de voz para suas chamadas
-          </p>
-        </div>
-      </Card>
-    </div>
+        </Card>
+      </div>
+
+      {/* Dialog for call testing */}
+      <Dialog 
+        open={showCallTester !== null} 
+        onOpenChange={(open) => !open && setShowCallTester(null)}
+      >
+        <DialogContent className="sm:max-w-[450px]">
+          {selectedAgent && (
+            <CampaignCallTester
+              agentId={selectedAgent.id}
+              agentName={selectedAgent.name}
+              onClose={() => setShowCallTester(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

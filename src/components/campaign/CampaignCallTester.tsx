@@ -74,7 +74,9 @@ export function CampaignCallTester({
   return (
     <Card className="p-4 space-y-4">
       <div className="space-y-1">
-        <h3 className="text-lg font-medium">Testar chamada: {agentName}</h3>
+        <h3 className="text-lg font-medium">
+          {campaignId ? "Testar chamada da campanha" : `Testar chamada: ${agentName}`}
+        </h3>
         <p className="text-sm text-muted-foreground">
           Faça uma chamada de teste para verificar a configuração do agente
         </p>
@@ -100,7 +102,7 @@ export function CampaignCallTester({
         <Button 
           onClick={handleMakeCall}
           disabled={isLoading || !phoneNumber}
-          className="flex items-center gap-2 w-full bg-violet-600 hover:bg-violet-700"
+          className="flex items-center gap-2 w-full bg-blue-700 hover:bg-blue-800"
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
