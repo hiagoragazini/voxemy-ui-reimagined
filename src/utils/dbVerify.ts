@@ -80,21 +80,26 @@ export async function forceRefreshAgents() {
       console.log("Nenhum agente encontrado após atualização forçada.");
       toast.warning("Nenhum agente encontrado no banco de dados");
       
-      // Check if the agents table exists
-      const { data: tables, error: tableError } = await supabase
-        .from('pg_tables')
-        .select('tablename')
-        .eq('schemaname', 'public');
+      // Check if the agents table exists using a raw SQL query instead
+      // Since we can't directly query pg_tables with the typed client
+      try {
+        console.log("Verificando a existência da tabela 'agents'...");
         
-      if (tableError) {
-        console.error("Erro ao verificar tabelas:", tableError);
-      } else if (tables) {
-        const hasAgentsTable = tables.some(t => t.tablename === 'agents');
-        console.log(`Tabela 'agents' ${hasAgentsTable ? 'existe' : 'não existe'} no banco de dados.`);
-        
-        if (!hasAgentsTable) {
-          toast.error("A tabela 'agents' não existe no banco de dados!");
+        const { data: tableExists, error: tableCheckError } = await supabase
+          .rpc('table_exists', { table_name: 'agents' })
+          .single();
+          
+        if (tableCheckError) {
+          console.error("Erro ao verificar existência da tabela:", tableCheckError);
+        } else {
+          console.log(`Tabela 'agents' ${tableExists ? 'existe' : 'não existe'} no banco de dados.`);
+          
+          if (!tableExists) {
+            toast.error("A tabela 'agents' pode não existir no banco de dados!");
+          }
         }
+      } catch (tableErr) {
+        console.error("Erro ao verificar tabela:", tableErr);
       }
       
       return [];
