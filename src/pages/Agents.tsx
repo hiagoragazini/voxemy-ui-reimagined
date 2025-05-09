@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { AgentCard, AgentCardProps } from "@/components/agents/AgentCard";
 import { AgentGrid } from "@/components/agents/AgentGrid";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Filter, Plus, UserCheck, UserX, Clock, RefreshCcw } from "lucide-react";
+import { Filter, Plus, UserCheck, UserX, Clock, RefreshCcw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { verifyAgentCreation, forceRefreshAgents, diagnoseAgentIssues } from "@/utils/dbVerify";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Lista de vozes de qualidade do Eleven Labs com seus IDs
 export const VOICES = {
@@ -27,6 +28,7 @@ export default function Agents() {
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [showDiagnosticsAlert, setShowDiagnosticsAlert] = useState(false);
   
   // Check if we're coming from agent creation or edit
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function Agents() {
     
     if (agentCreated === 'true') {
       toast.success("Agente criado com sucesso! Atualizando a lista...");
+      setShowDiagnosticsAlert(true); // Mostrar alerta após criação
       
       // Verify if the agent was actually created
       setTimeout(() => {
@@ -67,17 +70,22 @@ export default function Agents() {
       if (error) {
         console.error('Error fetching agents:', error);
         toast.error('Erro ao carregar agentes: ' + error.message);
+        setShowDiagnosticsAlert(true); // Mostrar alerta quando há erro
         throw error;
       }
       
       console.log("Agents data retrieved:", data);
       if (data && data.length === 0) {
         console.log("No agents found in database. Please create one.");
+        setShowDiagnosticsAlert(true); // Mostrar alerta quando não há agentes
+      } else {
+        setShowDiagnosticsAlert(false); // Esconder alerta quando há agentes
       }
       return data || [];
     } catch (e) {
       console.error("Exception in fetchAgentsData:", e);
       toast.error("Falha ao buscar agentes");
+      setShowDiagnosticsAlert(true); // Mostrar alerta quando há exceção
       return [];
     }
   }, []);
@@ -111,8 +119,17 @@ export default function Agents() {
     toast.info("Iniciando diagnóstico do sistema...");
     
     try {
-      await diagnoseAgentIssues();
+      const result = await diagnoseAgentIssues();
       await refetch();
+      if (result) {
+        toast.info("Diagnóstico concluído. Tente recarregar a página se os agentes ainda não aparecerem.", {
+          duration: 10000,
+          action: {
+            label: "Recarregar",
+            onClick: () => window.location.reload()
+          }
+        });
+      }
     } finally {
       setIsDiagnosing(false);
     }
@@ -188,6 +205,38 @@ export default function Agents() {
             Gerencie sua equipe de atendentes virtuais e configure-os para diferentes campanhas.
           </p>
         </div>
+
+        {showDiagnosticsAlert && (
+          <Alert variant="warning" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Problemas com a exibição de agentes</AlertTitle>
+            <AlertDescription>
+              Parece que seus agentes não estão sendo exibidos corretamente. Utilize as opções abaixo para diagnosticar 
+              e resolver problemas de conexão com o banco de dados.
+            </AlertDescription>
+            <div className="mt-4 flex gap-4">
+              <Button 
+                variant="secondary" 
+                onClick={handleDiagnose} 
+                disabled={isDiagnosing}
+                className="bg-amber-100 text-amber-800 hover:bg-amber-200"
+              >
+                {isDiagnosing ? (
+                  <><RefreshCcw className="h-4 w-4 mr-2 animate-spin" /> Diagnosticando...</>
+                ) : (
+                  <>Diagnosticar problemas</>
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleManualRefresh} 
+                disabled={isRefreshing}
+              >
+                <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} /> Atualizar
+              </Button>
+            </div>
+          </Alert>
+        )}
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-2 flex-wrap">

@@ -95,23 +95,51 @@ export async function forceRefreshAgents() {
       console.log("Nenhum agente encontrado após atualização forçada.");
       toast.warning("Nenhum agente encontrado no banco de dados");
       
-      // Check if the table exists using the table_exists RPC function
+      // Verificar se a tabela 'agents' existe
       try {
         console.log("Verificando a existência da tabela 'agents'...");
         
-        const { data: tableExists, error: tableCheckError } = await supabase
-          .rpc('table_exists', { table_name: 'agents' });
-          
-        if (tableCheckError) {
-          console.error("Erro ao verificar existência da tabela:", tableCheckError);
-          toast.error("Erro ao verificar a estrutura do banco de dados");
-        } else {
-          console.log(`Tabela 'agents' ${tableExists ? 'existe' : 'não existe'} no banco de dados.`);
-          
-          if (!tableExists) {
-            toast.error("A tabela 'agents' pode não existir no banco de dados!");
+        // Verificar no esquema information_schema se a tabela existe
+        const { data: tableData, error: tableError } = await supabase
+          .from('information_schema.tables')
+          .select('table_name')
+          .eq('table_schema', 'public')
+          .eq('table_name', 'agents')
+          .single();
+        
+        if (tableError) {
+          if (tableError.code === 'PGRST116') {
+            console.log("Erro ao verificar tabela: Permissão negada para acessar information_schema");
+            
+            // Tentar verificar usando a função table_exists
+            try {
+              const { data: tableExists, error: funcError } = await supabase
+                .rpc('table_exists', { table_name: 'agents' });
+                
+              if (funcError) {
+                console.error("Erro ao verificar existência da tabela usando função:", funcError);
+                toast.error("Não foi possível verificar se a tabela 'agents' existe");
+              } else {
+                console.log(`Tabela 'agents' ${tableExists ? 'existe' : 'não existe'} no banco de dados.`);
+                
+                if (!tableExists) {
+                  toast.error("A tabela 'agents' não existe no banco de dados!");
+                } else {
+                  toast.info("A tabela 'agents' existe, mas não há registros ou você não tem permissão para vê-los");
+                }
+              }
+            } catch (rpcErr) {
+              console.error("Erro ao chamar função RPC:", rpcErr);
+            }
           } else {
+            console.error("Erro ao verificar existência da tabela:", tableError);
+          }
+        } else {
+          console.log("Resultado da verificação da tabela:", tableData);
+          if (tableData) {
             toast.info("A tabela 'agents' existe, mas não há registros ou você não tem permissão para vê-los");
+          } else {
+            toast.error("A tabela 'agents' não foi encontrada no banco de dados!");
           }
         }
       } catch (tableErr) {
@@ -129,6 +157,10 @@ export async function forceRefreshAgents() {
 
 /**
  * Diagnose database connection and permission issues
+ * This function runs a comprehensive test to detect issues
+ * with the agents functionality
+ * 
+ * @returns {Promise<boolean>} True if the diagnosis was successful
  */
 export async function diagnoseAgentIssues() {
   try {
@@ -149,6 +181,7 @@ export async function diagnoseAgentIssues() {
     }
     
     console.log("Usuário autenticado:", user.user.email);
+    toast.success("Autenticação OK: " + user.user.email);
     
     // 2. Tentar inserir um agente de teste
     const testAgentName = `Agente de Teste ${new Date().toISOString()}`;
@@ -204,6 +237,15 @@ export async function diagnoseAgentIssues() {
     
     console.log("Agente de teste recuperado com sucesso:", fetchedAgent);
     toast.success("Sistema funcionando corretamente! O agente pode ser criado e recuperado.");
+    
+    // Notificar o usuário para recarregar a página
+    toast.info("Por favor, recarregue a página para ver os agentes", {
+      duration: 10000, // Mostrar por 10 segundos
+      action: {
+        label: "Recarregar",
+        onClick: () => window.location.reload()
+      }
+    });
     
     // Limpeza - remover o agente de teste
     const { error: deleteError } = await supabase
