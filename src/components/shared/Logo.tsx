@@ -16,10 +16,10 @@ const Logo = ({ className = "", size = "md" }: LogoProps) => {
   return (
     <Link to="/" className={`flex items-center ${className}`}>
       <div className={`font-bold ${sizeClasses[size]}`}>
-        <span className="text-blue-500">V</span>
-        <span className="text-blue-500">ox</span>
-        <span className="text-blue-600">emy</span>
-        <span className="text-blue-400 font-normal text-sm ml-0.5">AI</span>
+        <span className="text-blue-800">V</span>
+        <span className="text-blue-800">ox</span>
+        <span className="text-blue-900">emy</span>
+        <span className="text-blue-700 font-normal text-sm ml-0.5">AI</span>
       </div>
     </Link>
   );

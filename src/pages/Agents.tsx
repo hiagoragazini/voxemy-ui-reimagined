@@ -87,7 +87,7 @@ export default function Agents() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
             Seus Agentes de Voz
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
@@ -136,7 +136,7 @@ export default function Agents() {
           </div>
           <Button 
             onClick={handleCreateAgent}
-            className="bg-violet-600 hover:bg-violet-700 text-white font-medium flex items-center gap-2"
+            className="bg-blue-800 hover:bg-blue-900 text-white font-medium flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             Criar Novo Agente
@@ -169,9 +169,9 @@ function getRandomActivity() {
 
 function getAvatarColor(name: string) {
   const colors = [
-    "bg-blue-100", "bg-purple-100", "bg-green-100", 
-    "bg-yellow-100", "bg-red-100", "bg-pink-100",
-    "bg-indigo-100", "bg-orange-100", "bg-violet-100"
+    "bg-blue-100", "bg-sky-100", "bg-cyan-100", 
+    "bg-teal-100", "bg-blue-100", "bg-sky-100",
+    "bg-cyan-100", "bg-teal-100", "bg-blue-100"
   ];
   
   const index = name.charCodeAt(0) % colors.length;

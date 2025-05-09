@@ -80,7 +80,7 @@ export default function Dashboard() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-500">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
             Dashboard
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
@@ -100,7 +100,7 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                <PhoneCall className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <PhoneCall className="w-5 h-5 text-blue-800 dark:text-blue-400" />
               </div>
             </div>
           </Card>
@@ -155,7 +155,7 @@ export default function Dashboard() {
             </Button>
             
             <Button 
-              className="bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
+              className="bg-blue-800 hover:bg-blue-900 text-white shadow-sm"
               onClick={handleCreateAgent}
             >
               <Plus className="h-4 w-4 mr-1" />
@@ -219,21 +219,21 @@ export default function Dashboard() {
               number={1}
               title="Testar uma chamada real"
               description="Selecione um agente e faça uma ligação para testar o sistema."
-              icon={<PhoneCall className="h-5 w-5 text-blue-500 dark:text-blue-400" />}
+              icon={<PhoneCall className="h-5 w-5 text-blue-800 dark:text-blue-400" />}
             />
             
             <NextStepCard 
               number={2}
               title="Adicionar leads"
               description="Importe seus contatos para o sistema realizar chamadas automatizadas."
-              icon={<Plus className="h-5 w-5 text-blue-500 dark:text-blue-400" />}
+              icon={<Plus className="h-5 w-5 text-blue-800 dark:text-blue-400" />}
             />
             
             <NextStepCard 
               number={3}
               title="Configurar integrações"
               description="Conecte seu CRM ou outras ferramentas para sincronizar dados."
-              icon={<Settings className="h-5 w-5 text-blue-500 dark:text-blue-400" />}
+              icon={<Settings className="h-5 w-5 text-blue-800 dark:text-blue-400" />}
             />
           </div>
         </div>
@@ -260,12 +260,12 @@ const NextStepCard = ({
         <div className="bg-blue-100 dark:bg-blue-900/30 p-2.5 rounded-lg">
           {icon}
         </div>
-        <div className="absolute -top-2 -right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-xs text-white font-medium">
+        <div className="absolute -top-2 -right-2 w-5 h-5 bg-blue-800 rounded-full flex items-center justify-center text-xs text-white font-medium">
           {number}
         </div>
       </div>
       <div className="flex-1">
-        <h3 className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{title}</h3>
+        <h3 className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-800 dark:group-hover:text-blue-400 transition-colors">{title}</h3>
         <p className="text-sm text-muted-foreground mt-1">
           {description}
         </p>

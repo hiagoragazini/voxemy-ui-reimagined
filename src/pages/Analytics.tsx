@@ -82,14 +82,14 @@ const callReasonData = [
   { name: "Reclamação", value: 15 },
 ];
 
-const COLORS = ["#8b5cf6", "#d946ef", "#0ea5e9", "#f97316"];
+const COLORS = ["#1e40af", "#3b82f6", "#0369a1", "#0284c7"];
 
 export default function Analytics() {
   return (
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
             Analytics e Performance
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
@@ -161,7 +161,7 @@ export default function Analytics() {
                           borderRadius: "6px"
                         }} 
                       />
-                      <Bar dataKey="calls" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="calls" fill="#1e40af" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -195,8 +195,8 @@ export default function Analytics() {
                       <Area 
                         type="monotone" 
                         dataKey="taxa" 
-                        stroke="#8b5cf6" 
-                        fill="#8b5cf640" 
+                        stroke="#1e40af" 
+                        fill="#1e40af40" 
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -232,8 +232,8 @@ export default function Analytics() {
                         }} 
                       />
                       <Legend />
-                      <Bar yAxisId="left" dataKey="calls" name="Chamadas" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                      <Bar yAxisId="right" dataKey="success" name="Sucesso (%)" fill="#d946ef" radius={[4, 4, 0, 0]} />
+                      <Bar yAxisId="left" dataKey="calls" name="Chamadas" fill="#1e40af" radius={[4, 4, 0, 0]} />
+                      <Bar yAxisId="right" dataKey="success" name="Sucesso (%)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -305,8 +305,8 @@ export default function Analytics() {
                         }} 
                       />
                       <Legend />
-                      <Bar dataKey="calls" name="Chamadas Realizadas" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="success" name="Taxa de Sucesso (%)" fill="#d946ef" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="calls" name="Chamadas Realizadas" fill="#1e40af" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="success" name="Taxa de Sucesso (%)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -339,8 +339,8 @@ export default function Analytics() {
                         }} 
                       />
                       <Legend />
-                      <Bar dataKey="sucesso" name="Taxa de Sucesso (%)" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="conversao" name="Taxa de Conversão (%)" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="sucesso" name="Taxa de Sucesso (%)" fill="#1e40af" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="conversao" name="Taxa de Conversão (%)" fill="#0284c7" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -368,7 +368,7 @@ const StatisticCard = ({ title, value, change, changeType, icon }: StatisticCard
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-muted-foreground">{title}</span>
-          <div className="h-8 w-8 rounded-md bg-violet-100 flex items-center justify-center text-violet-600">
+          <div className="h-8 w-8 rounded-md bg-blue-100 flex items-center justify-center text-blue-800">
             {icon}
           </div>
         </div>

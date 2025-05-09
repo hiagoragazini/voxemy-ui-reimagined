@@ -198,7 +198,7 @@ export default function CampaignForm() {
               
               <Button 
                 type="submit"
-                className="bg-blue-900 hover:bg-blue-800 text-white"
+                className="bg-blue-800 hover:bg-blue-900 text-white"
                 disabled={loading}
               >
                 {loading ? "Salvando..." : isEditing ? "Salvar Alterações" : "Criar Campanha"}
