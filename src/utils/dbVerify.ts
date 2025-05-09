@@ -8,29 +8,66 @@ import { toast } from "sonner";
  */
 export async function verifyAgentCreation(agentId?: string) {
   try {
+    console.log("Verificando agentes no banco de dados...");
+    
     let query = supabase.from('agents').select('*');
     
     if (agentId) {
+      console.log(`Procurando especificamente o agente com ID: ${agentId}`);
       query = query.eq('id', agentId);
     }
     
     const { data, error } = await query;
     
     if (error) {
-      console.error("Error verifying agent:", error);
+      console.error("Erro ao verificar agente:", error);
       toast.error("Erro ao verificar agente no banco de dados");
       return false;
     }
     
     if (data && data.length > 0) {
-      console.log("Agents found in database:", data);
+      console.log("Agentes encontrados no banco de dados:", data);
+      toast.success(`${data.length} agente(s) encontrado(s) no banco`);
       return true;
     } else {
-      console.log("No agents found in database.");
+      console.log("Nenhum agente encontrado no banco de dados.");
+      toast.warning("Nenhum agente encontrado no banco de dados");
       return false;
     }
   } catch (err) {
-    console.error("Error in verifyAgentCreation:", err);
+    console.error("Erro em verifyAgentCreation:", err);
     return false;
+  }
+}
+
+/**
+ * Manually force a request to fetch agents from database
+ * This can be used as a last resort debugging tool
+ */
+export async function forceRefreshAgents() {
+  try {
+    const { data, error } = await supabase
+      .from('agents')
+      .select('*');
+      
+    if (error) {
+      console.error("Erro ao atualizar agentes:", error);
+      toast.error("Erro ao buscar agentes");
+      return [];
+    }
+    
+    if (data && data.length > 0) {
+      console.log("Agentes recuperados após atualização forçada:", data);
+      toast.success(`Atualizado: ${data.length} agente(s) disponível(is)`);
+      return data;
+    } else {
+      console.log("Nenhum agente encontrado após atualização forçada.");
+      toast.warning("Nenhum agente encontrado");
+      return [];
+    }
+  } catch (err) {
+    console.error("Erro em forceRefreshAgents:", err);
+    toast.error("Falha ao atualizar agentes");
+    return [];
   }
 }

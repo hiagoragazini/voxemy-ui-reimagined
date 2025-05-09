@@ -4,11 +4,12 @@ import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { AgentCard, AgentCardProps } from "@/components/agents/AgentCard";
 import { AgentGrid } from "@/components/agents/AgentGrid";
-import { useNavigate } from "react-router-dom";
-import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Filter, Plus, UserCheck, UserX, Clock, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { verifyAgentCreation, forceRefreshAgents } from "@/utils/dbVerify";
 
 // Lista de vozes de qualidade do Eleven Labs com seus IDs
 export const VOICES = {
@@ -21,26 +22,63 @@ export const VOICES = {
 
 export default function Agents() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Check if we're coming from agent creation or edit
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const agentCreated = params.get('created');
+    const agentUpdated = params.get('updated');
+    const agentId = params.get('id');
+    
+    if (agentCreated === 'true') {
+      toast.success("Agente criado com sucesso! Atualizando a lista...");
+      
+      // Verify if the agent was actually created
+      setTimeout(() => {
+        verifyAgentCreation(agentId || undefined);
+        queryClient.invalidateQueries({ queryKey: ['agents'] });
+      }, 1000);
+      
+      // Clean up URL params
+      navigate('/agents', { replace: true });
+    } else if (agentUpdated === 'true') {
+      toast.success("Agente atualizado com sucesso! Atualizando a lista...");
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      
+      // Clean up URL params
+      navigate('/agents', { replace: true });
+    }
+  }, [location, navigate, queryClient]);
   
   // Define the fetch function separately so we can reuse it
   const fetchAgentsData = useCallback(async () => {
     console.log("Fetching agents data from Supabase in React Router app...");
-    const { data, error } = await supabase
-      .from('agents')
-      .select('*');
     
-    if (error) {
-      console.error('Error fetching agents:', error);
-      toast.error('Erro ao carregar agentes');
-      throw error;
+    try {
+      const { data, error } = await supabase
+        .from('agents')
+        .select('*');
+      
+      if (error) {
+        console.error('Error fetching agents:', error);
+        toast.error('Erro ao carregar agentes');
+        throw error;
+      }
+      
+      console.log("Agents data retrieved:", data);
+      if (data && data.length === 0) {
+        console.log("No agents found in database. Please create one.");
+      }
+      return data || [];
+    } catch (e) {
+      console.error("Exception in fetchAgentsData:", e);
+      toast.error("Falha ao buscar agentes");
+      return [];
     }
-    
-    console.log("Agents data retrieved:", data);
-    if (data && data.length === 0) {
-      console.log("No agents found in database. Please create one.");
-    }
-    return data || [];
   }, []);
 
   // Fetch agents from Supabase
@@ -49,15 +87,22 @@ export default function Agents() {
     queryFn: fetchAgentsData,
     // Configure query for more aggressive refetching
     refetchOnWindowFocus: true,
-    refetchInterval: 5000, // Refetch every 5 seconds (more aggressive)
+    refetchInterval: 3000, // Refetch every 3 seconds (more aggressive)
     staleTime: 1000, // Data becomes stale faster
   });
 
-  // Fetch data on component mount to ensure we have the latest data
-  useEffect(() => {
-    console.log("Agent component mounted, fetching data...");
-    refetch();
-  }, [refetch]);
+  // Manual refresh function
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    toast.info("Atualizando lista de agentes...");
+    
+    try {
+      await forceRefreshAgents();
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Transform Supabase data to AgentCardProps
   const agents: AgentCardProps[] = agentsData?.map(agent => ({
@@ -112,6 +157,12 @@ export default function Agents() {
     return agents.filter(agent => agent.status === filterType).length;
   };
 
+  // Force a verification when component mounts
+  useEffect(() => {
+    console.log("Agent component mounted, verifying database...");
+    verifyAgentCreation();
+  }, []);
+
   return (
     <Layout>
       <div className="container mx-auto p-6">
@@ -162,6 +213,17 @@ export default function Agents() {
               <UserX className="h-4 w-4 text-gray-500" />
               <span>Inativos ({getFilterCount("inactive")})</span>
             </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="ml-2"
+            >
+              <RefreshCcw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Atualizar</span>
+            </Button>
           </div>
           <Button 
             onClick={handleCreateAgent}
@@ -174,7 +236,7 @@ export default function Agents() {
 
         <AgentGrid 
           agents={filteredAgents}
-          isLoading={isLoading} 
+          isLoading={isLoading || isRefreshing} 
           onAgentEditClick={handleEditAgent}
           onTestVoice={handleTestVoice}
           onCreateAgent={handleCreateAgent}

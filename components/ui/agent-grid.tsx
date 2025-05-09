@@ -2,10 +2,11 @@
 "use client";
 
 import { AgentCard, AgentCardSkeleton, AgentCardProps } from "@/components/ui/agent-card";
-import { Plus } from "lucide-react";
+import { Plus, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface AgentGridProps {
   agents: AgentCardProps[];
@@ -42,6 +43,12 @@ export const AgentGrid = ({
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="col-span-full flex justify-center items-center mb-4">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+            <span className="text-blue-600 font-medium">Carregando agentes...</span>
+          </div>
+        </div>
         {Array(3)
           .fill(null)
           .map((_, index) => (
@@ -111,9 +118,9 @@ export const AgentGrid = ({
 // Função para gerar cores de avatar baseadas no nome
 export const getAvatarColor = (name: string) => {
   const colors = [
-    "bg-blue-100", "bg-blue-100", "bg-green-100", 
-    "bg-yellow-100", "bg-red-100", "bg-blue-100",
-    "bg-indigo-100", "bg-orange-100", "bg-blue-100"
+    "bg-blue-100", "bg-sky-100", "bg-cyan-100", 
+    "bg-teal-100", "bg-blue-100", "bg-sky-100",
+    "bg-cyan-100", "bg-teal-100", "bg-blue-100"
   ];
   
   const index = name.charCodeAt(0) % colors.length;

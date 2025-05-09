@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -5,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { AgentGrid } from "@/components/ui/agent-grid";
 import { Layout } from "@/components/ui/layout";
 import { Button } from "@/components/ui/button";
-import { Filter, Plus, UserCheck, UserX, Clock } from "lucide-react";
+import { Filter, Plus, UserCheck, UserX, Clock, RefreshCcw } from "lucide-react";
 import { AgentCardProps } from "@/components/ui/agent-card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 // Lista de vozes de qualidade do Eleven Labs com seus IDs
 const VOICES = {
@@ -23,56 +26,93 @@ export default function AgentesPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [agentsData, setAgentsData] = useState<any[]>([]);
 
   // Check if we're coming from agent creation
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const agentCreated = params.get('created');
-    
-    if (agentCreated === 'true') {
-      toast.success("Agente criado com sucesso! Aguarde alguns instantes para ver na lista.");
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const agentCreated = params.get('created');
+      const agentUpdated = params.get('updated');
       
-      // Remove the query parameter
-      router.replace('/agentes');
+      if (agentCreated === 'true') {
+        toast.success("Agente criado com sucesso! Aguarde alguns instantes para ver na lista.");
+        
+        // Remove the query parameter
+        router.replace('/agentes');
+        
+        // Force immediate refresh
+        fetchAgents(true);
+      } else if (agentUpdated === 'true') {
+        toast.success("Agente atualizado com sucesso! Atualizando a lista...");
+        
+        // Remove the query parameter
+        router.replace('/agentes');
+        
+        // Force immediate refresh
+        fetchAgents(true);
+      }
     }
   }, [router]);
   
   // Fetch agents data from Supabase
-  useEffect(() => {
-    async function fetchAgents() {
-      try {
-        console.log("Fetching agents data in Next.js app/agentes/page.tsx");
+  async function fetchAgents(showToast = false) {
+    try {
+      if (showToast) {
+        setIsRefreshing(true);
+      } else {
         setIsLoading(true);
-        const { data, error } = await supabase
-          .from('agents')
-          .select('*');
+      }
+      
+      console.log("Fetching agents data in Next.js app/agentes/page.tsx");
+      
+      const { data, error } = await supabase
+        .from('agents')
+        .select('*');
           
-        if (error) {
-          console.error('Error fetching agents:', error);
-          toast.error('Erro ao carregar agentes');
-          setAgentsData([]);
+      if (error) {
+        console.error('Error fetching agents:', error);
+        toast.error('Erro ao carregar agentes');
+        setAgentsData([]);
+      } else {
+        console.log("Agents data from Supabase:", data);
+        setAgentsData(data || []);
+        
+        if (data && data.length > 0) {
+          console.log(`Encontrados ${data.length} agentes no banco de dados.`);
+          if (showToast) {
+            toast.success(`${data.length} agente(s) encontrado(s)`);
+          }
         } else {
-          console.log("Agents data from Supabase:", data);
-          setAgentsData(data || []);
-          if (data && data.length === 0) {
-            console.log("No agents found in database. Please create one.");
+          console.log("No agents found in database. Please create one.");
+          if (showToast) {
+            toast.warning("Nenhum agente encontrado no banco de dados");
           }
         }
-      } catch (err) {
-        console.error('Error in fetchAgents:', err);
-        toast.error('Ocorreu um erro ao buscar os agentes');
-      } finally {
-        setIsLoading(false);
       }
+    } catch (err) {
+      console.error('Error in fetchAgents:', err);
+      toast.error('Ocorreu um erro ao buscar os agentes');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
-    
+  }
+  
+  // Manual refresh function
+  const handleManualRefresh = () => {
+    toast.info("Atualizando lista de agentes...");
+    fetchAgents(true);
+  };
+  
+  useEffect(() => {
     fetchAgents();
     
     // Set up a refresh interval
     const interval = setInterval(() => {
       fetchAgents();
-    }, 5000); // Refresh every 5 seconds
+    }, 3000); // Refresh every 3 seconds
     
     return () => clearInterval(interval);
   }, []);
@@ -138,6 +178,16 @@ export default function AgentesPage() {
           </p>
         </div>
 
+        {agents.length === 0 && !isLoading && (
+          <Alert className="bg-amber-50 text-amber-800 border-amber-200 mb-6">
+            <AlertCircle className="h-5 w-5" />
+            <AlertTitle>Nenhum agente encontrado</AlertTitle>
+            <AlertDescription>
+              Não encontramos nenhum agente no sistema. Verifique se criou corretamente o agente ou crie um novo agora mesmo.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-2 flex-wrap">
             <Button 
@@ -176,6 +226,17 @@ export default function AgentesPage() {
               <UserX className="h-4 w-4 text-gray-500" />
               <span>Inativos ({getFilterCount("inactive")})</span>
             </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="ml-2"
+            >
+              <RefreshCcw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Atualizar</span>
+            </Button>
           </div>
           <Button 
             onClick={handleCreateAgent}
@@ -188,7 +249,7 @@ export default function AgentesPage() {
 
         <AgentGrid 
           agents={filteredAgents}
-          isLoading={isLoading} 
+          isLoading={isLoading || isRefreshing} 
           onAgentEditClick={handleEditAgent}
           onTestVoice={handleTestVoice}
           onCreateAgent={handleCreateAgent}
@@ -202,9 +263,9 @@ export default function AgentesPage() {
 // Função para gerar cores de avatar baseadas no nome
 export const getAvatarColor = (name: string) => {
   const colors = [
-    "bg-blue-100", "bg-blue-100", "bg-green-100", 
-    "bg-yellow-100", "bg-red-100", "bg-blue-100",
-    "bg-indigo-100", "bg-orange-100", "bg-blue-100"
+    "bg-blue-100", "bg-sky-100", "bg-cyan-100", 
+    "bg-teal-100", "bg-blue-100", "bg-sky-100",
+    "bg-cyan-100", "bg-teal-100", "bg-blue-100"
   ];
   
   const index = name.charCodeAt(0) % colors.length;
