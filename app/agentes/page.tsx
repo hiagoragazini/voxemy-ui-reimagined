@@ -178,16 +178,6 @@ export default function AgentesPage() {
           </p>
         </div>
 
-        {agents.length === 0 && !isLoading && (
-          <Alert className="bg-amber-50 text-amber-800 border-amber-200 mb-6">
-            <AlertCircle className="h-5 w-5" />
-            <AlertTitle>Nenhum agente encontrado</AlertTitle>
-            <AlertDescription>
-              Não encontramos nenhum agente no sistema. Verifique se criou corretamente o agente ou crie um novo agora mesmo.
-            </AlertDescription>
-          </Alert>
-        )}
-
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-2 flex-wrap">
             <Button 
@@ -249,11 +239,13 @@ export default function AgentesPage() {
 
         <AgentGrid 
           agents={filteredAgents}
-          isLoading={isLoading || isRefreshing} 
+          isLoading={isLoading} 
+          isRefreshing={isRefreshing}
           onAgentEditClick={handleEditAgent}
           onTestVoice={handleTestVoice}
           onCreateAgent={handleCreateAgent}
           onTestCall={handleTestCall}
+          onRefresh={handleManualRefresh}
         />
       </div>
     </Layout>
