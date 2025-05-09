@@ -31,7 +31,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <input
             type="search"
             placeholder="Buscar..."
-            className="w-full bg-gray-100 py-2 pl-8 pr-4 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600"
+            className="w-full bg-gray-100 py-2 pl-8 pr-4 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
       </div>
@@ -39,7 +39,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5 text-muted-foreground" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
         </Button>
 
         <div className="relative">
@@ -62,13 +62,13 @@ export function Header({ onMenuClick }: HeaderProps) {
               <div className="py-1">
                 <a
                   href="/settings"
-                  className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100"
+                  className="block px-4 py-2 text-sm text-foreground hover:bg-blue-50"
                 >
                   Configurações
                 </a>
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-gray-100"
+                  className="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-blue-50"
                 >
                   Sair
                 </button>
