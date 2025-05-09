@@ -51,6 +51,25 @@ export const AgentGrid = ({
     );
   }
 
+  // Se não houver agentes, mostre apenas o card de criação
+  if (agents.length === 0) {
+    return (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        <Card className="border-dashed border-2 border-gray-200 hover:border-blue-800/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group">
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center cursor-pointer" onClick={handleCreateClick}>
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
+              <Plus className="h-8 w-8 text-blue-800 group-hover:scale-110 transition-transform" />
+            </div>
+            <h3 className="text-lg font-medium mb-2 group-hover:text-blue-800 transition-colors">Criar Novo Agente</h3>
+            <p className="text-muted-foreground text-sm">
+              Configure um novo assistente de voz para suas chamadas
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   // Process agent data for display
   const processedAgents = agents.map((agent) => ({
     ...agent,

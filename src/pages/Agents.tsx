@@ -24,7 +24,7 @@ export default function Agents() {
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   
   // Fetch agents from Supabase
-  const { data: agentsData, isLoading, refetch } = useQuery({
+  const { data: agentsData, isLoading, error, refetch } = useQuery({
     queryKey: ['agents'],
     queryFn: async () => {
       console.log("Fetching agents data from Supabase...");
@@ -40,11 +40,16 @@ export default function Agents() {
       
       console.log("Agents data retrieved:", data);
       return data || [];
-    }
+    },
+    // Configure query for more aggressive refetching
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 10000, // Data becomes stale after 10 seconds
   });
 
   // Fetch data on component mount to ensure we have the latest data
   useEffect(() => {
+    console.log("Agent component mounted, fetching data...");
     refetch();
   }, [refetch]);
 
@@ -64,6 +69,10 @@ export default function Agents() {
     avatarColor: getAvatarColor(agent.name),
     voiceId: agent.voice_id || VOICES.ROGER,
   })) || [];
+
+  if (error) {
+    console.error("Error in agents query:", error);
+  }
 
   const handleCreateAgent = () => {
     navigate("/agents/new");
