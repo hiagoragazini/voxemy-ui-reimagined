@@ -54,19 +54,29 @@ export const AgentGrid = ({
     }
   };
 
-  // Processamento de agentes em cache
+  // Process agents with stable voice usage data - only compute this once when agents change
   const processedAgents = useMemo(() => {
     console.log("Processando agentes para exibição:", agents.length);
-    return agents.map((agent) => ({
-      ...agent,
-      voiceUsage: {
-        current: Math.floor(Math.random() * 8) + 1,
-        total: 10
+    
+    return agents.map((agent) => {
+      // Only add voiceUsage if it doesn't exist
+      if (!agent.voiceUsage) {
+        // Generate deterministic "random" based on agent ID to ensure stability
+        const seed = Array.from(agent.id).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        
+        return {
+          ...agent,
+          voiceUsage: {
+            current: 1 + (seed % 8),  // Between 1-8
+            total: 10
+          }
+        };
       }
-    }));
-  }, [agents]); // Reprocessa apenas quando agents realmente mudar
+      return agent;
+    });
+  }, [agents]); // Recompute only when agents array reference changes
 
-  // Agent selecionado para teste
+  // Find selected agent for call testing
   const selectedAgent = useMemo(() => {
     if (!showCallTester) return null;
     return processedAgents.find(agent => agent.id === showCallTester);
@@ -129,7 +139,7 @@ export const AgentGrid = ({
     );
   }
 
-  // Para debugging - não realocar em cada render
+  // For debugging - don't reallocate on each render
   console.log("Renderizando grid com agentes:", processedAgents.length);
 
   return (

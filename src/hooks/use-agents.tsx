@@ -109,28 +109,47 @@ export function useAgents() {
     retryDelay: 1000,
   });
 
+  // Generate stable random values for each agent once
+  const generateStableValues = useCallback((agentId: string) => {
+    // Use a deterministic "random" based on agent ID
+    const hash = Array.from(agentId).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    
+    return {
+      calls: 10 + (hash % 190), // Between 10-200
+      avgTime: `${1 + (hash % 4)}:${(hash % 60).toString().padStart(2, '0')}`, // Between 1:00-5:59
+      successRate: 65 + (hash % 30), // Between 65-95%
+      successChange: `+${(1 + (hash % 9)).toFixed(1)}%`, // Between +1.0% and +9.9%
+      lastActivity: getStableRandomActivity(hash),
+    };
+  }, []);
+
   // Estabilizador para prevenir re-renderizações quando os dados não mudaram
   useEffect(() => {
     if (agentsData && agentsData.length > 0) {
-      // Transformar dados para AgentCardProps
-      const transformedAgents: AgentCardProps[] = agentsData.map(agent => ({
-        id: agent.id,
-        name: agent.name,
-        category: agent.category,
-        description: agent.description || "",
-        status: agent.status as "active" | "paused" | "inactive",
-        calls: Math.floor(Math.random() * 200), // Dados fictícios
-        avgTime: `${Math.floor(Math.random() * 5)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`, // Fictício
-        successRate: Math.floor(Math.random() * 100), // Fictício
-        successChange: `+${(Math.random() * 10).toFixed(1)}%`, // Fictício
-        lastActivity: getRandomActivity(), // Fictício
-        avatarLetter: agent.name.charAt(0),
-        avatarColor: getAvatarColor(agent.name),
-        voiceId: agent.voice_id || VOICE_IDS.ROGER,
-      }));
+      // Transformar dados para AgentCardProps com valores estáveis
+      const transformedAgents: AgentCardProps[] = agentsData.map(agent => {
+        const stableValues = generateStableValues(agent.id);
+        
+        return {
+          id: agent.id,
+          name: agent.name,
+          category: agent.category,
+          description: agent.description || "",
+          status: agent.status as "active" | "paused" | "inactive",
+          calls: stableValues.calls,
+          avgTime: stableValues.avgTime, 
+          successRate: stableValues.successRate,
+          successChange: stableValues.successChange,
+          lastActivity: stableValues.lastActivity,
+          avatarLetter: agent.name.charAt(0),
+          avatarColor: getAvatarColor(agent.name),
+          voiceId: agent.voice_id || VOICE_IDS.ROGER,
+        };
+      });
 
       // Verificar se os dados realmente mudaram antes de atualizar o estado
-      const hasChanges = JSON.stringify(transformedAgents) !== JSON.stringify(stabilizedAgents);
+      const hasChanges = JSON.stringify(transformedAgents.map(a => a.id)) !== 
+                         JSON.stringify(stabilizedAgents.map(a => a.id));
       
       if (hasChanges) {
         console.log("Agentes atualizados, dados diferentes detectados");
@@ -142,7 +161,7 @@ export function useAgents() {
       // Limpar agentes apenas se a lista passar de ter itens para estar vazia
       setStabilizedAgents([]);
     }
-  }, [agentsData, stabilizedAgents]);
+  }, [agentsData, stabilizedAgents, generateStableValues]);
 
   // Manual refresh function with single attempt
   const handleManualRefresh = async () => {
@@ -176,8 +195,8 @@ export function useAgents() {
   };
 }
 
-// Helper function
-function getRandomActivity() {
+// Helper function to generate stable random activity dates
+function getStableRandomActivity(seed: number) {
   const activities = [
     "Hoje, 14:30", 
     "Ontem, 17:20", 
@@ -185,5 +204,5 @@ function getRandomActivity() {
     "15/04/2025", 
     "10/04/2025"
   ];
-  return activities[Math.floor(Math.random() * activities.length)];
+  return activities[seed % activities.length];
 }

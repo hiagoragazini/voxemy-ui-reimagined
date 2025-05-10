@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -20,7 +19,7 @@ export default function Agents() {
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [hasRun, setHasRun] = useState(false); // Estado para controlar se já executamos a inicialização
   
-  // Initialize with default values to prevent null errors
+  // Safe access to useAgents hook with default values
   const { 
     agents = [], 
     isLoading = false, 
