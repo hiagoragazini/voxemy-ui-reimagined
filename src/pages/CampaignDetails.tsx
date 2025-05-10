@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -6,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LeadsTable } from "@/components/campaign/LeadsTable";
 import { CampaignActions } from "@/components/campaign/CampaignActions";
+import { CampaignScheduler } from "@/components/campaign/CampaignScheduler";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Calendar, Phone, AlertCircle, ArrowLeft, ListFilter, BarChart3, Users } from "lucide-react";
+import { Loader2, Calendar, Phone, AlertCircle, ArrowLeft, ListFilter, BarChart3, Users, Settings, Clock } from "lucide-react";
 import { Campaign, Agent } from "@/integrations/supabase/tables.types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -342,7 +344,7 @@ export default function CampaignDetails() {
               <span>Analytics</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center">
-              <ListFilter className="h-4 w-4 mr-2" />
+              <Settings className="h-4 w-4 mr-2" />
               <span>Configurações</span>
             </TabsTrigger>
           </TabsList>
@@ -366,12 +368,16 @@ export default function CampaignDetails() {
           </TabsContent>
           
           <TabsContent value="settings" className="pt-4">
-            <div className="border rounded-lg p-8 text-center">
-              <ListFilter className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-1">Configurações avançadas em desenvolvimento</h3>
-              <p className="text-muted-foreground max-w-md mx-auto">
-                Configurações avançadas para gerenciamento de campanha estarão disponíveis em breve.
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CampaignScheduler campaignId={campaign.id} />
+              
+              <div className="border rounded-lg p-8 text-center">
+                <ListFilter className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-1">Configurações avançadas em desenvolvimento</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  Configurações avançadas para gerenciamento de campanha estarão disponíveis em breve.
+                </p>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
