@@ -111,6 +111,146 @@ export type Database = {
         }
         Relationships: []
       }
+      call_logs: {
+        Row: {
+          agent_id: string | null
+          call_analysis: Json | null
+          call_sid: string
+          campaign_id: string | null
+          created_at: string
+          duration: number | null
+          from_number: string | null
+          id: number
+          lead_id: string | null
+          recorded_at: string
+          status: string
+          to_number: string | null
+          transcription: string | null
+          transcription_status: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          call_analysis?: Json | null
+          call_sid: string
+          campaign_id?: string | null
+          created_at?: string
+          duration?: number | null
+          from_number?: string | null
+          id?: number
+          lead_id?: string | null
+          recorded_at?: string
+          status: string
+          to_number?: string | null
+          transcription?: string | null
+          transcription_status?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          call_analysis?: Json | null
+          call_sid?: string
+          campaign_id?: string | null
+          created_at?: string
+          duration?: number | null
+          from_number?: string | null
+          id?: number
+          lead_id?: string | null
+          recorded_at?: string
+          status?: string
+          to_number?: string | null
+          transcription?: string | null
+          transcription_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_recordings: {
+        Row: {
+          agent_id: string | null
+          call_sid: string
+          campaign_id: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          lead_id: string | null
+          processed_at: string | null
+          recording_sid: string
+          recording_url: string
+          sentiment: string | null
+          transcription: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          call_sid: string
+          campaign_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          lead_id?: string | null
+          processed_at?: string | null
+          recording_sid: string
+          recording_url: string
+          sentiment?: string | null
+          transcription?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          call_sid?: string
+          campaign_id?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          lead_id?: string | null
+          processed_at?: string | null
+          recording_sid?: string
+          recording_url?: string
+          sentiment?: string | null
+          transcription?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_recordings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_recordings_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_recordings_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           agent_id: string | null
@@ -165,11 +305,16 @@ export type Database = {
           call_result: string | null
           campaign_id: string
           created_at: string
+          email: string | null
           id: string
           name: string
           notes: string | null
           phone: string
+          recording_sid: string | null
+          recording_url: string | null
+          sentiment: string | null
           status: string | null
+          transcription: string | null
           updated_at: string
         }
         Insert: {
@@ -177,11 +322,16 @@ export type Database = {
           call_result?: string | null
           campaign_id: string
           created_at?: string
+          email?: string | null
           id?: string
           name: string
           notes?: string | null
           phone: string
+          recording_sid?: string | null
+          recording_url?: string | null
+          sentiment?: string | null
           status?: string | null
+          transcription?: string | null
           updated_at?: string
         }
         Update: {
@@ -189,11 +339,16 @@ export type Database = {
           call_result?: string | null
           campaign_id?: string
           created_at?: string
+          email?: string | null
           id?: string
           name?: string
           notes?: string | null
           phone?: string
+          recording_sid?: string | null
+          recording_url?: string | null
+          sentiment?: string | null
           status?: string | null
+          transcription?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -259,9 +414,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_extensions: {
+        Args: { extension_names: string[] }
+        Returns: {
+          name: string
+          installed: boolean
+        }[]
+      }
       has_role: {
         Args: { user_id: string; role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
+      }
+      setup_campaign_executor_cron: {
+        Args: {
+          schedule_interval: string
+          max_calls: number
+          function_url: string
+          auth_token: string
+        }
+        Returns: string
       }
       table_exists: {
         Args: { table_name: string }

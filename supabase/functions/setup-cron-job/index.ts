@@ -19,14 +19,14 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Credenciais do Supabase não estão configuradas");
+      throw new Error("Supabase credentials not configured");
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Get request data
     const { 
-      interval = "* * * * *", // Default to every minute
+      interval = "*/5 * * * *", // Default to every 5 minutes
       functionName = "campaign-executor",
       maxCalls = 5
     } = await req.json();
