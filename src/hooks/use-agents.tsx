@@ -53,16 +53,26 @@ export function useAgents() {
   useEffect(() => {
     const checkForAgents = async () => {
       try {
-        const { data } = await supabase
+        const { data: countData } = await supabase
           .from('agents')
-          .select('count')
-          .single();
+          .select('count');
           
-        const count = data?.count || 0;
+        const count = countData ? countData.length : 0;
         console.log(`Direct DB check found ${count} agents`);
         
         if (count > 0) {
           setShowDiagnosticsAlert(false);
+          // Recuperar dados dos agentes diretamente para verificar
+          const { data: agentsData } = await supabase
+            .from('agents')
+            .select('*');
+          
+          if (agentsData && agentsData.length > 0) {
+            console.log(`Verificação direta encontrou ${agentsData.length} agentes:`, 
+              agentsData.map(a => a.name).join(', '));
+          } else {
+            console.log("No agents found in direct check");
+          }
         }
       } catch (e) {
         console.error("Error in direct DB check:", e);

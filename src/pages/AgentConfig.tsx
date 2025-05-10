@@ -205,43 +205,41 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       console.log("Dados do agente a serem salvos:", agentData);
       
       let result;
+      let agentId = id;
       
       if (isNew) {
         // Inserir novo agente
-        result = await supabase
+        const { data, error } = await supabase
           .from('agents')
           .insert(agentData)
           .select();
           
-        console.log("Resultado da inserção:", result);
+        console.log("Resultado da inserção:", data, error);
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          agentId = data[0].id;
+          console.log("ID do agente recém-criado:", agentId);
+        } else {
+          throw new Error("Nenhum dado retornado após a inserção do agente");
+        }
       } else if (id) {
         // Atualizar agente existente
-        result = await supabase
+        const { data, error } = await supabase
           .from('agents')
           .update(agentData)
           .eq('id', id)
           .select();
           
-        console.log("Resultado da atualização:", result);
-      }
-      
-      const { data, error } = result || {};
-      
-      if (error) {
-        console.error('Erro ao salvar agente:', error);
-        toast.error(`Erro ao ${isNew ? 'criar' : 'atualizar'} agente: ${error.message}`);
-        setSaveError(error.message);
+        console.log("Resultado da atualização:", data, error);
         
-        // Se for um erro de conexão ou timeout, tenta novamente
-        if (error.message.includes("timeout") || error.message.includes("connection") && saveAttempts < 3) {
-          toast.info("Problemas de conexão detectados. Tentando novamente...");
-          setTimeout(() => handleSubmit(e), 1000);
+        if (error) {
+          throw error;
         }
-        return;
       }
-      
-      console.log("Agente salvo com sucesso:", data);
-      const agentId = isNew ? data?.[0]?.id : id;
       
       if (!agentId) {
         console.error("ID do agente não encontrado após salvamento");
