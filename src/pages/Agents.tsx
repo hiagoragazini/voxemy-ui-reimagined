@@ -18,6 +18,7 @@ export default function Agents() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
+  const [hasRun, setHasRun] = useState(false); // Estado para controlar se já executamos a inicialização
   
   const { 
     agents, 
@@ -145,13 +146,17 @@ export default function Agents() {
 
   // Force a verification when component mounts
   useEffect(() => {
+    // Evitar múltiplas verificações iniciais
+    if (hasRun) return;
+    
     console.log("Agent component mounted, verificando agentes...");
+    setHasRun(true);
     
     // Force refresh of agents data
     const initialCheck = async () => {
       try {
         // Aguardar um pouco para garantir que outros efeitos sejam processados
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 800));
         
         // Verificar diretamente no banco se existem agentes
         const { data: directAgentsData, error: directAgentsError } = await supabase
@@ -166,8 +171,27 @@ export default function Agents() {
             
           if (directAgentsData && directAgentsData.length > 0) {
             // Força um refresh do React Query se encontrar agentes diretamente
+            console.log("Agentes encontrados diretamente, forçando refresh dos dados...");
             queryClient.invalidateQueries({ queryKey: ['agents'] });
             forceRefresh();
+            
+            // Criar um pequeno intervalo de verificação para garantir atualização
+            let attempts = 0;
+            const checkAgentsLoaded = setInterval(() => {
+              attempts++;
+              if (agents.length > 0 || attempts > 5) {
+                clearInterval(checkAgentsLoaded);
+                console.log(`Agentes carregados após ${attempts} tentativas:`, agents.length);
+              } else {
+                console.log(`Tentativa ${attempts}: Ainda esperando agentes serem carregados...`);
+                forceRefresh();
+                refetch();
+              }
+            }, 1000);
+          } else if (!isCreatingDemoAgent) {
+            // Se não encontrou agentes, vamos criar um demo
+            console.log("Nenhum agente encontrado, criando agente demo...");
+            createDemoAgent();
           }
         }
       } catch (err) {
@@ -176,7 +200,7 @@ export default function Agents() {
     };
     
     initialCheck();
-  }, [queryClient, forceRefresh]);
+  }, [queryClient, forceRefresh, agents, refetch, hasRun]);
 
   return (
     <Layout>

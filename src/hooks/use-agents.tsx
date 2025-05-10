@@ -196,7 +196,7 @@ export function useAgents() {
 
   return {
     agents,
-    isLoading,
+    isLoading: isLoading || agents.length === 0, // Consideramos carregando se a lista estiver vazia
     error,
     isRefreshing,
     refetch,

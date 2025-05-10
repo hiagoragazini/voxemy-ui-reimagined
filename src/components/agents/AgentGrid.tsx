@@ -54,6 +54,14 @@ export const AgentGrid = ({
     }
   };
 
+  // Verificação se há agentes sendo carregados
+  console.log("AgentGrid rendering with:", { 
+    isLoading, 
+    isRefreshing, 
+    agentsCount: agents?.length || 0,
+    agents: agents || []
+  });
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -122,6 +130,9 @@ export const AgentGrid = ({
 
   const selectedAgent = showCallTester ? 
     processedAgents.find(agent => agent.id === showCallTester) : null;
+
+  // Registrar no console os agentes que estamos renderizando
+  console.log("Renderizando agentes:", processedAgents);
 
   return (
     <>
