@@ -21,6 +21,15 @@ export type Agent = {
   voice_id: string;
   created_at: string;
   updated_at: string;
+  instructions: string | null;
+  response_style: string | null;
+  default_greeting: string | null;
+  max_response_length: number | null;
+  knowledge: string | null;
+  ai_model: string | null;
+  conversation_prompt: string | null;
+  webhook_url: string | null;
+  phone_number: string | null;
 }
 
 export type Campaign = {

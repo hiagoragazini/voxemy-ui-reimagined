@@ -11,34 +11,61 @@ export type Database = {
     Tables: {
       agents: {
         Row: {
+          ai_model: string | null
           category: string
+          conversation_prompt: string | null
           created_at: string
+          default_greeting: string | null
           description: string | null
           id: string
+          instructions: string | null
+          knowledge: string | null
+          max_response_length: number | null
           name: string
+          phone_number: string | null
+          response_style: string | null
           status: string | null
           updated_at: string
           voice_id: string
+          webhook_url: string | null
         }
         Insert: {
+          ai_model?: string | null
           category: string
+          conversation_prompt?: string | null
           created_at?: string
+          default_greeting?: string | null
           description?: string | null
           id?: string
+          instructions?: string | null
+          knowledge?: string | null
+          max_response_length?: number | null
           name: string
+          phone_number?: string | null
+          response_style?: string | null
           status?: string | null
           updated_at?: string
           voice_id: string
+          webhook_url?: string | null
         }
         Update: {
+          ai_model?: string | null
           category?: string
+          conversation_prompt?: string | null
           created_at?: string
+          default_greeting?: string | null
           description?: string | null
           id?: string
+          instructions?: string | null
+          knowledge?: string | null
+          max_response_length?: number | null
           name?: string
+          phone_number?: string | null
+          response_style?: string | null
           status?: string | null
           updated_at?: string
           voice_id?: string
+          webhook_url?: string | null
         }
         Relationships: []
       }
