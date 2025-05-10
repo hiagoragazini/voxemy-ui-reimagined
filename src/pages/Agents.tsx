@@ -29,7 +29,8 @@ export default function Agents() {
     showDiagnosticsAlert, 
     setShowDiagnosticsAlert,
     forceRefresh,
-    createDemoAgent
+    createDemoAgent,
+    isCreatingDemoAgent // Properly destructure this state from the hook
   } = useAgents();
   
   const { isDiagnosing, handleDiagnose } = useAgentDiagnostics(refetch);
@@ -200,7 +201,7 @@ export default function Agents() {
     };
     
     initialCheck();
-  }, [queryClient, forceRefresh, agents, refetch, hasRun]);
+  }, [queryClient, forceRefresh, agents, refetch, hasRun, isCreatingDemoAgent, createDemoAgent]); // Add isCreatingDemoAgent to dependencies
 
   return (
     <Layout>

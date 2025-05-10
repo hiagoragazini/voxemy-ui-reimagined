@@ -204,7 +204,8 @@ export function useAgents() {
     showDiagnosticsAlert,
     setShowDiagnosticsAlert,
     forceRefresh: () => setLastRefreshTimestamp(Date.now()),
-    createDemoAgent
+    createDemoAgent,
+    isCreatingDemoAgent // Expose this state to components using the hook
   };
 }
 
