@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -19,20 +20,21 @@ export default function Agents() {
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [hasRun, setHasRun] = useState(false); // Estado para controlar se já executamos a inicialização
   
+  // Initialize with default values to prevent null errors
   const { 
-    agents, 
-    isLoading, 
-    isRefreshing, 
-    refetch, 
-    handleManualRefresh, 
-    showDiagnosticsAlert, 
-    setShowDiagnosticsAlert,
-    forceRefresh,
-    createDemoAgent,
-    isCreatingDemoAgent 
-  } = useAgents();
+    agents = [], 
+    isLoading = false, 
+    isRefreshing = false, 
+    refetch = () => Promise.resolve(),
+    handleManualRefresh = () => {}, 
+    showDiagnosticsAlert = false, 
+    setShowDiagnosticsAlert = () => {},
+    forceRefresh = () => {},
+    createDemoAgent = async () => {},
+    isCreatingDemoAgent = false 
+  } = useAgents() || {};
   
-  const { isDiagnosing, handleDiagnose } = useAgentDiagnostics(refetch);
+  const { isDiagnosing = false, handleDiagnose = async () => {} } = useAgentDiagnostics(refetch) || {};
   
   // Check if we're coming from agent creation or edit - verificamos apenas UMA vez no carregamento
   useEffect(() => {
@@ -87,7 +89,7 @@ export default function Agents() {
       // Clean up URL params
       navigate('/agents', { replace: true });
     }
-  }, [location.search]); // Reduzir dependências para evitar loops
+  }, [location.search, navigate, queryClient, forceRefresh]); // Add required dependencies
   
   const handleCreateAgent = () => {
     navigate("/agents/new");
@@ -155,7 +157,7 @@ export default function Agents() {
     };
     
     initialCheck();
-  }, [hasRun, isCreatingDemoAgent, createDemoAgent]); // Dependências reduzidas
+  }, [hasRun, isCreatingDemoAgent, createDemoAgent, queryClient, forceRefresh]); // Add required dependencies
 
   return (
     <Layout>

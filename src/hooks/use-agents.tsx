@@ -102,11 +102,11 @@ export function useAgents() {
   const { data: agentsData, isLoading, error, refetch } = useQuery({
     queryKey: ['agents', lastRefreshTimestamp],
     queryFn: fetchAgentsData,
-    refetchOnWindowFocus: false,       // Não refetcha no foco da janela
-    refetchInterval: false,            // Desativar refetch automático
-    staleTime: 30000,                  // Dados ficam "frescos" por 30 segundos
-    retry: 1,                          // Reduzir número de retentativas
-    retryDelay: 1000,                  // Intervalo maior entre tentativas
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    staleTime: 30000,
+    retry: 1,
+    retryDelay: 1000,
   });
 
   // Estabilizador para prevenir re-renderizações quando os dados não mudaram
@@ -142,7 +142,7 @@ export function useAgents() {
       // Limpar agentes apenas se a lista passar de ter itens para estar vazia
       setStabilizedAgents([]);
     }
-  }, [agentsData]);
+  }, [agentsData, stabilizedAgents]);
 
   // Manual refresh function with single attempt
   const handleManualRefresh = async () => {
