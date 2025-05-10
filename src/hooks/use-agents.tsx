@@ -13,12 +13,17 @@ export function useAgents() {
   
   // Define the fetch function separately so we can reuse it
   const fetchAgentsData = useCallback(async () => {
-    console.log("Fetching agents data from Supabase in React Router app...");
+    console.log("Fetching agents data from Supabase...");
     
     try {
+      // Add a small delay to ensure Supabase has time to commit any recent changes
+      // This can help with eventual consistency issues
+      await new Promise(r => setTimeout(r, 500));
+      
       const { data, error } = await supabase
         .from('agents')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching agents:', error);
@@ -28,10 +33,11 @@ export function useAgents() {
       }
       
       console.log("Agents data retrieved:", data);
-      if (data && data.length === 0) {
+      if (!data || data.length === 0) {
         console.log("No agents found in database. Please create one.");
         setShowDiagnosticsAlert(true); // Mostrar alerta quando não há agentes
       } else {
+        console.log(`Found ${data.length} agents in database:`, data.map(a => a.name).join(', '));
         setShowDiagnosticsAlert(false); // Esconder alerta quando há agentes
       }
       return data || [];
@@ -49,8 +55,10 @@ export function useAgents() {
     queryFn: fetchAgentsData,
     // Configure query for more aggressive refetching
     refetchOnWindowFocus: true,
-    refetchInterval: 1000, // Refetch every second (mais agressivo)
-    staleTime: 500, // Data becomes stale faster
+    refetchInterval: 5000, // Refetch every 5 seconds (mais moderado que antes)
+    staleTime: 2000, // Data becomes stale after 2 seconds
+    retry: 3, // Retry failed requests up to 3 times
+    retryDelay: 1000, // Wait 1 second between retries
   });
 
   // Transform Supabase data to AgentCardProps
