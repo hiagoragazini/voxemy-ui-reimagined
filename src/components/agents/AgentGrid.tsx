@@ -3,7 +3,7 @@ import { AgentCard, AgentCardSkeleton, AgentCardProps } from "@/components/agent
 import { Plus, AlertCircle, Loader2, RefreshCcw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CampaignCallTester } from "@/components/campaign/CampaignCallTester";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -54,13 +54,23 @@ export const AgentGrid = ({
     }
   };
 
-  // Verificação se há agentes sendo carregados
-  console.log("AgentGrid rendering with:", { 
-    isLoading, 
-    isRefreshing, 
-    agentsCount: agents?.length || 0,
-    agents: agents || []
-  });
+  // Processamento de agentes em cache
+  const processedAgents = useMemo(() => {
+    console.log("Processando agentes para exibição:", agents.length);
+    return agents.map((agent) => ({
+      ...agent,
+      voiceUsage: {
+        current: Math.floor(Math.random() * 8) + 1,
+        total: 10
+      }
+    }));
+  }, [agents]); // Reprocessa apenas quando agents realmente mudar
+
+  // Agent selecionado para teste
+  const selectedAgent = useMemo(() => {
+    if (!showCallTester) return null;
+    return processedAgents.find(agent => agent.id === showCallTester);
+  }, [showCallTester, processedAgents]);
 
   if (isLoading) {
     return (
@@ -119,20 +129,8 @@ export const AgentGrid = ({
     );
   }
 
-  // Process agent data for display
-  const processedAgents = agents.map((agent) => ({
-    ...agent,
-    voiceUsage: {
-      current: Math.floor(Math.random() * 8) + 1,
-      total: 10
-    }
-  }));
-
-  const selectedAgent = showCallTester ? 
-    processedAgents.find(agent => agent.id === showCallTester) : null;
-
-  // Registrar no console os agentes que estamos renderizando
-  console.log("Renderizando agentes:", processedAgents);
+  // Para debugging - não realocar em cada render
+  console.log("Renderizando grid com agentes:", processedAgents.length);
 
   return (
     <>

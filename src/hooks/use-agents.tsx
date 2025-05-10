@@ -12,14 +12,15 @@ export function useAgents() {
   const [showDiagnosticsAlert, setShowDiagnosticsAlert] = useState(false);
   const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState(Date.now());
   const [isCreatingDemoAgent, setIsCreatingDemoAgent] = useState(false);
+  const [stabilizedAgents, setStabilizedAgents] = useState<AgentCardProps[]>([]);
   
   // Define the fetch function separately so we can reuse it
   const fetchAgentsData = useCallback(async () => {
     console.log("Fetching agents data from Supabase...");
     
     try {
-      // Add a small delay to ensure Supabase has time to commit any recent changes
-      await new Promise(r => setTimeout(r, 500));
+      // Small delay to ensure Supabase has time to commit any recent changes
+      await new Promise(r => setTimeout(r, 300));
       
       const { data, error } = await supabase
         .from('agents')
@@ -97,106 +98,72 @@ export function useAgents() {
     }
   };
 
-  // Force refresh when needed
-  useEffect(() => {
-    const checkForAgents = async () => {
-      try {
-        const { data: countData } = await supabase
-          .from('agents')
-          .select('count');
-          
-        const count = countData ? countData.length : 0;
-        console.log(`Direct DB check found ${count} agents`);
-        
-        if (count > 0) {
-          setShowDiagnosticsAlert(false);
-          // Recuperar dados dos agentes diretamente para verificar
-          const { data: agentsData } = await supabase
-            .from('agents')
-            .select('*');
-          
-          if (agentsData && agentsData.length > 0) {
-            console.log(`Verificação direta encontrou ${agentsData.length} agentes:`, 
-              agentsData.map(a => a.name).join(', '));
-          } else {
-            console.log("No agents found in direct check");
-          }
-        }
-      } catch (e) {
-        console.error("Error in direct DB check:", e);
-      }
-    };
-    
-    checkForAgents();
-  }, [lastRefreshTimestamp]);
-
-  // Fetch agents from Supabase
+  // Fetch agents from Supabase with more conservative refresh settings
   const { data: agentsData, isLoading, error, refetch } = useQuery({
     queryKey: ['agents', lastRefreshTimestamp],
     queryFn: fetchAgentsData,
-    // Configure query for more aggressive refetching
-    refetchOnWindowFocus: true,
-    refetchInterval: 3000, // Refetch every 3 seconds
-    staleTime: 1000, // Data becomes stale after 1 second
-    retry: 3, // Retry failed requests up to 3 times
-    retryDelay: 1000, // Wait 1 second between retries
+    refetchOnWindowFocus: false,       // Não refetcha no foco da janela
+    refetchInterval: false,            // Desativar refetch automático
+    staleTime: 30000,                  // Dados ficam "frescos" por 30 segundos
+    retry: 1,                          // Reduzir número de retentativas
+    retryDelay: 1000,                  // Intervalo maior entre tentativas
   });
 
-  // Transform Supabase data to AgentCardProps
-  const agents: AgentCardProps[] = agentsData?.map(agent => ({
-    id: agent.id,
-    name: agent.name,
-    category: agent.category,
-    description: agent.description || "",
-    status: agent.status as "active" | "paused" | "inactive",
-    calls: Math.floor(Math.random() * 200), // Placeholder data
-    avgTime: `${Math.floor(Math.random() * 5)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`, // Placeholder
-    successRate: Math.floor(Math.random() * 100), // Placeholder
-    successChange: `+${(Math.random() * 10).toFixed(1)}%`, // Placeholder
-    lastActivity: getRandomActivity(), // Placeholder
-    avatarLetter: agent.name.charAt(0),
-    avatarColor: getAvatarColor(agent.name),
-    voiceId: agent.voice_id || VOICE_IDS.ROGER,
-  })) || [];
+  // Estabilizador para prevenir re-renderizações quando os dados não mudaram
+  useEffect(() => {
+    if (agentsData && agentsData.length > 0) {
+      // Transformar dados para AgentCardProps
+      const transformedAgents: AgentCardProps[] = agentsData.map(agent => ({
+        id: agent.id,
+        name: agent.name,
+        category: agent.category,
+        description: agent.description || "",
+        status: agent.status as "active" | "paused" | "inactive",
+        calls: Math.floor(Math.random() * 200), // Dados fictícios
+        avgTime: `${Math.floor(Math.random() * 5)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`, // Fictício
+        successRate: Math.floor(Math.random() * 100), // Fictício
+        successChange: `+${(Math.random() * 10).toFixed(1)}%`, // Fictício
+        lastActivity: getRandomActivity(), // Fictício
+        avatarLetter: agent.name.charAt(0),
+        avatarColor: getAvatarColor(agent.name),
+        voiceId: agent.voice_id || VOICE_IDS.ROGER,
+      }));
 
-  // Manual refresh function with multiple retry attempts
+      // Verificar se os dados realmente mudaram antes de atualizar o estado
+      const hasChanges = JSON.stringify(transformedAgents) !== JSON.stringify(stabilizedAgents);
+      
+      if (hasChanges) {
+        console.log("Agentes atualizados, dados diferentes detectados");
+        setStabilizedAgents(transformedAgents);
+      } else {
+        console.log("Dados de agentes iguais, não atualizando o estado");
+      }
+    } else if (agentsData && agentsData.length === 0 && stabilizedAgents.length > 0) {
+      // Limpar agentes apenas se a lista passar de ter itens para estar vazia
+      setStabilizedAgents([]);
+    }
+  }, [agentsData]);
+
+  // Manual refresh function with single attempt
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     toast.info("Atualizando lista de agentes...");
     
     try {
-      // Force cache invalidation by updating timestamp
+      // Forçar invalidação do cache
       setLastRefreshTimestamp(Date.now());
-      
-      // First attempt
       await refetch();
-      
-      // Check directly from database to confirm
-      const { data: directCheck, error: directError } = await supabase
-        .from('agents')
-        .select('*');
-        
-      if (directError) {
-        console.error("Error in direct check:", directError);
-      } else if (directCheck && directCheck.length > 0) {
-        console.log(`Direct check found ${directCheck.length} agents`);
-        toast.success(`${directCheck.length} agentes encontrados`);
-      } else {
-        console.log("No agents found in direct check");
-        
-        // Second attempt after delay
-        setTimeout(async () => {
-          await refetch();
-        }, 2000);
-      }
+    } catch (err) {
+      console.error("Erro ao atualizar agentes:", err);
     } finally {
       setIsRefreshing(false);
     }
   };
 
   return {
-    agents,
-    isLoading: isLoading || agents.length === 0, // Consideramos carregando se a lista estiver vazia
+    // Retornar agentes estabilizados em vez de agentsData diretamente
+    agents: stabilizedAgents,
+    isLoading, 
     error,
     isRefreshing,
     refetch,
@@ -205,7 +172,7 @@ export function useAgents() {
     setShowDiagnosticsAlert,
     forceRefresh: () => setLastRefreshTimestamp(Date.now()),
     createDemoAgent,
-    isCreatingDemoAgent // Expose this state to components using the hook
+    isCreatingDemoAgent
   };
 }
 

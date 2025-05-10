@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -30,12 +29,12 @@ export default function Agents() {
     setShowDiagnosticsAlert,
     forceRefresh,
     createDemoAgent,
-    isCreatingDemoAgent // Properly destructure this state from the hook
+    isCreatingDemoAgent 
   } = useAgents();
   
   const { isDiagnosing, handleDiagnose } = useAgentDiagnostics(refetch);
   
-  // Check if we're coming from agent creation or edit
+  // Check if we're coming from agent creation or edit - verificamos apenas UMA vez no carregamento
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const agentCreated = params.get('created');
@@ -76,29 +75,6 @@ export default function Agents() {
       // Invalidate query cache to force a refresh
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       
-      // Sequência intensiva de atualizações
-      const refreshSequence = async () => {
-        console.log("Iniciando sequência de refreshs após criação de agente...");
-        
-        // Primeira tentativa imediata
-        await refetch();
-        
-        // Segunda e terceira tentativas com atrasos
-        setTimeout(async () => {
-          await refetch();
-          
-          setTimeout(async () => {
-            await refetch();
-            
-            // Verificação final
-            const { data } = await supabase.from('agents').select('count');
-            console.log(`Verificação final: ${data?.length || 0} agentes no banco`);
-          }, 2000);
-        }, 1000);
-      };
-      
-      refreshSequence();
-      
       // Clean up URL params
       navigate('/agents', { replace: true });
     } else if (agentUpdated === 'true') {
@@ -111,7 +87,7 @@ export default function Agents() {
       // Clean up URL params
       navigate('/agents', { replace: true });
     }
-  }, [location, navigate, queryClient, refetch, forceRefresh]);
+  }, [location.search]); // Reduzir dependências para evitar loops
   
   const handleCreateAgent = () => {
     navigate("/agents/new");
@@ -145,7 +121,7 @@ export default function Agents() {
     return agent.status === filter;
   });
 
-  // Force a verification when component mounts
+  // Verificação inicial - executada apenas uma vez
   useEffect(() => {
     // Evitar múltiplas verificações iniciais
     if (hasRun) return;
@@ -153,47 +129,25 @@ export default function Agents() {
     console.log("Agent component mounted, verificando agentes...");
     setHasRun(true);
     
-    // Force refresh of agents data
+    // Verificação direta no banco se existem agentes
     const initialCheck = async () => {
       try {
-        // Aguardar um pouco para garantir que outros efeitos sejam processados
-        await new Promise(r => setTimeout(r, 800));
-        
         // Verificar diretamente no banco se existem agentes
-        const { data: directAgentsData, error: directAgentsError } = await supabase
+        const { data: directAgentsData } = await supabase
           .from('agents')
           .select('*');
           
-        if (directAgentsError) {
-          console.error("Erro ao verificar agentes diretamente:", directAgentsError);
-        } else {
-          console.log(`Verificação direta encontrou ${directAgentsData?.length || 0} agentes:`, 
-            directAgentsData?.map(a => a.name).join(', ') || 'nenhum');
+        if (directAgentsData && directAgentsData.length > 0) {
+          console.log(`Verificação direta encontrou ${directAgentsData.length} agentes:`, 
+            directAgentsData.map(a => a.name).join(', '));
             
-          if (directAgentsData && directAgentsData.length > 0) {
-            // Força um refresh do React Query se encontrar agentes diretamente
-            console.log("Agentes encontrados diretamente, forçando refresh dos dados...");
-            queryClient.invalidateQueries({ queryKey: ['agents'] });
-            forceRefresh();
-            
-            // Criar um pequeno intervalo de verificação para garantir atualização
-            let attempts = 0;
-            const checkAgentsLoaded = setInterval(() => {
-              attempts++;
-              if (agents.length > 0 || attempts > 5) {
-                clearInterval(checkAgentsLoaded);
-                console.log(`Agentes carregados após ${attempts} tentativas:`, agents.length);
-              } else {
-                console.log(`Tentativa ${attempts}: Ainda esperando agentes serem carregados...`);
-                forceRefresh();
-                refetch();
-              }
-            }, 1000);
-          } else if (!isCreatingDemoAgent) {
-            // Se não encontrou agentes, vamos criar um demo
-            console.log("Nenhum agente encontrado, criando agente demo...");
-            createDemoAgent();
-          }
+          // Força um refresh do React Query
+          queryClient.invalidateQueries({ queryKey: ['agents'] });
+          forceRefresh();
+        } else if (!isCreatingDemoAgent) {
+          // Se não encontrou agentes, vamos criar um demo
+          console.log("Nenhum agente encontrado, criando agente demo...");
+          createDemoAgent();
         }
       } catch (err) {
         console.error("Erro na verificação inicial de agentes:", err);
@@ -201,7 +155,7 @@ export default function Agents() {
     };
     
     initialCheck();
-  }, [queryClient, forceRefresh, agents, refetch, hasRun, isCreatingDemoAgent, createDemoAgent]); // Add isCreatingDemoAgent to dependencies
+  }, [hasRun, isCreatingDemoAgent, createDemoAgent]); // Dependências reduzidas
 
   return (
     <Layout>
