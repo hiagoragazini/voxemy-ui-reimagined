@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Twilio } from "https://esm.sh/twilio@4.20.0";
+import * as twilio from "https://esm.sh/twilio@4.20.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -43,7 +43,7 @@ serve(async (req) => {
     console.log(`Iniciando chamada para ${phoneNumber}`);
 
     // Inicializar cliente Twilio
-    const client = new Twilio(twilioAccountSid, twilioAuthToken);
+    const client = new twilio.Twilio(twilioAccountSid, twilioAuthToken);
 
     // Formatar o número para o formato internacional
     const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
