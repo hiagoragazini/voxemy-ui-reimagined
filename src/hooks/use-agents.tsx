@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getAvatarColor } from "@/utils/colors";
 import { AgentCardProps } from "@/components/agents/AgentCard";
-import { VOICES } from "@/constants/voices";
+import { VOICES, VOICE_IDS } from "@/constants/voices";
 
 export function useAgents() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -67,7 +67,7 @@ export function useAgents() {
     lastActivity: getRandomActivity(), // Placeholder
     avatarLetter: agent.name.charAt(0),
     avatarColor: getAvatarColor(agent.name),
-    voiceId: agent.voice_id || VOICES.ROGER,
+    voiceId: agent.voice_id || VOICE_IDS.ROGER,
   })) || [];
 
   // Manual refresh function

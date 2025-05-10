@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -13,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import { Loader2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { VOICES } from "@/constants/voices";
+import { VOICES, VOICE_IDS } from "@/constants/voices";
 
 // Lista expandida de vozes disponíveis
 const VOICES_OPTIONS = [
@@ -105,7 +104,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               name: data.name || '',
               description: data.description || '',
               category: data.category || 'Atendimento',
-              voiceId: data.voice_id || VOICES.SARAH,
+              voiceId: data.voice_id || VOICE_IDS.SARAH,
               status: data.status || 'active',
               instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',
               responseStyle: data.response_style || 'Formal e detalhado',
@@ -534,4 +533,3 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
 };
 
 export default AgentConfig;
-
