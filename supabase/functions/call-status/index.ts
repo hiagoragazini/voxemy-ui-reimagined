@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import OpenAI from "https://esm.sh/openai@4.20.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,6 +24,15 @@ serve(async (req) => {
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    let openai = null;
+    
+    // Check if OpenAI API key is available for transcription analysis
+    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    if (openaiApiKey) {
+      openai = new OpenAI({
+        apiKey: openaiApiKey
+      });
+    }
 
     // Processar a requisição
     const formData = await req.formData();
@@ -31,13 +41,46 @@ serve(async (req) => {
     const from = formData.get("From")?.toString();
     const to = formData.get("To")?.toString();
     const duration = formData.get("CallDuration")?.toString();
+    const transcriptionStatus = formData.get("TranscriptionStatus")?.toString();
+    const transcriptionText = formData.get("TranscriptionText")?.toString();
     
     // Obter parâmetros adicionais
     const agentId = formData.get("agentId")?.toString();
     const campaignId = formData.get("campaignId")?.toString();
     const leadId = formData.get("leadId")?.toString();
+    const recordCall = formData.get("recordCall")?.toString() === "true";
+    const transcribeCall = formData.get("transcribeCall")?.toString() === "true";
 
     console.log(`Status da chamada recebido: ${callSid}, status: ${callStatus}`);
+    
+    // Analyze call transcription if available
+    let callAnalysis = null;
+    if (transcriptionText && transcriptionStatus === "completed" && openai) {
+      try {
+        console.log("Analyzing call transcription with OpenAI");
+        
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: "You are an AI assistant that analyzes call transcriptions. Analyze the following call transcription and categorize it as one of these: [INTERESTED, CALLBACK_REQUESTED, NOT_INTERESTED, WRONG_NUMBER, NO_ANSWER, TECHNICAL_ISSUE]. Also extract key information and provide a 1-2 sentence summary. Format your response as JSON with fields: category, summary, key_points (array), sentiment (positive/neutral/negative)."
+            },
+            {
+              role: "user",
+              content: transcriptionText
+            }
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" }
+        });
+        
+        callAnalysis = JSON.parse(response.choices[0].message.content);
+        console.log("Call analysis completed:", callAnalysis);
+      } catch (error) {
+        console.error("Error analyzing call transcription:", error);
+      }
+    }
     
     // Registrar o status da chamada no Supabase
     const { error } = await supabase
@@ -50,6 +93,9 @@ serve(async (req) => {
         duration: duration ? parseInt(duration) : null,
         agent_id: agentId,
         campaign_id: campaignId,
+        transcription: transcriptionText,
+        transcription_status: transcriptionStatus,
+        call_analysis: callAnalysis,
         recorded_at: new Date().toISOString(),
       });
 
@@ -69,18 +115,57 @@ serve(async (req) => {
           leadStatus = "completed";
           callResult = "Chamada completada com sucesso";
           callDuration = duration ? `${Math.floor(parseInt(duration) / 60)}:${(parseInt(duration) % 60).toString().padStart(2, '0')}` : null;
+          
+          // If we have call analysis, use that for additional context
+          if (callAnalysis) {
+            callResult = callAnalysis.summary || callResult;
+            
+            // Set a more specific lead status based on the call analysis
+            switch(callAnalysis.category) {
+              case "INTERESTED":
+                leadStatus = "interested";
+                break;
+              case "CALLBACK_REQUESTED":
+                leadStatus = "callback";
+                break;
+              case "NOT_INTERESTED":
+                leadStatus = "not_interested";
+                break;
+              case "WRONG_NUMBER":
+                leadStatus = "wrong_number";
+                break;
+              case "NO_ANSWER":
+                leadStatus = "no_answer";
+                break;
+              default:
+                leadStatus = "completed";
+                break;
+            }
+          }
         } else if (callStatus === "failed" || callStatus === "busy" || callStatus === "no-answer") {
           leadStatus = "failed";
           callResult = `Chamada falhou: ${callStatus}`;
         }
         
+        const updateData: any = { 
+          status: leadStatus,
+          call_result: callResult,
+          call_duration: callDuration
+        };
+        
+        // Add transcription if available
+        if (transcriptionText) {
+          updateData.transcription = transcriptionText;
+          
+          // Add simplified sentiment analysis if available
+          if (callAnalysis && callAnalysis.sentiment) {
+            updateData.sentiment = callAnalysis.sentiment;
+          }
+        }
+        
         await supabase
           .from("leads")
-          .update({ 
-            status: leadStatus,
-            call_result: callResult,
-            call_duration: callDuration
-          })
+          .update(updateData)
           .eq("id", leadId);
         
         // If this is part of a campaign, update campaign statistics

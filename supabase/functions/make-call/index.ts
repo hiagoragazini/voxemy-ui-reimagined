@@ -31,7 +31,9 @@ serve(async (req) => {
       aiModel = "gpt-4o-mini",
       systemPrompt,
       voiceId,
-      twimlInstructions 
+      twimlInstructions,
+      recordCall = true,  // New parameter to enable call recording
+      transcribeCall = true  // New parameter to enable call transcription
     } = await req.json();
 
     if (!phoneNumber) {
@@ -65,6 +67,7 @@ serve(async (req) => {
         if (aiModel) params.append("aiModel", aiModel);
         if (systemPrompt) params.append("systemPrompt", encodeURIComponent(systemPrompt));
         if (voiceId) params.append("voiceId", voiceId);
+        if (transcribeCall) params.append("transcribe", "true");
         
         const webhookUrl = `${webhookBase}${params.toString()}`;
         
@@ -73,6 +76,7 @@ serve(async (req) => {
             <Connect>
               <Stream url="${webhookUrl}"/>
             </Connect>
+            ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
           </Response>
         `;
       } else {
@@ -82,6 +86,7 @@ serve(async (req) => {
             <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
             <Pause length="1"/>
             <Say language="pt-BR">Esta é uma demonstração da integração do Twilio com o Eleven Labs.</Say>
+            ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
           </Response>
         `;
       }
@@ -93,6 +98,8 @@ serve(async (req) => {
       if (agentId) callbackParams += `&agentId=${agentId}`;
       if (campaignId) callbackParams += `&campaignId=${campaignId}`;
       if (leadId) callbackParams += `&leadId=${leadId}`;
+      if (recordCall) callbackParams += `&recordCall=true`;
+      if (transcribeCall) callbackParams += `&transcribeCall=true`;
       
       // Adicionar os parâmetros à URL de callback se houver
       const finalCallbackUrl = callbackParams 
@@ -110,6 +117,7 @@ serve(async (req) => {
       statusCallback: callbackUrl ? callbackUrl : undefined,
       statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
       statusCallbackMethod: 'POST',
+      record: recordCall, // Enable recording if requested
     });
 
     // Update lead status if leadId is provided

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -28,9 +27,39 @@ serve(async (req) => {
     const { 
       campaignId, 
       maxCalls = 5, 
-      dryRun = false 
+      dryRun = false,
+      respectBusinessHours = true  // New parameter to respect business hours
     } = await req.json();
 
+    // Check if current time is within business hours (9 AM to 6 PM)
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    // Default business hours: Monday-Friday, 9 AM - 6 PM
+    const isBusinessHours = currentDay >= 1 && currentDay <= 5 && currentHour >= 9 && currentHour < 18;
+    
+    // If respectBusinessHours is true and we're outside business hours, return early
+    if (respectBusinessHours && !isBusinessHours) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Fora do horário comercial. Nenhuma chamada será feita.",
+          processedCampaigns: 0,
+          processedLeads: 0,
+          errors: 0,
+          dryRun,
+          timestamp: now.toISOString(),
+          businessHours: {
+            isBusinessHours,
+            currentDay,
+            currentHour
+          }
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     // Process campaigns
     let processedCampaigns = 0;
     let processedLeads = 0;
@@ -43,21 +72,58 @@ serve(async (req) => {
       processedLeads = result.processedLeads;
       errors = result.errors;
     } else {
-      // Get all active campaigns
+      // Get all active campaigns and campaigns scheduled to run at the current time
       const { data: campaigns, error: campaignsError } = await supabase
         .from("campaigns")
-        .select("id")
-        .eq("status", "active");
+        .select("id, status, start_date, end_date")
+        .or(`status.eq.active,and(status.eq.scheduled,start_date.lte."${now.toISOString()}")`)
+        .order('created_at');
         
       if (campaignsError) {
         throw campaignsError;
       }
+      
+      console.log(`Found ${campaigns?.length || 0} campaigns to process`);
       
       // Process each campaign
       if (campaigns && campaigns.length > 0) {
         processedCampaigns = campaigns.length;
         
         for (const campaign of campaigns) {
+          // Check if campaign is scheduled and needs to be activated
+          if (campaign.status === 'scheduled' && campaign.start_date) {
+            const startDate = new Date(campaign.start_date);
+            if (now >= startDate) {
+              // Update campaign status to active
+              if (!dryRun) {
+                await supabase
+                  .from("campaigns")
+                  .update({ status: "active" })
+                  .eq("id", campaign.id);
+                
+                console.log(`Campaign ${campaign.id} activated automatically`);
+              }
+            }
+          }
+          
+          // Check if campaign end date has passed
+          if (campaign.end_date) {
+            const endDate = new Date(campaign.end_date);
+            if (now >= endDate) {
+              // Update campaign status to completed
+              if (!dryRun) {
+                await supabase
+                  .from("campaigns")
+                  .update({ status: "completed", end_date: now.toISOString() })
+                  .eq("id", campaign.id);
+                
+                console.log(`Campaign ${campaign.id} completed due to end date`);
+              }
+              // Skip processing this campaign since it just ended
+              continue;
+            }
+          }
+          
           const result = await processCampaign(supabase, campaign.id, maxCalls, dryRun);
           processedLeads += result.processedLeads;
           errors += result.errors;
@@ -72,7 +138,8 @@ serve(async (req) => {
         processedCampaigns,
         processedLeads,
         errors,
-        dryRun
+        dryRun,
+        timestamp: now.toISOString()
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -82,7 +149,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "Unknown error"
+        error: error.message || "Unknown error",
+        timestamp: new Date().toISOString()
       }),
       { 
         status: 500, 
@@ -98,9 +166,27 @@ async function processCampaign(
   maxCalls: number,
   dryRun: boolean
 ): Promise<{ processedLeads: number, errors: number }> {
+  // ... keep existing code (fetching campaign, leads, processing logic)
+  
+  // Enhanced rate limiting by checking the most recent calls to avoid flooding
+  const oneMinuteAgo = new Date();
+  oneMinuteAgo.setMinutes(oneMinuteAgo.getMinutes() - 1);
+  
+  const { count: recentCallCount } = await supabase
+    .from("call_logs")
+    .select("*", { count: "exact", head: true })
+    .gt("recorded_at", oneMinuteAgo.toISOString());
+  
+  // Simple rate limiting - no more than 10 calls per minute
+  const maxCallsPerMinute = 10;
+  if (recentCallCount >= maxCallsPerMinute) {
+    console.log(`Rate limit reached: ${recentCallCount} calls in the last minute. Waiting...`);
+    return { processedLeads: 0, errors: 0 };
+  }
+  
   let processedLeads = 0;
   let errors = 0;
-  
+
   try {
     // Get campaign details
     const { data: campaign, error: campaignError } = await supabase
