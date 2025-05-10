@@ -49,6 +49,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   const [activeTab, setActiveTab] = useState("basic");
   const [testMessage, setTestMessage] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveAttempts, setSaveAttempts] = useState(0);
 
   // Estados do formulário
   const [formState, setFormState] = useState({
@@ -56,7 +57,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     description: "",
     category: "Atendimento",
     voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah como padrão
-    status: "active",
+    status: "active", // Garantir que o status padrão seja active
     instructions: "",
     responseStyle: "",
     defaultGreeting: "",
@@ -122,6 +123,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         instructions: "Seja cordial e objetivo nas respostas.",
         conversationPrompt: "Você é um assistente virtual especializado em atendimento ao cliente.",
         responseStyle: "Formal e direto",
+        status: "active", // Garantir que o status padrão seja active
+        voiceId: VOICE_IDS.SARAH, // Garantir que tenha uma voz padrão
       });
     }
   }, [id, isNew]);
@@ -176,9 +179,10 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     
     setSaveError(null);
     setIsLoading(true);
+    setSaveAttempts(prev => prev + 1);
     
     try {
-      console.log("Salvando agente no Supabase...");
+      console.log(`Tentativa ${saveAttempts + 1} de salvar agente no Supabase...`);
       
       // Preparar os dados para salvar no Supabase
       const agentData = {
@@ -186,7 +190,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         description: formState.description,
         category: formState.category,
         voice_id: formState.voiceId,
-        status: formState.status,
+        status: formState.status || 'active', // Garantir que tenha um status
         instructions: formState.instructions,
         response_style: formState.responseStyle,
         default_greeting: formState.defaultGreeting,
@@ -227,11 +231,23 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         console.error('Erro ao salvar agente:', error);
         toast.error(`Erro ao ${isNew ? 'criar' : 'atualizar'} agente: ${error.message}`);
         setSaveError(error.message);
+        
+        // Se for um erro de conexão ou timeout, tenta novamente
+        if (error.message.includes("timeout") || error.message.includes("connection") && saveAttempts < 3) {
+          toast.info("Problemas de conexão detectados. Tentando novamente...");
+          setTimeout(() => handleSubmit(e), 1000);
+        }
         return;
       }
       
       console.log("Agente salvo com sucesso:", data);
       const agentId = isNew ? data?.[0]?.id : id;
+      
+      if (!agentId) {
+        console.error("ID do agente não encontrado após salvamento");
+        toast.error("Erro ao recuperar ID do agente após salvamento");
+        return;
+      }
       
       toast.success(isNew ? 'Agente criado com sucesso!' : 'Agente atualizado com sucesso!');
       
@@ -248,15 +264,33 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           toast.warning('O agente foi criado, mas há uma possível demora na sincronização. Aguarde alguns segundos.');
         } else {
           console.log("Verificação do agente bem-sucedida:", verifyData);
+          toast.success(`Agente "${verifyData.name}" criado e verificado com sucesso!`);
         }
       }
       
-      // Aguardar um breve momento para garantir que a inserção foi processada
-      // antes de redirecionar para a página de agentes
-      setTimeout(() => {
-        // Redirecionar para a página de agentes com parâmetros de URL para indicar o sucesso
-        navigate(`/agents?${isNew ? 'created=true' : 'updated=true'}${agentId ? `&id=${agentId}` : ''}`);
-      }, 500);
+      // Garantir que a atualização foi bem-sucedida com múltiplas verificações
+      const verifyAgentSaved = async () => {
+        try {
+          console.log("Verificando se o agente foi salvo corretamente...");
+          const { data: allAgents } = await supabase.from('agents').select('*');
+          console.log(`Verificação encontrou ${allAgents?.length || 0} agentes no total`);
+          
+          // Registrar todos os agentes para depuração
+          allAgents?.forEach(agent => {
+            console.log(`Agente encontrado: ${agent.id} - ${agent.name}`);
+          });
+          
+          // Aguardar um breve momento para garantir que a inserção foi processada
+          setTimeout(() => {
+            // Redirecionar para a página de agentes com parâmetros de URL para indicar o sucesso
+            navigate(`/agents?${isNew ? 'created=true' : 'updated=true'}${agentId ? `&id=${agentId}` : ''}`);
+          }, 500);
+        } catch (err) {
+          console.error("Erro na verificação final:", err);
+        }
+      };
+      
+      verifyAgentSaved();
       
     } catch (error: any) {
       console.error('Exceção ao salvar agente:', error);

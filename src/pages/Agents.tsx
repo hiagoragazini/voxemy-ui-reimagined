@@ -11,7 +11,6 @@ import { useAgentDiagnostics } from "@/hooks/use-agent-diagnostics";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { verifyAgentCreation, forceRefreshAgents } from "@/utils/dbVerify";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Agents() {
@@ -27,7 +26,8 @@ export default function Agents() {
     refetch, 
     handleManualRefresh, 
     showDiagnosticsAlert, 
-    setShowDiagnosticsAlert 
+    setShowDiagnosticsAlert,
+    forceRefresh
   } = useAgents();
   
   const { isDiagnosing, handleDiagnose } = useAgentDiagnostics(refetch);
@@ -58,6 +58,9 @@ export default function Agents() {
             } else if (data) {
               console.log("Agente encontrado no banco:", data);
               toast.success(`Agente "${data.name}" encontrado no banco de dados!`);
+              
+              // Força recarregar os dados após confirmação
+              forceRefresh();
             }
           } catch (err) {
             console.error("Erro na verificação do agente:", err);
@@ -70,19 +73,23 @@ export default function Agents() {
       // Invalidate query cache to force a refresh
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       
-      // Forçar uma sequência de refreshs para garantir que os dados sejam carregados
+      // Sequência intensiva de atualizações
       const refreshSequence = async () => {
-        console.log("Iniciando sequência de refreshs...");
-        // Primeira tentativa
+        console.log("Iniciando sequência de refreshs após criação de agente...");
+        
+        // Primeira tentativa imediata
         await refetch();
         
-        // Segunda tentativa após um breve delay
+        // Segunda e terceira tentativas com atrasos
         setTimeout(async () => {
           await refetch();
           
-          // Terceira tentativa após outro delay
           setTimeout(async () => {
             await refetch();
+            
+            // Verificação final
+            const { data } = await supabase.from('agents').select('count');
+            console.log(`Verificação final: ${data?.[0]?.count || 0} agentes no banco`);
           }, 2000);
         }, 1000);
       };
@@ -96,12 +103,12 @@ export default function Agents() {
       
       // Invalidate query cache and refresh
       queryClient.invalidateQueries({ queryKey: ['agents'] });
-      refetch();
+      forceRefresh();
       
       // Clean up URL params
       navigate('/agents', { replace: true });
     }
-  }, [location, navigate, queryClient, refetch, setShowDiagnosticsAlert]);
+  }, [location, navigate, queryClient, refetch, forceRefresh]);
   
   const handleCreateAgent = () => {
     navigate("/agents/new");
@@ -155,7 +162,7 @@ export default function Agents() {
           if (directAgentsData && directAgentsData.length > 0) {
             // Força um refresh do React Query se encontrar agentes diretamente
             queryClient.invalidateQueries({ queryKey: ['agents'] });
-            refetch();
+            forceRefresh();
           }
         }
       } catch (err) {
@@ -164,7 +171,7 @@ export default function Agents() {
     };
     
     initialCheck();
-  }, [queryClient, refetch]);
+  }, [queryClient, forceRefresh]);
 
   return (
     <Layout>
