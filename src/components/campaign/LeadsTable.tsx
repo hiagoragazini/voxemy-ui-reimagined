@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,6 +17,9 @@ interface Lead {
   notes: string | null;
   call_duration?: string | null;
   call_result?: string | null;
+  campaign_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface LeadsTableProps {
@@ -52,7 +54,14 @@ export function LeadsTable({ campaignId, agentId, agentName }: LeadsTableProps) 
         .order("created_at");
         
       if (error) throw error;
-      setLeads(data || []);
+      
+      // Type-safe assignment ensuring status is correctly typed
+      const typedLeads: Lead[] = (data || []).map(lead => ({
+        ...lead,
+        status: (lead.status as "pending" | "called" | "completed" | "failed") || "pending"
+      }));
+      
+      setLeads(typedLeads);
     } catch (err: any) {
       console.error("Error fetching leads:", err);
       setError(err.message || "Erro ao carregar leads");

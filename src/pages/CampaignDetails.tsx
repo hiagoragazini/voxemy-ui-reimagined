@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -14,12 +13,23 @@ import { Campaign, Agent } from "@/integrations/supabase/tables.types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Extended Campaign interface with optional additional properties
+interface ExtendedCampaign extends Campaign {
+  success_rate?: number;
+  avg_call_duration?: string;
+}
+
+// Extended Agent interface with safe status handling
+interface ExtendedAgent extends Omit<Agent, 'status'> {
+  status: "active" | "paused" | "inactive";
+}
+
 export default function CampaignDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [agent, setAgent] = useState<Agent | null>(null);
+  const [campaign, setCampaign] = useState<ExtendedCampaign | null>(null);
+  const [agent, setAgent] = useState<ExtendedAgent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("leads");
 
@@ -40,18 +50,31 @@ export default function CampaignDetails() {
           
         if (campaignError) throw campaignError;
         
-        setCampaign(campaignData);
+        // Type-safe assignment with status validation
+        const typedCampaign: ExtendedCampaign = {
+          ...campaignData,
+          status: (campaignData.status as Campaign['status']) || "scheduled"
+        };
+        
+        setCampaign(typedCampaign);
         
         // Fetch agent data if available
-        if (campaignData.agent_id) {
+        if (typedCampaign.agent_id) {
           const { data: agentData, error: agentError } = await supabase
             .from("agents")
             .select("*")
-            .eq("id", campaignData.agent_id)
+            .eq("id", typedCampaign.agent_id)
             .single();
             
           if (agentError) console.error("Error fetching agent:", agentError);
-          else setAgent(agentData);
+          else {
+            // Type-safe assignment for agent with status validation
+            const typedAgent: ExtendedAgent = {
+              ...agentData,
+              status: (agentData.status as "active" | "paused" | "inactive") || "inactive"
+            };
+            setAgent(typedAgent);
+          }
         }
         
       } catch (err: any) {
