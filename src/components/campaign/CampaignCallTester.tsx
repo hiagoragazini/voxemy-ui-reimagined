@@ -12,15 +12,23 @@ interface CampaignCallTesterProps {
   agentId?: string;
   agentName?: string;
   onClose?: () => void;
+  phoneNumber?: string;
+  leadName?: string;
+  leadId?: string;
+  onCallComplete?: () => void;
 }
 
 export function CampaignCallTester({
   campaignId,
   agentId,
   agentName = "Agente",
-  onClose
+  onClose,
+  phoneNumber: initialPhone = "",
+  leadName,
+  leadId,
+  onCallComplete
 }: CampaignCallTesterProps) {
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(initialPhone);
   const [isLoading, setIsLoading] = useState(false);
   const [callStatus, setCallStatus] = useState<string | null>(null);
   
@@ -34,21 +42,33 @@ export function CampaignCallTester({
     setCallStatus("Iniciando chamada...");
     
     try {
-      const callbackUrl = window.location.origin + '/api/call-status';
+      // Get the callback URL for tracking call status
+      const origin = window.location.origin;
+      const callbackUrl = `${origin}/api/call-status`;
       
+      // Create the prompt with lead name if available
+      let greeting = `Olá, aqui é ${agentName}. `;
+      if (leadName) {
+        greeting = `Olá ${leadName}, aqui é ${agentName}. `;
+      }
+      
+      const twimlInstructions = `
+        <Response>
+          <Say language="pt-BR">${greeting} Esta é uma chamada de teste da nossa plataforma.</Say>
+          <Pause length="1"/>
+          <Say language="pt-BR">Obrigado por testar nosso sistema de chamadas automáticas.</Say>
+        </Response>
+      `;
+      
+      // Make the call
       const { data, error } = await supabase.functions.invoke('make-call', {
         body: { 
           phoneNumber, 
           callbackUrl,
           agentId,
           campaignId,
-          twimlInstructions: `
-            <Response>
-              <Say language="pt-BR">Olá, aqui é ${agentName}. Esta é uma chamada de teste da nossa plataforma.</Say>
-              <Pause length="1"/>
-              <Say language="pt-BR">Obrigado por testar nosso sistema de chamadas automáticas.</Say>
-            </Response>
-          `
+          agentName,
+          twimlInstructions
         }
       });
 
@@ -58,6 +78,21 @@ export function CampaignCallTester({
       
       if (!data.success) {
         throw new Error(data.error || "Falha ao fazer chamada");
+      }
+
+      // Update lead status if we have a leadId
+      if (leadId) {
+        await supabase
+          .from("leads")
+          .update({
+            status: "called",
+            call_result: "Chamada de teste realizada"
+          })
+          .eq("id", leadId);
+          
+        if (onCallComplete) {
+          onCallComplete();
+        }
       }
 
       setCallStatus(`Chamada iniciada com sucesso! ID: ${data.callSid}`);
@@ -75,7 +110,8 @@ export function CampaignCallTester({
     <Card className="p-4 space-y-4">
       <div className="space-y-1">
         <h3 className="text-lg font-medium">
-          {campaignId ? "Testar chamada da campanha" : `Testar chamada: ${agentName}`}
+          {leadName ? `Testar chamada para ${leadName}` : 
+            (campaignId ? "Testar chamada da campanha" : `Testar chamada: ${agentName}`)}
         </h3>
         <p className="text-sm text-muted-foreground">
           Faça uma chamada de teste para verificar a configuração do agente

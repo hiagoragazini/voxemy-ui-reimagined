@@ -10,6 +10,7 @@ import Business from "./pages/Business";
 import NotFound from "./pages/NotFound";
 import Campaigns from "./pages/Campaigns";
 import CampaignForm from "./pages/CampaignForm";
+import CampaignDetails from "./pages/CampaignDetails";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Wrapper components to handle dynamic redirects
@@ -21,6 +22,11 @@ const AgentEditRedirect = () => {
 const CampaignEditRedirect = () => {
   const { id } = useParams();
   return <Navigate to={`/campaigns/${id}/edit`} replace />;
+};
+
+const CampaignDetailsRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={`/campaigns/${id}`} replace />;
 };
 
 function App() {
@@ -50,11 +56,13 @@ function App() {
       {/* Campaign routes */}
       <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
       <Route path="/campaigns/new" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
+      <Route path="/campaigns/:id" element={<ProtectedRoute><CampaignDetails /></ProtectedRoute>} />
       <Route path="/campaigns/:id/edit" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
       
       {/* Portuguese campaign routes redirects */}
       <Route path="/campanhas" element={<Navigate to="/campaigns" replace />} />
       <Route path="/campanhas/nova" element={<Navigate to="/campaigns/new" replace />} />
+      <Route path="/campanhas/:id" element={<CampaignDetailsRedirect />} />
       <Route path="/campanhas/:id/editar" element={<CampaignEditRedirect />} />
       
       <Route path="/404" element={<NotFound />} />

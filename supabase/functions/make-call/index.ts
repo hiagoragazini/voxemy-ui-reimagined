@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Twilio } from "https://esm.sh/twilio@4.20.0";
 import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -25,6 +26,7 @@ serve(async (req) => {
       agentId,
       campaignId,
       agentName,
+      leadId,
       useAI = true,
       aiModel = "gpt-4o-mini",
       systemPrompt,
@@ -59,6 +61,7 @@ serve(async (req) => {
         if (agentId) params.append("agentId", agentId);
         if (agentName) params.append("agentName", agentName);
         if (campaignId) params.append("campaignId", campaignId);
+        if (leadId) params.append("leadId", leadId);
         if (aiModel) params.append("aiModel", aiModel);
         if (systemPrompt) params.append("systemPrompt", encodeURIComponent(systemPrompt));
         if (voiceId) params.append("voiceId", voiceId);
@@ -89,6 +92,7 @@ serve(async (req) => {
     if (callbackUrl) {
       if (agentId) callbackParams += `&agentId=${agentId}`;
       if (campaignId) callbackParams += `&campaignId=${campaignId}`;
+      if (leadId) callbackParams += `&leadId=${leadId}`;
       
       // Adicionar os parâmetros à URL de callback se houver
       const finalCallbackUrl = callbackParams 
@@ -107,6 +111,29 @@ serve(async (req) => {
       statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
       statusCallbackMethod: 'POST',
     });
+
+    // Update lead status if leadId is provided
+    if (leadId) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        
+        if (supabaseUrl && supabaseKey) {
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          
+          await supabase
+            .from("leads")
+            .update({ 
+              status: "called",
+              call_result: "Chamada iniciada"
+            })
+            .eq("id", leadId);
+        }
+      } catch (err) {
+        console.error("Error updating lead status:", err);
+        // Don't fail the whole request if this fails
+      }
+    }
 
     return new Response(
       JSON.stringify({ 

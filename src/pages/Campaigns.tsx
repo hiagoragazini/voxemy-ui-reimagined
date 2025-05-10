@@ -5,7 +5,7 @@ import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Plus, Phone, BarChart3, Users, User, Filter } from "lucide-react";
+import { CalendarDays, Plus, Phone, BarChart3, Users, User, Filter, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
@@ -251,7 +251,10 @@ export default function Campaigns() {
                 : 0;
               
               return (
-                <Card key={campaign.id} className="hover:border-primary/30 transition-all duration-300 hover:shadow-md hover:scale-[1.01] group">
+                <Card key={campaign.id} 
+                  className="hover:border-primary/30 transition-all duration-300 hover:shadow-md cursor-pointer"
+                  onClick={() => handleViewDetails(campaign.id)}
+                >
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div>
@@ -267,7 +270,10 @@ export default function Campaigns() {
                         variant="ghost" 
                         size="icon" 
                         className="text-muted-foreground h-8 w-8"
-                        onClick={() => handleEditCampaign(campaign.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditCampaign(campaign.id);
+                        }}
                       >
                         <svg 
                           xmlns="http://www.w3.org/2000/svg" 
@@ -339,12 +345,16 @@ export default function Campaigns() {
                       <span>Última atividade: {formattedLastActivity}</span>
                     </div>
                     <Button 
-                      variant="outline" 
+                      variant="ghost" 
                       size="sm" 
                       className="ml-auto"
-                      onClick={() => handleViewDetails(campaign.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewDetails(campaign.id);
+                      }}
                     >
                       Ver detalhes
+                      <ArrowRight className="ml-1 h-4 w-4" />
                     </Button>
                   </CardFooter>
                 </Card>

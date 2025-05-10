@@ -15,3 +15,7 @@ verify_jwt = true
 
 [functions.call-status]
 verify_jwt = false
+
+[functions.campaign-executor]
+verify_jwt = true
+

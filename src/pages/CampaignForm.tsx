@@ -15,6 +15,10 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import Papa from "papaparse";
+import { useQuery } from "@tanstack/react-query";
+import { Agent } from "@/integrations/supabase/tables.types";
+import { Loader2 } from "lucide-react";
 
 export default function CampaignForm() {
   const { id } = useParams();
@@ -27,12 +31,15 @@ export default function CampaignForm() {
     originPhone: "",
     consent: false,
   });
-  const [agents, setAgents] = useState([]);
-  const [csvFile, setCsvFile] = useState(null);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvData, setCsvData] = useState<{name: string, phone: string}[]>([]);
+  const [csvError, setCsvError] = useState<string | null>(null);
+  const [csvIsValid, setCsvIsValid] = useState(false);
 
-  useEffect(() => {
-    // Fetch agents
-    const fetchAgents = async () => {
+  // Fetch agents
+  const { data: agents = [], isLoading: agentsLoading } = useQuery({
+    queryKey: ['agents'],
+    queryFn: async () => {
       try {
         const { data, error } = await supabase
           .from("agents")
@@ -40,17 +47,21 @@ export default function CampaignForm() {
           .eq("status", "active");
 
         if (error) throw error;
-        setAgents(data || []);
-      } catch (err) {
+        return data as Agent[];
+      } catch (err: any) {
         console.error("Error fetching agents:", err);
         toast.error("Erro ao carregar agentes");
+        return [];
       }
-    };
+    }
+  });
 
-    // If editing, fetch campaign data
+  // If editing, fetch campaign data
+  useEffect(() => {
     const fetchCampaign = async () => {
       if (isEditing) {
         try {
+          setLoading(true);
           const { data, error } = await supabase
             .from("campaigns")
             .select("*")
@@ -67,31 +78,172 @@ export default function CampaignForm() {
               consent: true,
             });
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error("Error fetching campaign:", err);
           toast.error("Erro ao carregar dados da campanha");
+        } finally {
+          setLoading(false);
         }
       }
     };
 
-    fetchAgents();
     fetchCampaign();
   }, [id, isEditing]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    toast.info("Esta funcionalidade será implementada em breve!");
-    setLoading(false);
-    
-    // For now, just redirect back to campaigns list
-    navigate("/campaigns");
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setCsvFile(file);
+      
+      // Reset validation state
+      setCsvError(null);
+      setCsvIsValid(false);
+      setCsvData([]);
+      
+      // Parse CSV file
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const { data, errors, meta } = results;
+          
+          // Check for parsing errors
+          if (errors.length > 0) {
+            setCsvError("Erro ao analisar o arquivo CSV");
+            return;
+          }
+          
+          // Check required headers
+          const headers = meta.fields || [];
+          const hasName = headers.some(h => 
+            h.toLowerCase() === 'nome' || 
+            h.toLowerCase() === 'name');
+          const hasPhone = headers.some(h => 
+            h.toLowerCase() === 'telefone' || 
+            h.toLowerCase() === 'phone');
+          
+          if (!hasName || !hasPhone) {
+            setCsvError("CSV deve conter colunas para nome e telefone");
+            return;
+          }
+          
+          // Process data
+          const processedData: {name: string, phone: string}[] = [];
+          let hasInvalidRows = false;
+          
+          data.forEach((row: any) => {
+            const name = row.nome || row.name || row.Nome || row.Name;
+            const phone = row.telefone || row.phone || row.Telefone || row.Phone;
+            
+            if (!name || !phone) {
+              hasInvalidRows = true;
+              return;
+            }
+            
+            processedData.push({ name, phone });
+          });
+          
+          if (processedData.length === 0) {
+            setCsvError("Nenhum lead válido encontrado no arquivo");
+            return;
+          }
+          
+          setCsvData(processedData);
+          setCsvIsValid(true);
+          
+          if (hasInvalidRows) {
+            toast.warning("Algumas linhas no arquivo CSV foram ignoradas por estarem incompletas");
+          } else {
+            toast.success(`${processedData.length} leads válidos encontrados`);
+          }
+        },
+        error: (error) => {
+          setCsvError(`Erro ao processar arquivo: ${error}`);
+        }
+      });
+    }
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setCsvFile(e.target.files[0]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.agentId) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+    
+    if (!csvIsValid && !isEditing) {
+      toast.error("Faça upload de um arquivo CSV válido com leads");
+      return;
+    }
+    
+    if (!formData.consent) {
+      toast.error("Você precisa confirmar que os leads consentiram em receber ligações");
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // 1. Create or update campaign
+      const campaignData = {
+        name: formData.name,
+        agent_id: formData.agentId,
+        origin_phone: formData.originPhone,
+        status: "scheduled",
+        start_date: new Date().toISOString(),
+        total_leads: isEditing ? undefined : csvData.length,
+      };
+      
+      let campaignId = id;
+      
+      if (isEditing) {
+        // Update existing campaign
+        const { error } = await supabase
+          .from("campaigns")
+          .update(campaignData)
+          .eq("id", id);
+          
+        if (error) throw error;
+        toast.success("Campanha atualizada com sucesso!");
+      } else {
+        // Create new campaign
+        const { data, error } = await supabase
+          .from("campaigns")
+          .insert(campaignData)
+          .select("id")
+          .single();
+          
+        if (error) throw error;
+        campaignId = data.id;
+        
+        // 2. Add leads
+        if (csvData.length > 0) {
+          const leadsToInsert = csvData.map(lead => ({
+            campaign_id: campaignId,
+            name: lead.name,
+            phone: lead.phone,
+            status: "pending",
+          }));
+          
+          const { error: leadsError } = await supabase
+            .from("leads")
+            .insert(leadsToInsert);
+            
+          if (leadsError) throw leadsError;
+        }
+        
+        toast.success("Campanha criada com sucesso!");
+      }
+      
+      // Redirect to campaigns list
+      navigate("/campaigns");
+      
+    } catch (err: any) {
+      console.error("Error saving campaign:", err);
+      toast.error(`Erro ao salvar campanha: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -130,11 +282,51 @@ export default function CampaignForm() {
                   type="file" 
                   accept=".csv" 
                   onChange={handleFileChange}
+                  disabled={isEditing}
                 />
               </div>
               <p className="text-sm text-gray-500 mt-1">
                 Formato: nome, telefone
               </p>
+              
+              {csvError && (
+                <p className="text-sm text-red-500 mt-1">
+                  {csvError}
+                </p>
+              )}
+              
+              {csvIsValid && csvData.length > 0 && (
+                <div className="mt-2 p-3 bg-gray-50 rounded border text-sm">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="font-medium">{csvData.length} leads encontrados</p>
+                  </div>
+                  {csvData.length > 0 && (
+                    <div className="max-h-32 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="p-1 text-left">Nome</th>
+                            <th className="p-1 text-left">Telefone</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {csvData.slice(0, 5).map((lead, idx) => (
+                            <tr key={idx} className="border-b border-gray-100">
+                              <td className="p-1">{lead.name}</td>
+                              <td className="p-1">{lead.phone}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {csvData.length > 5 && (
+                        <p className="text-center text-xs text-gray-500 mt-2">
+                          + {csvData.length - 5} leads não exibidos
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -142,18 +334,33 @@ export default function CampaignForm() {
               <Select
                 value={formData.agentId}
                 onValueChange={(value) => setFormData({...formData, agentId: value})}
+                disabled={loading}
               >
                 <SelectTrigger id="agent">
                   <SelectValue placeholder="Selecione um agente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {agents.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </SelectItem>
-                  ))}
+                  {agentsLoading ? (
+                    <div className="flex items-center justify-center p-2">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <span>Carregando...</span>
+                    </div>
+                  ) : agents.length === 0 ? (
+                    <div className="p-2 text-center text-muted-foreground">
+                      Nenhum agente disponível
+                    </div>
+                  ) : (
+                    agents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
+              <p className="text-sm text-gray-500 mt-1">
+                O agente que será utilizado para fazer as chamadas
+              </p>
             </div>
 
             <div>
@@ -201,7 +408,14 @@ export default function CampaignForm() {
                 className="bg-blue-800 hover:bg-blue-900 text-white"
                 disabled={loading}
               >
-                {loading ? "Salvando..." : isEditing ? "Salvar Alterações" : "Criar Campanha"}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isEditing ? "Salvando..." : "Criando..."}
+                  </>
+                ) : (
+                  isEditing ? "Salvar Alterações" : "Criar Campanha"
+                )}
               </Button>
             </div>
           </form>
