@@ -8,7 +8,7 @@ import { AgentFilters } from "@/components/agents/AgentFilters";
 import { AgentDiagnosticsAlert } from "@/components/agents/AgentDiagnosticsAlert";
 import { useAgents } from "@/hooks/use-agents";
 import { useAgentDiagnostics } from "@/hooks/use-agent-diagnostics";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +27,8 @@ export default function Agents() {
     handleManualRefresh, 
     showDiagnosticsAlert, 
     setShowDiagnosticsAlert,
-    forceRefresh
+    forceRefresh,
+    createDemoAgent
   } = useAgents();
   
   const { isDiagnosing, handleDiagnose } = useAgentDiagnostics(refetch);
@@ -89,7 +90,7 @@ export default function Agents() {
             
             // Verificação final
             const { data } = await supabase.from('agents').select('count');
-            console.log(`Verificação final: ${data?.[0]?.count || 0} agentes no banco`);
+            console.log(`Verificação final: ${data?.length || 0} agentes no banco`);
           }, 2000);
         }, 1000);
       };
@@ -112,6 +113,10 @@ export default function Agents() {
   
   const handleCreateAgent = () => {
     navigate("/agents/new");
+  };
+
+  const handleCreateDemoAgent = () => {
+    createDemoAgent();
   };
 
   const handleTestVoice = (id: string) => {
@@ -205,13 +210,23 @@ export default function Agents() {
             isDiagnosing={isDiagnosing}
           />
           
-          <Button 
-            onClick={handleCreateAgent}
-            className="bg-blue-800 hover:bg-blue-900 text-white font-medium flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Criar Novo Agente
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCreateDemoAgent}
+              className="bg-green-600 hover:bg-green-700 text-white font-medium flex items-center gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              Criar Agente Demo
+            </Button>
+            
+            <Button 
+              onClick={handleCreateAgent}
+              className="bg-blue-800 hover:bg-blue-900 text-white font-medium flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Criar Novo Agente
+            </Button>
+          </div>
         </div>
 
         <AgentGrid 

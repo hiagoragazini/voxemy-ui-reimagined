@@ -11,6 +11,7 @@ export function useAgents() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDiagnosticsAlert, setShowDiagnosticsAlert] = useState(false);
   const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState(Date.now());
+  const [isCreatingDemoAgent, setIsCreatingDemoAgent] = useState(false);
   
   // Define the fetch function separately so we can reuse it
   const fetchAgentsData = useCallback(async () => {
@@ -34,8 +35,13 @@ export function useAgents() {
       
       console.log("Agents data retrieved:", data);
       if (!data || data.length === 0) {
-        console.log("No agents found in database. Please create one.");
+        console.log("No agents found in database. Creating demo agent...");
         setShowDiagnosticsAlert(true);
+        
+        // Criar agente de demonstração se não existir nenhum e não estiver já criando
+        if (!isCreatingDemoAgent) {
+          createDemoAgent();
+        }
       } else {
         console.log(`Found ${data.length} agents in database:`, data.map(a => a.name).join(', '));
         setShowDiagnosticsAlert(false);
@@ -47,7 +53,49 @@ export function useAgents() {
       setShowDiagnosticsAlert(true);
       return [];
     }
-  }, []);
+  }, [isCreatingDemoAgent]);
+  
+  // Função para criar um agente de demonstração
+  const createDemoAgent = async () => {
+    try {
+      setIsCreatingDemoAgent(true);
+      console.log("Criando agente de demonstração...");
+      
+      const demoAgent = {
+        name: "Ana Atendimento",
+        description: "Agente de demonstração para atendimento ao cliente",
+        category: "Atendimento",
+        voice_id: VOICE_IDS.SARAH,
+        status: "active",
+        instructions: "Seja cordial e objetivo nas respostas. Procure resolver o problema do cliente de forma eficiente.",
+        response_style: "Formal e amigável",
+        default_greeting: "Olá, meu nome é Ana. Como posso ajudar você hoje?",
+        max_response_length: 200,
+        knowledge: "Informações sobre produtos e serviços da empresa.\n\nPerguntas frequentes sobre atendimento ao cliente.",
+        ai_model: "gpt-4o-mini",
+        conversation_prompt: "Você é Ana, uma assistente virtual especializada em atendimento ao cliente."
+      };
+      
+      const { data, error } = await supabase
+        .from('agents')
+        .insert(demoAgent)
+        .select();
+        
+      if (error) {
+        console.error("Erro ao criar agente de demonstração:", error);
+        toast.error("Não foi possível criar o agente de demonstração");
+      } else if (data && data.length > 0) {
+        console.log("Agente de demonstração criado com sucesso:", data[0]);
+        toast.success("Agente de demonstração 'Ana Atendimento' criado com sucesso!");
+        // Forçar atualização da lista
+        setLastRefreshTimestamp(Date.now());
+      }
+    } catch (e) {
+      console.error("Erro ao criar agente de demonstração:", e);
+    } finally {
+      setIsCreatingDemoAgent(false);
+    }
+  };
 
   // Force refresh when needed
   useEffect(() => {
@@ -155,7 +203,8 @@ export function useAgents() {
     handleManualRefresh,
     showDiagnosticsAlert,
     setShowDiagnosticsAlert,
-    forceRefresh: () => setLastRefreshTimestamp(Date.now())
+    forceRefresh: () => setLastRefreshTimestamp(Date.now()),
+    createDemoAgent
   };
 }
 

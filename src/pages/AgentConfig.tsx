@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -204,17 +205,16 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       
       console.log("Dados do agente a serem salvos:", agentData);
       
-      let result;
       let agentId = id;
       
       if (isNew) {
-        // Inserir novo agente
+        // Inserir novo agente - CORREÇÃO: Usar uma única operação e capturar o retorno corretamente
         const { data, error } = await supabase
           .from('agents')
           .insert(agentData)
           .select();
           
-        console.log("Resultado da inserção:", data, error);
+        console.log("Resultado da inserção:", { data, error });
         
         if (error) {
           throw error;
@@ -234,7 +234,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           .eq('id', id)
           .select();
           
-        console.log("Resultado da atualização:", data, error);
+        console.log("Resultado da atualização:", { data, error });
         
         if (error) {
           throw error;
@@ -266,23 +266,25 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         }
       }
       
-      // Garantir que a atualização foi bem-sucedida com múltiplas verificações
+      // Verificações adicionais para garantir que o agente foi salvo
       const verifyAgentSaved = async () => {
         try {
           console.log("Verificando se o agente foi salvo corretamente...");
           const { data: allAgents } = await supabase.from('agents').select('*');
           console.log(`Verificação encontrou ${allAgents?.length || 0} agentes no total`);
           
-          // Registrar todos os agentes para depuração
-          allAgents?.forEach(agent => {
-            console.log(`Agente encontrado: ${agent.id} - ${agent.name}`);
-          });
+          if (allAgents) {
+            // Registrar todos os agentes para depuração
+            allAgents.forEach(agent => {
+              console.log(`Agente encontrado: ${agent.id} - ${agent.name}`);
+            });
+          }
           
           // Aguardar um breve momento para garantir que a inserção foi processada
           setTimeout(() => {
             // Redirecionar para a página de agentes com parâmetros de URL para indicar o sucesso
             navigate(`/agents?${isNew ? 'created=true' : 'updated=true'}${agentId ? `&id=${agentId}` : ''}`);
-          }, 500);
+          }, 1000);
         } catch (err) {
           console.error("Erro na verificação final:", err);
         }
