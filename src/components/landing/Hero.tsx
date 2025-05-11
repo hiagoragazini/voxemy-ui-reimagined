@@ -14,7 +14,7 @@ const Hero = () => {
           <div className="space-y-4 mb-8">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight">
               Atendentes de Voz com IA.
-              <span className="bg-gradient-to-r from-blue-400 to-violet-500 bg-clip-text text-transparent block mt-2">
+              <span className="bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent block mt-2">
                 Para vendas e suporte.
               </span>
             </h1>
@@ -26,7 +26,7 @@ const Hero = () => {
           <div>
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white shadow-lg hover:shadow-violet-500/50 transition-all"
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-blue-500/50 transition-all"
               onClick={scrollToPlans}
             >
               Testar 7 dias grátis
