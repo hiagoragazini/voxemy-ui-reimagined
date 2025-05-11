@@ -1,8 +1,10 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import * as twilio from "https://esm.sh/twilio@4.20.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+// Import Twilio properly with the correct ESM package
+import { Twilio } from "https://esm.sh/twilio@4.20.0/lib/rest/Twilio.js";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -18,6 +20,9 @@ serve(async (req) => {
     if (!twilioAccountSid || !twilioAuthToken) {
       throw new Error("Credenciais do Twilio não estão configuradas");
     }
+
+    // Log the Twilio credentials (masked for security)
+    console.log(`Usando credenciais do Twilio: SID: ${twilioAccountSid.substring(0, 5)}...`);
 
     // Obter dados da requisição
     const { 
@@ -42,11 +47,12 @@ serve(async (req) => {
 
     console.log(`Iniciando chamada para ${phoneNumber}`);
 
-    // Inicializar cliente Twilio
-    const client = new twilio.Twilio(twilioAccountSid, twilioAuthToken);
+    // Inicializar cliente Twilio corretamente
+    const client = new Twilio(twilioAccountSid, twilioAuthToken);
 
     // Formatar o número para o formato internacional
     const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+    console.log(`Número formatado: ${formattedPhoneNumber}`);
 
     // Base URL para funções
     const baseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -85,7 +91,7 @@ serve(async (req) => {
           <Response>
             <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
             <Pause length="1"/>
-            <Say language="pt-BR">Esta é uma demonstração da integração do Twilio com o Eleven Labs.</Say>
+            <Say language="pt-BR">Esta é uma demonstração da integração do Twilio.</Say>
             ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
           </Response>
         `;
@@ -109,50 +115,66 @@ serve(async (req) => {
       console.log(`URL de callback: ${finalCallbackUrl}`);
     }
 
-    // Fazer a chamada
-    const call = await client.calls.create({
-      twiml: twiml,
-      to: formattedPhoneNumber,
-      from: Deno.env.get("TWILIO_PHONE_NUMBER") || "+15155172542", // Use env var if available
-      statusCallback: callbackUrl ? callbackUrl : undefined,
-      statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
-      statusCallbackMethod: 'POST',
-      record: recordCall, // Enable recording if requested
-    });
-
-    // Update lead status if leadId is provided
-    if (leadId) {
-      try {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL");
-        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-        
-        if (supabaseUrl && supabaseKey) {
-          const supabase = createClient(supabaseUrl, supabaseKey);
-          
-          await supabase
-            .from("leads")
-            .update({ 
-              status: "called",
-              call_result: "Chamada iniciada"
-            })
-            .eq("id", leadId);
-        }
-      } catch (err) {
-        console.error("Error updating lead status:", err);
-        // Don't fail the whole request if this fails
-      }
+    // Get the Twilio phone number from environment variables
+    const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
+    if (!twilioPhone) {
+      console.warn("Número de telefone do Twilio não configurado nas variáveis de ambiente, usando o padrão");
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        callSid: call.sid,
-        status: call.status
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    console.log(`Usando número do Twilio: ${twilioPhone || "padrão"}`);
+    console.log(`TWIML configurado: ${twiml.substring(0, 100)}...`);
+
+    // Fazer a chamada
+    try {
+      const call = await client.calls.create({
+        twiml: twiml,
+        to: formattedPhoneNumber,
+        from: twilioPhone || "+15155172542", // Use env var if available
+        statusCallback: callbackUrl ? callbackUrl : undefined,
+        statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
+        statusCallbackMethod: 'POST',
+        record: recordCall, // Enable recording if requested
+      });
+      
+      console.log("Chamada criada com sucesso:", call.sid);
+
+      // Update lead status if leadId is provided
+      if (leadId) {
+        try {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL");
+          const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+          
+          if (supabaseUrl && supabaseKey) {
+            const supabase = createClient(supabaseUrl, supabaseKey);
+            
+            await supabase
+              .from("leads")
+              .update({ 
+                status: "called",
+                call_result: "Chamada iniciada"
+              })
+              .eq("id", leadId);
+          }
+        } catch (err) {
+          console.error("Error updating lead status:", err);
+          // Don't fail the whole request if this fails
+        }
       }
-    );
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          callSid: call.sid,
+          status: call.status
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    } catch (twilioError) {
+      console.error("Twilio error:", twilioError);
+      throw new Error(`Erro do Twilio: ${twilioError.message || "Erro desconhecido"}`);
+    }
   } catch (error) {
     console.error("Erro ao fazer chamada:", error);
     return new Response(

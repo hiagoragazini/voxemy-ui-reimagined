@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, Phone, AlertCircle } from "lucide-react";
+import { Loader2, Phone, AlertCircle, HelpCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -32,6 +32,7 @@ export function CampaignCallTester({
   const [isLoading, setIsLoading] = useState(false);
   const [callStatus, setCallStatus] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [showTroubleshooting, setShowTroubleshooting] = useState(false);
   
   const handleMakeCall = async () => {
     if (!phoneNumber || phoneNumber.length < 8) {
@@ -183,10 +184,56 @@ export function CampaignCallTester({
                       <li>Se o número de telefone do Twilio está ativo e configurado</li>
                       <li>Se o formato do número está correto (DDD + número)</li>
                     </ul>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="mt-2 text-xs flex items-center gap-1 p-0 h-auto hover:bg-transparent"
+                      onClick={() => setShowTroubleshooting(!showTroubleshooting)}
+                    >
+                      <HelpCircle className="h-3 w-3" />
+                      <span>{showTroubleshooting ? "Ocultar ajuda" : "Mostrar ajuda avançada"}</span>
+                    </Button>
                   </div>
                 )}
               </div>
             </div>
+            
+            {showTroubleshooting && (
+              <div className="mt-3 bg-amber-50 p-2 rounded border border-amber-200 text-xs">
+                <h4 className="font-medium mb-1">Soluções comuns para problemas com o Twilio:</h4>
+                <ol className="list-decimal pl-4 space-y-1">
+                  <li>
+                    <strong>Credenciais:</strong> Verifique se o TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_PHONE_NUMBER estão configurados corretamente no Supabase.
+                  </li>
+                  <li>
+                    <strong>Número do Twilio:</strong> Certifique-se de que seu número do Twilio está ativo e configurado para fazer ligações de voz.
+                  </li>
+                  <li>
+                    <strong>Formato do número:</strong> O número precisa estar no formato internacional (ex: +5511999887766).
+                  </li>
+                  <li>
+                    <strong>Conta de teste:</strong> Se estiver usando uma conta de teste do Twilio, pode haver limitações nas chamadas.
+                  </li>
+                  <li>
+                    <strong>Verifique os logs:</strong> Consulte os logs da função Edge para mais detalhes sobre o erro.
+                  </li>
+                  <li>
+                    <strong>Créditos:</strong> Verifique se sua conta do Twilio tem créditos suficientes para fazer chamadas.
+                  </li>
+                </ol>
+                <div className="mt-2 flex justify-end">
+                  <a 
+                    href="https://www.twilio.com/docs/voice/troubleshooting" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 flex items-center gap-1 hover:underline"
+                  >
+                    <span>Documentação do Twilio</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
