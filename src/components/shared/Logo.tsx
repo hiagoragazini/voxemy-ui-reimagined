@@ -18,7 +18,7 @@ const Logo = ({ className = "", size = "md" }: LogoProps) => {
       <div className={`font-bold ${sizeClasses[size]}`}>
         <span className="text-blue-800">V</span>
         <span className="text-blue-800">ox</span>
-        <span className="text-white">emy</span>
+        <span className="text-blue-900">emy</span>
         <span className="text-blue-700 font-normal text-sm ml-0.5">AI</span>
       </div>
     </Link>
