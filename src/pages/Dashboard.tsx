@@ -22,44 +22,84 @@ export const VOICES = {
 export default function Dashboard() {
   const navigate = useNavigate();
   
-  // Fetch agents from Supabase
-  const { data: agentsData, isLoading } = useQuery({
+  // Dados simulados para demonstração de 10 dias de uso
+  const simulatedAgents: AgentCardProps[] = [
+    {
+      id: "9b3f2a1e-8c5d-4f7a-b6e3-d2c1a0f9e8b7",
+      name: "Carlos - Vendas B2B",
+      category: "Comercial",
+      description: "Especializado em qualificação de leads e agendamento de demonstrações para software empresarial",
+      status: "active",
+      calls: 842,
+      avgTime: "2:45",
+      successRate: 76,
+      successChange: "+4.2%",
+      lastActivity: "Hoje, 14:30",
+      avatarLetter: "C",
+      avatarColor: "bg-blue-100",
+      voiceId: VOICES.ROGER
+    },
+    {
+      id: "7d5e6f4c-3b2a-1d9e-8c7f-6b5a4d3c2b1a",
+      name: "Mariana - Atendimento ao Cliente",
+      category: "Suporte",
+      description: "Especializada em resolver dúvidas técnicas e problemas com produtos",
+      status: "active",
+      calls: 967,
+      avgTime: "3:12",
+      successRate: 92,
+      successChange: "+1.8%",
+      lastActivity: "Hoje, 15:15",
+      avatarLetter: "M",
+      avatarColor: "bg-sky-100",
+      voiceId: VOICES.SARAH
+    },
+    {
+      id: "5a4b3c2d-1e9f-8g7h-6i5j-4k3l2m1n0o9p",
+      name: "Roberto - Retenção",
+      category: "Reengajamento",
+      description: "Focado em reativar clientes inativos e reduzir cancelamentos",
+      status: "active",
+      calls: 513,
+      avgTime: "4:05",
+      successRate: 68,
+      successChange: "+5.7%",
+      lastActivity: "Hoje, 13:45",
+      avatarLetter: "R",
+      avatarColor: "bg-cyan-100",
+      voiceId: VOICES.THOMAS
+    },
+    {
+      id: "2z3y4x5w-6v7u-8t9s-0r1q-2p3o4n5m6l7k",
+      name: "Ana - Follow-up",
+      category: "Comercial",
+      description: "Especializada em follow-up após reuniões para fechamento de vendas",
+      status: "paused",
+      calls: 621,
+      avgTime: "1:58",
+      successRate: 81,
+      successChange: "+3.4%",
+      lastActivity: "Ontem, 17:20",
+      avatarLetter: "A",
+      avatarColor: "bg-teal-100",
+      voiceId: VOICES.ARIA
+    }
+  ];
+  
+  // Usar os dados simulados em vez de buscar do Supabase para o vídeo
+  const { isLoading } = useQuery({
     queryKey: ['agents'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*')
-        .eq('status', 'active')
-        .limit(3);
-      
-      if (error) {
-        console.error('Error fetching agents:', error);
-        return [];
-      }
-      
-      return data || [];
-    }
+      console.log("Simulando busca de agentes para demonstração de vídeo");
+      // Simular tempo de carregamento
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return [];
+    },
+    enabled: false // Desabilita a query para usar nossos dados simulados
   });
 
-  // Transform Supabase data to AgentCardProps
-  const agents: AgentCardProps[] = agentsData?.map(agent => ({
-    id: agent.id,
-    name: agent.name,
-    category: agent.category,
-    description: agent.description || "",
-    status: agent.status as "active" | "paused" | "inactive",
-    calls: Math.floor(Math.random() * 200), // Placeholder data
-    avgTime: `${Math.floor(Math.random() * 5)}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`, // Placeholder
-    successRate: Math.floor(Math.random() * 100), // Placeholder
-    successChange: `+${(Math.random() * 10).toFixed(1)}%`, // Placeholder
-    lastActivity: getRandomActivity(), // Placeholder
-    avatarLetter: agent.name.charAt(0),
-    avatarColor: getAvatarColor(agent.name),
-    voiceId: agent.voice_id || VOICES.ROGER,
-  })) || [];
-
   // Top agentes (versão resumida para não repetir a página completa)
-  const topAgents = agents.slice(0, 2);
+  const topAgents = simulatedAgents.slice(0, 2);
 
   // Navegar para a página de todos os agentes
   const viewAllAgents = () => {
@@ -88,7 +128,7 @@ export default function Dashboard() {
           </p>
         </div>
         
-        {/* Estatísticas do topo */}
+        {/* Estatísticas do topo - Dados realistas para 10 dias de uso */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="p-4 border-border/40 hover:border-blue-200 transition-colors duration-200">
             <div className="flex items-start justify-between">
@@ -164,7 +204,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Top agentes cards */}
+        {/* Top agentes cards - Dados simulados mais realistas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
           {isLoading ? (
             <p>Carregando agentes...</p>
@@ -291,10 +331,10 @@ function getAvatarColor(name: string) {
 function getRandomActivity() {
   const activities = [
     "Hoje, 14:30", 
-    "Ontem, 17:20", 
-    "22/04/2025", 
-    "15/04/2025", 
-    "10/04/2025"
+    "Hoje, 15:20", 
+    "Hoje, 11:45", 
+    "Hoje, 10:15", 
+    "Ontem, 17:20"
   ];
   return activities[Math.floor(Math.random() * activities.length)];
 }

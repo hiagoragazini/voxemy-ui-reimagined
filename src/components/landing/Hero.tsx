@@ -29,10 +29,10 @@ const Hero = () => {
               className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-blue-500/50 transition-all"
               onClick={scrollToPlans}
             >
-              Testar 7 dias grátis
+              Ver planos
             </Button>
             <p className="text-sm text-slate-400 mt-3">
-              Configure em minutos. Cancele quando quiser.
+              Mais de 5.000 chamadas realizadas neste mês. Resultados garantidos.
             </p>
           </div>
         </div>

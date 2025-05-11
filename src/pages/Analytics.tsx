@@ -34,15 +34,18 @@ import {
   Cell,
 } from "recharts";
 
-// Mock data for charts
+// Dados simulados mais realistas para 10 dias de uso
 const dailyCallsData = [
-  { day: "Seg", calls: 142 },
-  { day: "Ter", calls: 165 },
-  { day: "Qua", calls: 113 },
-  { day: "Qui", calls: 178 },
-  { day: "Sex", calls: 196 },
-  { day: "Sab", calls: 84 },
-  { day: "Dom", calls: 47 },
+  { day: "01/05", calls: 142, avgTime: 3.2 },
+  { day: "02/05", calls: 165, avgTime: 3.5 },
+  { day: "03/05", calls: 113, avgTime: 3.7 },
+  { day: "04/05", calls: 178, avgTime: 3.1 },
+  { day: "05/05", calls: 196, avgTime: 2.9 },
+  { day: "06/05", calls: 184, avgTime: 3.0 },
+  { day: "07/05", calls: 217, avgTime: 3.2 },
+  { day: "08/05", calls: 223, avgTime: 3.3 },
+  { day: "09/05", calls: 245, avgTime: 3.4 },
+  { day: "10/05", calls: 254, avgTime: 3.4 },
 ];
 
 const successRateData = [
@@ -50,13 +53,7 @@ const successRateData = [
   { month: "Fev", taxa: 68 },
   { month: "Mar", taxa: 74 },
   { month: "Abr", taxa: 76 },
-  { month: "Mai", taxa: 73 },
-  { month: "Jun", taxa: 77 },
-  { month: "Jul", taxa: 80 },
-  { month: "Ago", taxa: 84 },
-  { month: "Set", taxa: 82 },
-  { month: "Out", taxa: 87 },
-  { month: "Nov", taxa: 89 },
+  { month: "Mai", taxa: 78.5 },
 ];
 
 const campaignPerformanceData = [
@@ -68,11 +65,11 @@ const campaignPerformanceData = [
 ];
 
 const agentComparisonData = [
-  { name: "Sofia", calls: 253, success: 92 },
-  { name: "Carlos", calls: 187, success: 78 },
-  { name: "Ana", calls: 94, success: 81 },
-  { name: "Ricardo", calls: 142, success: 65 },
-  { name: "Juliana", calls: 78, success: 94 },
+  { name: "Carlos", calls: 842, success: 76 },
+  { name: "Mariana", calls: 967, success: 92 },
+  { name: "Roberto", calls: 513, success: 68 },
+  { name: "Ana", calls: 621, success: 81 },
+  { name: "Paulo", calls: 453, success: 89 },
 ];
 
 const callReasonData = [
@@ -108,28 +105,28 @@ export default function Analytics() {
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
               <StatisticCard
                 title="Chamadas Hoje"
-                value="214"
+                value="254"
                 change={"+23"}
                 changeType="positive"
                 icon={<PhoneCall />}
               />
               <StatisticCard
                 title="Taxa de Sucesso"
-                value="87%"
+                value="78.5%"
                 change={"+3.5%"}
                 changeType="positive"
                 icon={<TrendingUp />}
               />
               <StatisticCard
                 title="Tempo Médio"
-                value="2:47"
+                value="3:24"
                 change={"-0:12"}
                 changeType="positive"
                 icon={<Clock />}
               />
               <StatisticCard
                 title="Agentes Ativos"
-                value="4"
+                value="5"
                 change={"+1"}
                 changeType="positive"
                 icon={<User />}
@@ -141,9 +138,9 @@ export default function Analytics() {
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-center">
                     <CardTitle className="text-lg font-medium">Chamadas por Dia</CardTitle>
-                    <Badge variant="secondary">Esta semana</Badge>
+                    <Badge variant="secondary">Últimos 10 dias</Badge>
                   </div>
-                  <CardDescription>Total de chamadas realizadas por dia na última semana</CardDescription>
+                  <CardDescription>Total de chamadas realizadas por dia</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -183,7 +180,7 @@ export default function Analytics() {
                     >
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
                       <XAxis dataKey="month" />
-                      <YAxis />
+                      <YAxis domain={[60, 85]} />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: "#fff", 

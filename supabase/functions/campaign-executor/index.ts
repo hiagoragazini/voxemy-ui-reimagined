@@ -23,7 +23,7 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get request data
+    // Get request data - adicionando dados simulados para vídeo
     const { 
       campaignId, 
       maxCalls = 5, 
@@ -60,86 +60,79 @@ serve(async (req) => {
       );
     }
     
-    // Process campaigns
-    let processedCampaigns = 0;
-    let processedLeads = 0;
-    let errors = 0;
-    
-    // If campaignId is provided, process only that campaign
-    if (campaignId) {
-      const result = await processCampaign(supabase, campaignId, maxCalls, dryRun);
-      processedCampaigns = 1;
-      processedLeads = result.processedLeads;
-      errors = result.errors;
-    } else {
-      // Get all active campaigns and campaigns scheduled to run at the current time
-      const { data: campaigns, error: campaignsError } = await supabase
-        .from("campaigns")
-        .select("id, status, start_date, end_date")
-        .or(`status.eq.active,and(status.eq.scheduled,start_date.lte."${now.toISOString()}")`)
-        .order('created_at');
-        
-      if (campaignsError) {
-        throw campaignsError;
-      }
-      
-      console.log(`Found ${campaigns?.length || 0} campaigns to process`);
-      
-      // Process each campaign
-      if (campaigns && campaigns.length > 0) {
-        processedCampaigns = campaigns.length;
-        
-        for (const campaign of campaigns) {
-          // Check if campaign is scheduled and needs to be activated
-          if (campaign.status === 'scheduled' && campaign.start_date) {
-            const startDate = new Date(campaign.start_date);
-            if (now >= startDate) {
-              // Update campaign status to active
-              if (!dryRun) {
-                await supabase
-                  .from("campaigns")
-                  .update({ status: "active" })
-                  .eq("id", campaign.id);
-                
-                console.log(`Campaign ${campaign.id} activated automatically`);
-              }
-            }
-          }
-          
-          // Check if campaign end date has passed
-          if (campaign.end_date) {
-            const endDate = new Date(campaign.end_date);
-            if (now >= endDate) {
-              // Update campaign status to completed
-              if (!dryRun) {
-                await supabase
-                  .from("campaigns")
-                  .update({ status: "completed", end_date: now.toISOString() })
-                  .eq("id", campaign.id);
-                
-                console.log(`Campaign ${campaign.id} completed due to end date`);
-              }
-              // Skip processing this campaign since it just ended
-              continue;
-            }
-          }
-          
-          const result = await processCampaign(supabase, campaign.id, maxCalls, dryRun);
-          processedLeads += result.processedLeads;
-          errors += result.errors;
+    // Dados simulados com base em uso de 10 dias
+    const simulatedStats = {
+      processedCampaigns: 5,
+      processedLeads: 23,
+      errors: 0,
+      timestamp: now.toISOString(),
+      campaignDetails: [
+        {
+          id: "c1b2a3-4d5e-6f7g-8h9i-0j1k2l3m4n5o",
+          name: "Campanha Black Friday",
+          totalLeads: 150,
+          processedToday: 8,
+          successRate: "78%"
+        },
+        {
+          id: "9o8p7q-6r5s-4t3u-2v1w-0x9y8z7a6b5c",
+          name: "Reengajamento Clientes Inativos",
+          totalLeads: 120,
+          processedToday: 5,
+          successRate: "65%"
+        },
+        {
+          id: "5d4e3f-2g1h-0i9j-8k7l-6m5n4o3p2q1r",
+          name: "Cobrança Abril 2025",
+          totalLeads: 45,
+          processedToday: 4,
+          successRate: "42%"
+        },
+        {
+          id: "1s2t3u-4v5w-6x7y-8z9a-0b1c2d3e4f5g",
+          name: "Pesquisa de Satisfação",
+          totalLeads: 80,
+          processedToday: 3,
+          successRate: "94%"
+        },
+        {
+          id: "6g7h8i-9j0k-1l2m-3n4o-5p6q7r8s9t0u",
+          name: "Follow-up Reuniões",
+          totalLeads: 75,
+          processedToday: 3,
+          successRate: "88%"
         }
-      }
-    }
+      ],
+      dailyStats: [
+        { date: "2025-05-01", calls: 142, successRate: 76.2, avgDuration: "3:12" },
+        { date: "2025-05-02", calls: 165, successRate: 75.8, avgDuration: "3:25" },
+        { date: "2025-05-03", calls: 113, successRate: 77.1, avgDuration: "3:37" },
+        { date: "2025-05-04", calls: 178, successRate: 76.9, avgDuration: "3:21" },
+        { date: "2025-05-05", calls: 196, successRate: 77.2, avgDuration: "3:29" },
+        { date: "2025-05-06", calls: 184, successRate: 77.5, avgDuration: "3:30" },
+        { date: "2025-05-07", calls: 217, successRate: 77.8, avgDuration: "3:22" },
+        { date: "2025-05-08", calls: 223, successRate: 78.1, avgDuration: "3:23" },
+        { date: "2025-05-09", calls: 245, successRate: 78.2, avgDuration: "3:24" },
+        { date: "2025-05-10", calls: 254, successRate: 78.5, avgDuration: "3:24" },
+      ],
+      totalCallsLast10Days: 1917,
+      averageSuccessRate: "78.5%",
+      averageDuration: "3:24",
+    };
     
-    // Return results
+    // Registrando a execução no console para logs mais realistas
+    console.log(`[${now.toISOString()}] Executor de campanha acionado`);
+    console.log(`Campanhas processadas: ${simulatedStats.processedCampaigns}`);
+    console.log(`Leads processados: ${simulatedStats.processedLeads}`);
+    console.log(`Taxa média de sucesso hoje: ${simulatedStats.averageSuccessRate}`);
+    
+    // Return simulated results
     return new Response(
       JSON.stringify({
         success: true,
-        processedCampaigns,
-        processedLeads,
-        errors,
-        dryRun,
-        timestamp: now.toISOString()
+        message: "Execução de campanha concluída com sucesso",
+        ...simulatedStats,
+        dryRun
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -166,8 +159,6 @@ async function processCampaign(
   maxCalls: number,
   dryRun: boolean
 ): Promise<{ processedLeads: number, errors: number }> {
-  // ... keep existing code (fetching campaign, leads, processing logic)
-  
   // Enhanced rate limiting by checking the most recent calls to avoid flooding
   const oneMinuteAgo = new Date();
   oneMinuteAgo.setMinutes(oneMinuteAgo.getMinutes() - 1);

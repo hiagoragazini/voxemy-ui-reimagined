@@ -35,18 +35,68 @@ export function useAgents() {
       }
       
       console.log("Agents data retrieved:", data);
+      
+      // Verificando dados no banco de dados - caso não existam, vamos usar agentes simulados para demonstração
       if (!data || data.length === 0) {
-        console.log("No agents found in database. Creating demo agent...");
-        setShowDiagnosticsAlert(true);
+        console.log("No agents found in database. Using simulated agents for demo...");
         
-        // Criar agente de demonstração se não existir nenhum e não estiver já criando
-        if (!isCreatingDemoAgent) {
-          createDemoAgent();
-        }
-      } else {
-        console.log(`Found ${data.length} agents in database:`, data.map(a => a.name).join(', '));
-        setShowDiagnosticsAlert(false);
+        // Agentes simulados para demonstração do vídeo com uso de 10 dias
+        const simulatedAgents = [
+          {
+            id: "9b3f2a1e-8c5d-4f7a-b6e3-d2c1a0f9e8b7",
+            name: "Carlos - Vendas B2B",
+            category: "Comercial",
+            description: "Especializado em qualificação de leads e agendamento de demonstrações para software empresarial",
+            status: "active",
+            voice_id: VOICE_IDS.ROGER,
+            created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            id: "7d5e6f4c-3b2a-1d9e-8c7f-6b5a4d3c2b1a",
+            name: "Mariana - Atendimento ao Cliente",
+            category: "Suporte",
+            description: "Especializada em resolver dúvidas técnicas e problemas com produtos",
+            status: "active",
+            voice_id: VOICE_IDS.SARAH,
+            created_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            id: "5a4b3c2d-1e9f-8g7h-6i5j-4k3l2m1n0o9p",
+            name: "Roberto - Retenção",
+            category: "Reengajamento",
+            description: "Focado em reativar clientes inativos e reduzir cancelamentos",
+            status: "active",
+            voice_id: VOICE_IDS.THOMAS,
+            created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            id: "2z3y4x5w-6v7u-8t9s-0r1q-2p3o4n5m6l7k",
+            name: "Ana - Follow-up",
+            category: "Comercial",
+            description: "Especializada em follow-up após reuniões para fechamento de vendas",
+            status: "paused",
+            voice_id: VOICE_IDS.ARIA,
+            created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            id: "8q9w0e1r-2t3y-4u5i-6o7p-8a9s0d1f2g3h",
+            name: "Paulo - Pesquisa",
+            category: "Pesquisa",
+            description: "Especializado em coletar feedback e realizar pesquisas de satisfação",
+            status: "active",
+            voice_id: VOICE_IDS.ROGER,
+            created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        ];
+
+        return simulatedAgents;
       }
+      
       return data || [];
     } catch (e) {
       console.error("Exception in fetchAgentsData:", e);
@@ -56,48 +106,6 @@ export function useAgents() {
     }
   }, [isCreatingDemoAgent]);
   
-  // Função para criar um agente de demonstração
-  const createDemoAgent = async () => {
-    try {
-      setIsCreatingDemoAgent(true);
-      console.log("Criando agente de demonstração...");
-      
-      const demoAgent = {
-        name: "Ana Atendimento",
-        description: "Agente de demonstração para atendimento ao cliente",
-        category: "Atendimento",
-        voice_id: VOICE_IDS.SARAH,
-        status: "active",
-        instructions: "Seja cordial e objetivo nas respostas. Procure resolver o problema do cliente de forma eficiente.",
-        response_style: "Formal e amigável",
-        default_greeting: "Olá, meu nome é Ana. Como posso ajudar você hoje?",
-        max_response_length: 200,
-        knowledge: "Informações sobre produtos e serviços da empresa.\n\nPerguntas frequentes sobre atendimento ao cliente.",
-        ai_model: "gpt-4o-mini",
-        conversation_prompt: "Você é Ana, uma assistente virtual especializada em atendimento ao cliente."
-      };
-      
-      const { data, error } = await supabase
-        .from('agents')
-        .insert(demoAgent)
-        .select();
-        
-      if (error) {
-        console.error("Erro ao criar agente de demonstração:", error);
-        toast.error("Não foi possível criar o agente de demonstração");
-      } else if (data && data.length > 0) {
-        console.log("Agente de demonstração criado com sucesso:", data[0]);
-        toast.success("Agente de demonstração 'Ana Atendimento' criado com sucesso!");
-        // Forçar atualização da lista
-        setLastRefreshTimestamp(Date.now());
-      }
-    } catch (e) {
-      console.error("Erro ao criar agente de demonstração:", e);
-    } finally {
-      setIsCreatingDemoAgent(false);
-    }
-  };
-
   // Fetch agents from Supabase with more conservative refresh settings
   const { data: agentsData, isLoading, error, refetch } = useQuery({
     queryKey: ['agents', lastRefreshTimestamp],
@@ -111,15 +119,40 @@ export function useAgents() {
 
   // Generate stable random values for each agent once
   const generateStableValues = useCallback((agentId: string) => {
-    // Use a deterministic "random" based on agent ID
+    // Usar valores mais realistas para simular uso de 10 dias
     const hash = Array.from(agentId).reduce((acc, char) => acc + char.charCodeAt(0), 0);
     
+    // Gerar números mais altos para chamadas (entre 180-950)
+    const calls = 180 + (hash % 770);
+    
+    // Taxa de sucesso entre 65-95% com tendência para altos
+    const successRate = 65 + (hash % 30);
+    
+    // Mudança positiva na taxa de sucesso (mostrando melhoria ao longo do tempo)
+    const successChange = `+${(2 + (hash % 8)).toFixed(1)}%`;
+    
+    // Gerar tempo médio de chamada realista
+    const avgMinutes = 1 + (hash % 4);
+    const avgSeconds = (hash % 60).toString().padStart(2, '0');
+    const avgTime = `${avgMinutes}:${avgSeconds}`;
+    
+    // Gerar atividade recente (principalmente hoje e ontem)
+    const activities = [
+      "Hoje, 14:30", 
+      "Hoje, 11:15",
+      "Hoje, 09:45",
+      "Ontem, 17:20",
+      "Ontem, 15:05",
+      "Ontem, 10:30",
+    ];
+    const lastActivity = activities[hash % activities.length];
+    
     return {
-      calls: 10 + (hash % 190), // Between 10-200
-      avgTime: `${1 + (hash % 4)}:${(hash % 60).toString().padStart(2, '0')}`, // Between 1:00-5:59
-      successRate: 65 + (hash % 30), // Between 65-95%
-      successChange: `+${(1 + (hash % 9)).toFixed(1)}%`, // Between +1.0% and +9.9%
-      lastActivity: getStableRandomActivity(hash),
+      calls,
+      avgTime,
+      successRate,
+      successChange,
+      lastActivity
     };
   }, []);
 
@@ -190,19 +223,7 @@ export function useAgents() {
     showDiagnosticsAlert,
     setShowDiagnosticsAlert,
     forceRefresh: () => setLastRefreshTimestamp(Date.now()),
-    createDemoAgent,
-    isCreatingDemoAgent
+    createDemoAgent: () => console.log("Demo agent creation not needed - using simulated agents"),
+    isCreatingDemoAgent: false
   };
-}
-
-// Helper function to generate stable random activity dates
-function getStableRandomActivity(seed: number) {
-  const activities = [
-    "Hoje, 14:30", 
-    "Ontem, 17:20", 
-    "22/04/2025", 
-    "15/04/2025", 
-    "10/04/2025"
-  ];
-  return activities[seed % activities.length];
 }
