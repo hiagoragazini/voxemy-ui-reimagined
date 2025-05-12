@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -317,13 +316,13 @@ export default function CallsMonitoring() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead width="10%">Status</TableHead>
-                    <TableHead width="15%">Horário</TableHead>
-                    <TableHead width="15%">Duração</TableHead>
-                    <TableHead width="15%">De</TableHead>
-                    <TableHead width="15%">Para</TableHead>
-                    <TableHead width="15%">Agente</TableHead>
-                    <TableHead width="15%">Campanha/Lead</TableHead>
+                    <TableHead className="w-[10%]">Status</TableHead>
+                    <TableHead className="w-[15%]">Horário</TableHead>
+                    <TableHead className="w-[15%]">Duração</TableHead>
+                    <TableHead className="w-[15%]">De</TableHead>
+                    <TableHead className="w-[15%]">Para</TableHead>
+                    <TableHead className="w-[15%]">Agente</TableHead>
+                    <TableHead className="w-[15%]">Campanha/Lead</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

@@ -10,7 +10,7 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen">
-      <Sidebar className="w-64 shrink-0" />
+      <Sidebar />
       <div className="flex flex-col flex-1">
         <Header />
         <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
