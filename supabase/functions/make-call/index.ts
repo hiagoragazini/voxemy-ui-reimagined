@@ -3,8 +3,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-// Import Twilio properly with the correct ESM package
-import { Twilio } from "https://esm.sh/twilio@4.20.0/lib/rest/Twilio.js";
+// Importação correta do Twilio para Deno/ESM
+import twilio from "https://esm.sh/twilio@4.20.0";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -47,8 +47,8 @@ serve(async (req) => {
 
     console.log(`Iniciando chamada para ${phoneNumber}`);
 
-    // Inicializar cliente Twilio corretamente
-    const client = new Twilio(twilioAccountSid, twilioAuthToken);
+    // Inicializar cliente Twilio corretamente usando a nova importação
+    const client = twilio(twilioAccountSid, twilioAuthToken);
 
     // Formatar o número para o formato internacional
     const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
