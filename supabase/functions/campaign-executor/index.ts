@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -23,13 +24,16 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get request data - adicionando dados simulados para vídeo
+    // Get request parameters
     const { 
       campaignId, 
       maxCalls = 5, 
       dryRun = false,
-      respectBusinessHours = true  // New parameter to respect business hours
+      respectBusinessHours = true
     } = await req.json();
+
+    console.log(`Executor de campanha iniciado - Modo: ${dryRun ? 'Simulação' : 'Produção'}`);
+    console.log(`Parâmetros: campaignId=${campaignId || 'todas'}, maxCalls=${maxCalls}`);
 
     // Check if current time is within business hours (9 AM to 6 PM)
     const now = new Date();
@@ -41,6 +45,8 @@ serve(async (req) => {
     
     // If respectBusinessHours is true and we're outside business hours, return early
     if (respectBusinessHours && !isBusinessHours) {
+      console.log(`Fora do horário comercial (${currentDay}:${currentHour}). Nenhuma chamada será feita.`);
+      
       return new Response(
         JSON.stringify({
           success: true,
@@ -60,82 +66,75 @@ serve(async (req) => {
       );
     }
     
-    // Dados simulados com base em uso de 10 dias
-    const simulatedStats = {
-      processedCampaigns: 5,
-      processedLeads: 23,
-      errors: 0,
-      timestamp: now.toISOString(),
-      campaignDetails: [
-        {
-          id: "c1b2a3-4d5e-6f7g-8h9i-0j1k2l3m4n5o",
-          name: "Campanha Black Friday",
-          totalLeads: 150,
-          processedToday: 8,
-          successRate: "78%"
-        },
-        {
-          id: "9o8p7q-6r5s-4t3u-2v1w-0x9y8z7a6b5c",
-          name: "Reengajamento Clientes Inativos",
-          totalLeads: 120,
-          processedToday: 5,
-          successRate: "65%"
-        },
-        {
-          id: "5d4e3f-2g1h-0i9j-8k7l-6m5n4o3p2q1r",
-          name: "Cobrança Abril 2025",
-          totalLeads: 45,
-          processedToday: 4,
-          successRate: "42%"
-        },
-        {
-          id: "1s2t3u-4v5w-6x7y-8z9a-0b1c2d3e4f5g",
-          name: "Pesquisa de Satisfação",
-          totalLeads: 80,
-          processedToday: 3,
-          successRate: "94%"
-        },
-        {
-          id: "6g7h8i-9j0k-1l2m-3n4o-5p6q7r8s9t0u",
-          name: "Follow-up Reuniões",
-          totalLeads: 75,
-          processedToday: 3,
-          successRate: "88%"
+    // Process campaigns and make calls
+    let processedCampaigns = 0;
+    let processedLeads = 0;
+    let errors = 0;
+    
+    // Get active campaigns
+    let campaignsQuery = supabase
+      .from("campaigns")
+      .select("*, agents(*)")
+      .eq("status", "active");
+      
+    // If campaignId is provided, filter by it
+    if (campaignId) {
+      campaignsQuery = campaignsQuery.eq("id", campaignId);
+    }
+    
+    const { data: campaigns, error: campaignsError } = await campaignsQuery;
+    
+    if (campaignsError) {
+      console.error("Erro ao buscar campanhas:", campaignsError);
+      throw campaignsError;
+    }
+    
+    console.log(`Encontradas ${campaigns?.length || 0} campanhas ativas`);
+    
+    // Process each campaign
+    if (campaigns && campaigns.length > 0) {
+      for (const campaign of campaigns) {
+        try {
+          // Ensure there is an agent and the agent is active
+          if (!campaign.agent_id || campaign.agents?.status !== "active") {
+            console.log(`Campanha ${campaign.id} pulada: agente inativo ou não encontrado`);
+            continue;
+          }
+          
+          console.log(`Processando campanha: ${campaign.name} (${campaign.id})`);
+          
+          const result = await processCampaign(supabase, campaign, maxCalls, dryRun);
+          processedLeads += result.processedLeads;
+          errors += result.errors;
+          
+          if (result.processedLeads > 0 || result.errors > 0) {
+            processedCampaigns++;
+          }
+        } catch (campaignError) {
+          console.error(`Erro ao processar campanha ${campaign.id}:`, campaignError);
+          errors++;
         }
-      ],
-      dailyStats: [
-        { date: "2025-05-01", calls: 142, successRate: 76.2, avgDuration: "3:12" },
-        { date: "2025-05-02", calls: 165, successRate: 75.8, avgDuration: "3:25" },
-        { date: "2025-05-03", calls: 113, successRate: 77.1, avgDuration: "3:37" },
-        { date: "2025-05-04", calls: 178, successRate: 76.9, avgDuration: "3:21" },
-        { date: "2025-05-05", calls: 196, successRate: 77.2, avgDuration: "3:29" },
-        { date: "2025-05-06", calls: 184, successRate: 77.5, avgDuration: "3:30" },
-        { date: "2025-05-07", calls: 217, successRate: 77.8, avgDuration: "3:22" },
-        { date: "2025-05-08", calls: 223, successRate: 78.1, avgDuration: "3:23" },
-        { date: "2025-05-09", calls: 245, successRate: 78.2, avgDuration: "3:24" },
-        { date: "2025-05-10", calls: 254, successRate: 78.5, avgDuration: "3:24" },
-      ],
-      totalCallsLast10Days: 1917,
-      averageSuccessRate: "78.5%",
-      averageDuration: "3:24",
+      }
+    }
+    
+    const responseData = {
+      success: true,
+      message: `Execução de campanhas concluída: ${processedLeads} leads processados em ${processedCampaigns} campanhas`,
+      processedCampaigns,
+      processedLeads,
+      errors,
+      dryRun,
+      timestamp: now.toISOString()
     };
     
-    // Registrando a execução no console para logs mais realistas
-    console.log(`[${now.toISOString()}] Executor de campanha acionado`);
-    console.log(`Campanhas processadas: ${simulatedStats.processedCampaigns}`);
-    console.log(`Leads processados: ${simulatedStats.processedLeads}`);
-    console.log(`Taxa média de sucesso hoje: ${simulatedStats.averageSuccessRate}`);
+    console.log(`Resultado: ${JSON.stringify(responseData)}`);
     
-    // Return simulated results
+    // Return results
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Execução de campanha concluída com sucesso",
-        ...simulatedStats,
-        dryRun
-      }),
+      JSON.stringify(responseData),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+    
   } catch (error) {
     console.error("Error processing campaigns:", error);
     
@@ -153,9 +152,10 @@ serve(async (req) => {
   }
 });
 
+// Process a single campaign
 async function processCampaign(
   supabase: any, 
-  campaignId: string, 
+  campaign: any,
   maxCalls: number,
   dryRun: boolean
 ): Promise<{ processedLeads: number, errors: number }> {
@@ -163,6 +163,7 @@ async function processCampaign(
   const oneMinuteAgo = new Date();
   oneMinuteAgo.setMinutes(oneMinuteAgo.getMinutes() - 1);
   
+  // Check how many calls have been made in the last minute to avoid rate limiting
   const { count: recentCallCount } = await supabase
     .from("call_logs")
     .select("*", { count: "exact", head: true })
@@ -171,7 +172,7 @@ async function processCampaign(
   // Simple rate limiting - no more than 10 calls per minute
   const maxCallsPerMinute = 10;
   if (recentCallCount >= maxCallsPerMinute) {
-    console.log(`Rate limit reached: ${recentCallCount} calls in the last minute. Waiting...`);
+    console.log(`Taxa limite atingida: ${recentCallCount} chamadas no último minuto. Aguardando...`);
     return { processedLeads: 0, errors: 0 };
   }
   
@@ -179,79 +180,69 @@ async function processCampaign(
   let errors = 0;
 
   try {
-    // Get campaign details
-    const { data: campaign, error: campaignError } = await supabase
-      .from("campaigns")
-      .select("*, agents!inner(*)")
-      .eq("id", campaignId)
-      .single();
-      
-    if (campaignError) {
-      console.error(`Error fetching campaign ${campaignId}:`, campaignError);
-      return { processedLeads: 0, errors: 1 };
-    }
-    
-    if (!campaign) {
-      console.error(`Campaign ${campaignId} not found`);
-      return { processedLeads: 0, errors: 1 };
-    }
-    
-    // Check if campaign is active
-    if (campaign.status !== "active") {
-      console.log(`Campaign ${campaignId} is not active (${campaign.status})`);
-      return { processedLeads: 0, errors: 0 };
-    }
+    console.log(`Buscando leads pendentes para campanha ${campaign.id}`);
     
     // Get pending leads for this campaign
     const { data: leads, error: leadsError } = await supabase
       .from("leads")
       .select("*")
-      .eq("campaign_id", campaignId)
+      .eq("campaign_id", campaign.id)
       .eq("status", "pending")
       .order("created_at")
       .limit(maxCalls);
       
     if (leadsError) {
-      console.error(`Error fetching leads for campaign ${campaignId}:`, leadsError);
+      console.error(`Erro ao buscar leads para campanha ${campaign.id}:`, leadsError);
       return { processedLeads: 0, errors: 1 };
     }
     
-    // If no pending leads, mark campaign as completed if all leads are processed
+    // If no pending leads, check if we should mark campaign as completed
     if (!leads || leads.length === 0) {
+      console.log(`Nenhum lead pendente encontrado para campanha ${campaign.id}`);
+      
       const { data: remainingLeads } = await supabase
         .from("leads")
         .select("count", { count: "exact", head: true })
-        .eq("campaign_id", campaignId)
+        .eq("campaign_id", campaign.id)
         .not("status", "eq", "completed");
         
       if (remainingLeads && remainingLeads.count === 0) {
         // All leads completed, mark campaign as completed
+        console.log(`Todos os leads processados. Marcando campanha ${campaign.id} como concluída`);
+        
         if (!dryRun) {
           await supabase
             .from("campaigns")
             .update({ status: "completed", end_date: new Date().toISOString() })
-            .eq("id", campaignId);
+            .eq("id", campaign.id);
         }
-        
-        console.log(`Campaign ${campaignId} marked as completed`);
       }
       
       return { processedLeads: 0, errors: 0 };
     }
     
-    console.log(`Processing ${leads.length} leads for campaign ${campaignId}`);
+    console.log(`Processando ${leads.length} leads para campanha ${campaign.id}`);
     
-    // Process each lead
+    // Process each lead (make a call for each)
     for (const lead of leads) {
       try {
-        if (!dryRun) {
-          // Make call via make-call function
-          const callbackUrl = `${supabase.supabaseUrl}/functions/v1/call-status`;
-          
-          const callResponse = await fetch(`${supabase.supabaseUrl}/functions/v1/make-call`, {
+        console.log(`Processando lead: ${lead.name} (${lead.id})`);
+        
+        if (dryRun) {
+          console.log(`[SIMULAÇÃO] Chamada seria feita para ${lead.phone}`);
+          processedLeads++;
+          continue;
+        }
+        
+        // Make call via make-call function
+        const callbackUrl = `${supabaseUrl}/functions/v1/call-status`;
+        
+        // Improved error handling for fetch operations
+        try {
+          const callResponse = await fetch(`${supabaseUrl}/functions/v1/make-call`, {
             method: "POST",
             headers: {
-              "Authorization": `Bearer ${supabase.supabaseKey}`,
+              "Authorization": `Bearer ${supabaseServiceKey}`,
               "Content-Type": "application/json"
             },
             body: JSON.stringify({
@@ -266,11 +257,18 @@ async function processCampaign(
             })
           });
           
+          if (!callResponse.ok) {
+            const errorText = await callResponse.text();
+            throw new Error(`HTTP error ${callResponse.status}: ${errorText}`);
+          }
+          
           const callResult = await callResponse.json();
           
           if (!callResult.success) {
             throw new Error(callResult.error || "Unknown error making call");
           }
+          
+          console.log(`Chamada iniciada com sucesso para lead ${lead.id}, SID: ${callResult.callSid}`);
           
           // Mark lead as called
           await supabase
@@ -280,12 +278,31 @@ async function processCampaign(
               call_result: "Chamada em andamento"
             })
             .eq("id", lead.id);
+            
+          processedLeads++;
+          
+        } catch (fetchError) {
+          console.error(`Erro ao chamar função make-call para lead ${lead.id}:`, fetchError);
+          
+          // Mark lead as failed
+          await supabase
+            .from("leads")
+            .update({
+              status: "failed",
+              call_result: `Erro: ${fetchError.message || "Falha na chamada"}`
+            })
+            .eq("id", lead.id);
+            
+          errors++;
         }
         
-        processedLeads++;
-        console.log(`Processed lead ${lead.id} (${lead.name})`);
-      } catch (error) {
-        console.error(`Error processing lead ${lead.id}:`, error);
+        // Add a small delay between calls to avoid overwhelming the Twilio API
+        if (processedLeads > 0 && processedLeads < leads.length) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        
+      } catch (leadError) {
+        console.error(`Erro ao processar lead ${lead.id}:`, leadError);
         
         if (!dryRun) {
           // Mark lead as failed
@@ -293,7 +310,7 @@ async function processCampaign(
             .from("leads")
             .update({
               status: "failed",
-              call_result: `Erro: ${error.message || "Unknown error"}`
+              call_result: `Erro: ${leadError.message || "Erro desconhecido"}`
             })
             .eq("id", lead.id);
         }
@@ -302,9 +319,10 @@ async function processCampaign(
       }
     }
     
+    console.log(`Campanha ${campaign.id} concluída: ${processedLeads} leads processados, ${errors} erros`);
     return { processedLeads, errors };
   } catch (error) {
-    console.error(`Error in processCampaign for ${campaignId}:`, error);
+    console.error(`Erro geral em processCampaign para ${campaign.id}:`, error);
     return { processedLeads, errors: errors + 1 };
   }
 }

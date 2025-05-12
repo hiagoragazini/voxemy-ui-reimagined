@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, Phone, AlertCircle, HelpCircle, ExternalLink } from "lucide-react";
+import { Loader2, Phone, AlertCircle, HelpCircle, ExternalLink, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,6 +33,25 @@ export function CampaignCallTester({
   const [callStatus, setCallStatus] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [showTroubleshooting, setShowTroubleshooting] = useState(false);
+  const [callSid, setCallSid] = useState<string | null>(null);
+  const [showLogs, setShowLogs] = useState(false);
+  
+  const formatPhoneForDisplay = (phone: string) => {
+    // Simple formatting for display (not for API calls)
+    if (!phone) return "";
+    
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Format for Brazil phone numbers
+    if (cleaned.length === 11) {
+      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 7)}-${cleaned.substring(7, 11)}`;
+    } else if (cleaned.length === 10) {
+      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 6)}-${cleaned.substring(6, 10)}`;
+    }
+    
+    return cleaned;
+  };
   
   const handleMakeCall = async () => {
     if (!phoneNumber || phoneNumber.length < 8) {
@@ -43,6 +62,8 @@ export function CampaignCallTester({
     setIsLoading(true);
     setCallStatus("Iniciando chamada...");
     setErrorDetails(null);
+    setCallSid(null);
+    setShowLogs(false);
     
     try {
       // Get the callback URL for tracking call status
@@ -57,7 +78,7 @@ export function CampaignCallTester({
       
       const twimlInstructions = `
         <Response>
-          <Say language="pt-BR">${greeting} Esta é uma chamada de teste da nossa plataforma.</Say>
+          <Say language="pt-BR">${greeting} Esta é uma chamada de teste da plataforma Voxemy.</Say>
           <Pause length="1"/>
           <Say language="pt-BR">Obrigado por testar nosso sistema de chamadas automáticas.</Say>
         </Response>
@@ -66,7 +87,8 @@ export function CampaignCallTester({
       console.log("Enviando requisição para make-call com:", {
         phoneNumber,
         agentId,
-        campaignId
+        campaignId,
+        leadId
       });
       
       // Make the call
@@ -77,7 +99,10 @@ export function CampaignCallTester({
           agentId,
           campaignId,
           agentName,
-          twimlInstructions
+          leadId,
+          twimlInstructions,
+          recordCall: true,
+          transcribeCall: true
         }
       });
 
@@ -107,16 +132,81 @@ export function CampaignCallTester({
         }
       }
 
-      setCallStatus(`Chamada iniciada com sucesso! ID: ${data.callSid}`);
+      setCallSid(data.callSid);
+      setCallStatus(`Chamada iniciada com sucesso! Status: ${data.status}`);
       toast.success("Chamada iniciada com sucesso!");
+      
+      // Poll for call status updates if we have a call SID
+      if (data.callSid) {
+        pollCallStatus(data.callSid);
+      }
     } catch (err: any) {
       console.error('Erro ao fazer chamada:', err);
       setCallStatus(`Erro: ${err.message}`);
       setErrorDetails(`Detalhes: ${JSON.stringify(err, null, 2)}`);
       toast.error("Erro ao fazer chamada: " + err.message);
+      
+      // Check if the error is related to Twilio credentials
+      if (err.message?.includes("Twilio") || 
+          err.message?.includes("Authentication") || 
+          err.message?.includes("credentials")) {
+        setShowTroubleshooting(true);
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  // Function to poll call status
+  const pollCallStatus = async (sid: string) => {
+    try {
+      const { data: callLog } = await supabase
+        .from("call_logs")
+        .select("*")
+        .eq("call_sid", sid)
+        .single();
+      
+      if (callLog) {
+        if (callLog.status !== "queued" && callLog.status !== "initiated" && callLog.status !== "ringing") {
+          setCallStatus(`Chamada ${translateCallStatus(callLog.status)}${callLog.duration ? ` (Duração: ${formatDuration(callLog.duration)})` : ''}`);
+          return; // Stop polling if call is completed or failed
+        }
+      }
+      
+      // Continue polling every 3 seconds if call is still active
+      setTimeout(() => pollCallStatus(sid), 3000);
+    } catch (e) {
+      // Continue polling even if there's an error (might be racing with call log creation)
+      setTimeout(() => pollCallStatus(sid), 3000);
+    }
+  };
+  
+  // Format duration in seconds to MM:SS
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  // Translate call status to Portuguese
+  const translateCallStatus = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      'queued': 'na fila',
+      'initiated': 'iniciada',
+      'ringing': 'chamando',
+      'in-progress': 'em andamento',
+      'completed': 'completada',
+      'busy': 'ocupado',
+      'no-answer': 'sem resposta',
+      'failed': 'falhou',
+      'canceled': 'cancelada'
+    };
+    
+    return statusMap[status] || status;
+  };
+  
+  const viewCallLogsInDashboard = () => {
+    window.open('/dashboard/logs', '_blank');
   };
   
   return (
@@ -146,6 +236,11 @@ export function CampaignCallTester({
           <p className="text-xs text-muted-foreground">
             Formato: DDD + número, exemplo: 11999887766
           </p>
+          {phoneNumber && phoneNumber.length >= 8 && (
+            <p className="text-xs text-blue-600">
+              Número formatado: {formatPhoneForDisplay(phoneNumber)}
+            </p>
+          )}
         </div>
         
         <Button 
@@ -169,13 +264,30 @@ export function CampaignCallTester({
               ) : (
                 <Phone className="h-4 w-4 mt-0.5 flex-shrink-0" />
               )}
-              <div>
+              <div className="w-full">
                 <p>{callStatus}</p>
+                {callSid && (
+                  <p className="text-xs mt-1">ID da chamada: {callSid}</p>
+                )}
+                
                 {errorDetails && (
-                  <div className="mt-2 text-xs bg-red-100 p-2 rounded overflow-auto max-h-24">
-                    <pre>{errorDetails}</pre>
+                  <div className="mt-2">
+                    <button 
+                      className="text-xs flex items-center gap-1 text-red-700"
+                      onClick={() => setShowLogs(!showLogs)}
+                    >
+                      {showLogs ? "Ocultar detalhes" : "Mostrar detalhes"} 
+                      <ArrowRight className={`h-3 w-3 transition-transform ${showLogs ? 'rotate-90' : ''}`} />
+                    </button>
+                    
+                    {showLogs && (
+                      <div className="mt-1 text-xs bg-red-100 p-2 rounded overflow-auto max-h-24">
+                        <pre>{errorDetails}</pre>
+                      </div>
+                    )}
                   </div>
                 )}
+                
                 {callStatus.includes('Erro') && (
                   <div className="mt-2 text-xs">
                     <p>Verifique:</p>
@@ -194,6 +306,18 @@ export function CampaignCallTester({
                       <span>{showTroubleshooting ? "Ocultar ajuda" : "Mostrar ajuda avançada"}</span>
                     </Button>
                   </div>
+                )}
+                
+                {!callStatus.includes('Erro') && callSid && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 text-xs"
+                    onClick={viewCallLogsInDashboard}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Ver logs de chamadas
+                  </Button>
                 )}
               </div>
             </div>

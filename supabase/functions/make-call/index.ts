@@ -21,8 +21,8 @@ serve(async (req) => {
       throw new Error("Credenciais do Twilio não estão configuradas");
     }
 
-    // Log the Twilio credentials (masked for security)
-    console.log(`Usando credenciais do Twilio: SID: ${twilioAccountSid.substring(0, 5)}...`);
+    // Log with credentials masked for security
+    console.log(`Usando credenciais do Twilio: SID: ${twilioAccountSid.substring(0, 5)}...${twilioAccountSid.substring(twilioAccountSid.length - 4)}`);
 
     // Obter dados da requisição
     const { 
@@ -37,8 +37,8 @@ serve(async (req) => {
       systemPrompt,
       voiceId,
       twimlInstructions,
-      recordCall = true,  // New parameter to enable call recording
-      transcribeCall = true  // New parameter to enable call transcription
+      recordCall = true,
+      transcribeCall = true
     } = await req.json();
 
     if (!phoneNumber) {
@@ -56,6 +56,9 @@ serve(async (req) => {
 
     // Base URL para funções
     const baseUrl = Deno.env.get("SUPABASE_URL") || "";
+    if (!baseUrl) {
+      console.warn("URL do Supabase não configurada, links de callback podem não funcionar corretamente");
+    }
     
     // Criar TwiML para a chamada
     let twiml = twimlInstructions;
@@ -77,6 +80,8 @@ serve(async (req) => {
         
         const webhookUrl = `${webhookBase}${params.toString()}`;
         
+        console.log(`Configurando Stream URL para: ${webhookUrl}`);
+        
         twiml = `
           <Response>
             <Connect>
@@ -91,7 +96,7 @@ serve(async (req) => {
           <Response>
             <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
             <Pause length="1"/>
-            <Say language="pt-BR">Esta é uma demonstração da integração do Twilio.</Say>
+            <Say language="pt-BR">Esta é uma demonstração da Voxemy.</Say>
             ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
           </Response>
         `;
@@ -112,31 +117,34 @@ serve(async (req) => {
         ? `${callbackUrl}${callbackUrl.includes('?') ? '&' : '?'}${callbackParams.substring(1)}`
         : callbackUrl;
         
-      console.log(`URL de callback: ${finalCallbackUrl}`);
+      console.log(`URL de callback configurada: ${finalCallbackUrl}`);
+    } else {
+      console.log("Nenhuma URL de callback fornecida");
     }
 
     // Get the Twilio phone number from environment variables
     const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
     if (!twilioPhone) {
-      console.warn("Número de telefone do Twilio não configurado nas variáveis de ambiente, usando o padrão");
+      console.warn("Número de telefone do Twilio não configurado nas variáveis de ambiente, usando número padrão");
     }
 
     console.log(`Usando número do Twilio: ${twilioPhone || "padrão"}`);
     console.log(`TWIML configurado: ${twiml.substring(0, 100)}...`);
 
-    // Fazer a chamada
+    // Fazer a chamada com tratamento de erros melhorado
     try {
       const call = await client.calls.create({
         twiml: twiml,
         to: formattedPhoneNumber,
-        from: twilioPhone || "+15155172542", // Use env var if available
-        statusCallback: callbackUrl ? callbackUrl : undefined,
+        from: twilioPhone || "+15155172542", // Use env var if available, fall back to default
+        statusCallback: callbackUrl || undefined,
         statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
         statusCallbackMethod: 'POST',
-        record: recordCall, // Enable recording if requested
+        record: recordCall,
       });
       
       console.log("Chamada criada com sucesso:", call.sid);
+      console.log("Status inicial da chamada:", call.status);
 
       // Update lead status if leadId is provided
       if (leadId) {
@@ -154,6 +162,23 @@ serve(async (req) => {
                 call_result: "Chamada iniciada"
               })
               .eq("id", leadId);
+              
+            console.log(`Status do lead ${leadId} atualizado para 'called'`);
+            
+            // Create initial call log entry
+            await supabase.from("call_logs").insert({
+              call_sid: call.sid,
+              status: call.status,
+              from_number: twilioPhone || "+15155172542",
+              to_number: formattedPhoneNumber,
+              agent_id: agentId,
+              campaign_id: campaignId,
+              lead_id: leadId
+            });
+            
+            console.log(`Log de chamada inicial criado para SID: ${call.sid}`);
+          } else {
+            console.warn("Credenciais do Supabase não encontradas, não foi possível atualizar status do lead");
           }
         } catch (err) {
           console.error("Error updating lead status:", err);
@@ -172,8 +197,17 @@ serve(async (req) => {
         }
       );
     } catch (twilioError) {
-      console.error("Twilio error:", twilioError);
-      throw new Error(`Erro do Twilio: ${twilioError.message || "Erro desconhecido"}`);
+      console.error("Erro do Twilio:", twilioError);
+      
+      // Enhanced error reporting
+      const errorDetails = {
+        message: twilioError.message || "Erro desconhecido do Twilio",
+        code: twilioError.code,
+        moreInfo: twilioError.moreInfo,
+        status: twilioError.status
+      };
+      
+      throw new Error(`Erro do Twilio: ${JSON.stringify(errorDetails)}`);
     }
   } catch (error) {
     console.error("Erro ao fazer chamada:", error);
@@ -200,15 +234,27 @@ function formatPhoneNumber(phoneNumber: string): string {
     cleaned = cleaned.substring(1);
   }
   
-  // Se não começar com +, adicionar código do Brasil (+55)
-  if (!phoneNumber.startsWith('+')) {
-    // Se já começar com 55, adicionar apenas o +
-    if (cleaned.startsWith('55')) {
+  // Remover o 9 extra se o número tiver 11 dígitos (para números de celular brasileiros)
+  // Por exemplo: 11987654321 -> 11 + 8765-4321 (não removemos o 9 inicial)
+  
+  // Tratar números especificamente para o Brasil
+  if (cleaned.length === 11 || cleaned.length === 10) {
+    // Se não começar com +, adicionar código do Brasil (+55)
+    if (!phoneNumber.startsWith('+')) {
+      // Se já começar com 55, adicionar apenas o +
+      if (cleaned.startsWith('55')) {
+        cleaned = '+' + cleaned;
+      } else {
+        cleaned = '+55' + cleaned;
+      }
+    }
+  } else {
+    // Para números internacionais, apenas adicionar + se não existir
+    if (!phoneNumber.startsWith('+')) {
       cleaned = '+' + cleaned;
-    } else {
-      cleaned = '+55' + cleaned;
     }
   }
   
+  console.log(`Número original: ${phoneNumber}, Formatado: ${cleaned}`);
   return cleaned;
 }

@@ -1,73 +1,49 @@
-import { Routes, Route, Navigate, useParams } from "react-router-dom";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
+
+import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
+import { Toaster } from "sonner";
+
+// Pages
+import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
-import Agents from "./pages/Agents";
-import AgentConfig from "./pages/AgentConfig";
-import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
-import Business from "./pages/Business";
-import NotFound from "./pages/NotFound";
-import Campaigns from "./pages/Campaigns";
-import CampaignForm from "./pages/CampaignForm";
+import AgentList from "./pages/AgentList";
+import AgentNew from "./pages/AgentNew";
+import AgentDetails from "./pages/AgentDetails";
+import CampaignList from "./pages/CampaignList";
+import CampaignNew from "./pages/CampaignNew";
 import CampaignDetails from "./pages/CampaignDetails";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-
-// Wrapper components to handle dynamic redirects
-const AgentEditRedirect = () => {
-  const { id } = useParams();
-  return <Navigate to={`/agents/${id}/edit`} replace />;
-};
-
-const CampaignEditRedirect = () => {
-  const { id } = useParams();
-  return <Navigate to={`/campaigns/${id}/edit`} replace />;
-};
-
-const CampaignDetailsRedirect = () => {
-  const { id } = useParams();
-  return <Navigate to={`/campaigns/${id}`} replace />;
-};
+import LeadList from "./pages/LeadList";
+import LeadImport from "./pages/LeadImport";
+import CallsMonitoring from "./pages/CallsMonitoring"; // New import
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<Login />} />
-      
-      {/* Protected routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      
-      {/* Agent routes */}
-      <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
-      <Route path="/agents/new" element={<ProtectedRoute><AgentConfig /></ProtectedRoute>} />
-      <Route path="/agents/:id/edit" element={<ProtectedRoute><AgentConfig /></ProtectedRoute>} />
-      
-      {/* Portuguese routes redirects */}
-      <Route path="/agentes" element={<Navigate to="/agents" replace />} />
-      <Route path="/agentes/novo" element={<Navigate to="/agents/new" replace />} />
-      <Route path="/agentes/:id/editar" element={<AgentEditRedirect />} />
-      
-      {/* Other routes */}
-      <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/business" element={<ProtectedRoute><Business /></ProtectedRoute>} />
-      
-      {/* Campaign routes */}
-      <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
-      <Route path="/campaigns/new" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
-      <Route path="/campaigns/:id" element={<ProtectedRoute><CampaignDetails /></ProtectedRoute>} />
-      <Route path="/campaigns/:id/edit" element={<ProtectedRoute><CampaignForm /></ProtectedRoute>} />
-      
-      {/* Portuguese campaign routes redirects */}
-      <Route path="/campanhas" element={<Navigate to="/campaigns" replace />} />
-      <Route path="/campanhas/nova" element={<Navigate to="/campaigns/new" replace />} />
-      <Route path="/campanhas/:id" element={<CampaignDetailsRedirect />} />
-      <Route path="/campanhas/:id/editar" element={<CampaignEditRedirect />} />
-      
-      <Route path="/404" element={<NotFound />} />
-      <Route path="*" element={<Navigate to="/404" replace />} />
-    </Routes>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        
+        {/* Agents */}
+        <Route path="/agents" element={<AgentList />} />
+        <Route path="/agents/new" element={<AgentNew />} />
+        <Route path="/agents/:id" element={<AgentDetails />} />
+        
+        {/* Campaigns */}
+        <Route path="/campaigns" element={<CampaignList />} />
+        <Route path="/campaigns/new" element={<CampaignNew />} />
+        <Route path="/campaigns/:id" element={<CampaignDetails />} />
+        
+        {/* Leads */}
+        <Route path="/leads" element={<LeadList />} />
+        <Route path="/leads/import" element={<LeadImport />} />
+        
+        {/* Calls Monitoring */}
+        <Route path="/calls" element={<CallsMonitoring />} />
+        
+        {/* Redirect to dashboard for any other route */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+      <Toaster position="top-right" closeButton richColors expand={false} />
+    </BrowserRouter>
   );
 }
 
