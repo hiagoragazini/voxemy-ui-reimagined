@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Loader2, Phone, AlertCircle, HelpCircle, ExternalLink, ArrowRight, CheckCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +39,7 @@ export function CampaignCallTester({
   const [functionTested, setFunctionTested] = useState(false);
   const [functionTestResult, setFunctionTestResult] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
+  const [customMessage, setCustomMessage] = useState<string>(`Olá, aqui é ${agentName}. Esta é uma chamada de teste da plataforma Voxemy. Obrigado por testar nosso sistema.`);
   
   const { isLoading, makeCall, error, testMakeCallFunction } = useVoiceCall();
   
@@ -96,17 +99,10 @@ export function CampaignCallTester({
       const origin = window.location.origin;
       const callbackUrl = `${origin}/api/call-status`;
       
-      // Create the prompt with lead name if available
-      let greeting = `Olá, aqui é ${agentName}. `;
-      if (leadName) {
-        greeting = `Olá ${leadName}, aqui é ${agentName}. `;
-      }
-      
+      // Create TwiML with the custom message
       const twimlInstructions = `
         <Response>
-          <Say language="pt-BR">${greeting} Esta é uma chamada de teste da plataforma Voxemy.</Say>
-          <Pause length="1"/>
-          <Say language="pt-BR">Obrigado por testar nosso sistema de chamadas automáticas.</Say>
+          <Say language="pt-BR">${customMessage}</Say>
         </Response>
       `;
 
@@ -114,7 +110,8 @@ export function CampaignCallTester({
         phoneNumber,
         agentId,
         campaignId,
-        leadId
+        leadId,
+        message: twimlInstructions
       });
       
       // Adicionar timeout maior para a chamada da função
@@ -292,6 +289,23 @@ export function CampaignCallTester({
       )}
 
       <div className="space-y-3">
+        {/* Custom message textarea */}
+        <div className="space-y-1">
+          <label htmlFor="customMessage" className="text-sm font-medium">
+            Mensagem da chamada
+          </label>
+          <Textarea
+            id="customMessage"
+            value={customMessage}
+            onChange={(e) => setCustomMessage(e.target.value)}
+            placeholder="Digite o que o agente deve falar na chamada..."
+            className="min-h-[80px]"
+          />
+          <p className="text-xs text-muted-foreground">
+            Este texto será lido para o destinatário quando a chamada for atendida
+          </p>
+        </div>
+
         <div className="space-y-1">
           <label htmlFor="phoneNumber" className="text-sm font-medium">
             Número de telefone
@@ -336,6 +350,7 @@ export function CampaignCallTester({
           <span>{isTesting ? "Verificando..." : "Verificar Conectividade"}</span>
         </Button>
         
+        {/* Call status display */}
         {callStatus && (
           <div className={`p-3 rounded-md text-sm ${callStatus.includes('Erro') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
             <div className="flex items-start gap-2">
