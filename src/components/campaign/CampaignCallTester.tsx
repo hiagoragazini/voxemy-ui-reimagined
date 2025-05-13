@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,7 +110,7 @@ export function CampaignCallTester({
         agentId,
         campaignId,
         leadId,
-        message: twimlInstructions
+        twimlInstructions
       });
       
       // Adicionar timeout maior para a chamada da função
@@ -125,7 +124,7 @@ export function CampaignCallTester({
           phoneNumber,
           agentId,
           campaignId,
-          message: twimlInstructions
+          twimlInstructions: twimlInstructions
         }),
         timeoutPromise
       ]);

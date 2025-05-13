@@ -144,6 +144,9 @@ serve(async (req) => {
         }
       }
 
+      // Log the configured TwiML for debugging
+      console.log(`TwiML configured: ${twiml.substring(0, 100)}...`);
+
       // Parameters for the callback URL
       let callbackParams = '';
       if (callbackUrl) {
@@ -165,8 +168,7 @@ serve(async (req) => {
 
       // Get the Twilio phone number from environment variables
       console.log(`Using Twilio number: ${twilioPhone}`);
-      console.log(`TwiML configured: ${twiml.substring(0, 100)}...`);
-
+      
       // Make the call with improved error handling
       try {
         console.log("Creating call via Twilio API...");

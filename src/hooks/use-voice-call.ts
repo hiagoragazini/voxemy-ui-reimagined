@@ -4,9 +4,10 @@ import { toast } from '@/components/ui/use-toast';
 
 interface MakeCallParams {
   phoneNumber: string;
-  message?: string;
+  twimlInstructions?: string;
   agentId?: string;
   campaignId?: string;
+  message?: string; // Manter para compatibilidade com código existente
 }
 
 interface TextToSpeechParams {
@@ -267,7 +268,7 @@ export function useVoiceCall() {
   };
 
   // Função para fazer uma chamada usando Twilio
-  const makeCall = async ({ phoneNumber, message, agentId, campaignId }: MakeCallParams) => {
+  const makeCall = async ({ phoneNumber, twimlInstructions, message, agentId, campaignId }: MakeCallParams) => {
     setIsLoading(true);
     setError(null);
     
@@ -278,6 +279,7 @@ export function useVoiceCall() {
       console.log('Starting call to:', phoneNumber);
       console.log('With agentId:', agentId);
       console.log('With campaignId:', campaignId);
+      console.log('With twimlInstructions:', twimlInstructions ? 'provided' : 'not provided');
       
       const startTime = Date.now();
       
@@ -292,11 +294,7 @@ export function useVoiceCall() {
           callbackUrl,
           agentId,
           campaignId,
-          twimlInstructions: message ? `
-            <Response>
-              <Say language="pt-BR">${message}</Say>
-            </Response>
-          ` : undefined,
+          twimlInstructions: twimlInstructions || message, // Usar twimlInstructions se fornecido, senão usar message
         }
       }).catch(err => {
         if (err.name === 'AbortError') {
