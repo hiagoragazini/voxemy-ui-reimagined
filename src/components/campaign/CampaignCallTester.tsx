@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, Phone, AlertCircle, HelpCircle, ExternalLink, ArrowRight, CheckCircle } from "lucide-react";
+import { Loader2, Phone, AlertCircle, HelpCircle, ExternalLink, ArrowRight, CheckCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useVoiceCall } from "@/hooks/use-voice-call";
@@ -37,6 +36,7 @@ export function CampaignCallTester({
   const [showLogs, setShowLogs] = useState(false);
   const [functionTested, setFunctionTested] = useState(false);
   const [functionTestResult, setFunctionTestResult] = useState<any>(null);
+  const [isTesting, setIsTesting] = useState(false);
   
   const { isLoading, makeCall, error, testMakeCallFunction } = useVoiceCall();
   
@@ -46,8 +46,10 @@ export function CampaignCallTester({
   }, []);
   
   const testFunctionConnectivity = async () => {
+    setIsTesting(true);
     setCallStatus("Verificando conectividade com a função make-call...");
     const result = await testMakeCallFunction();
+    setIsTesting(false);
     
     if (result && result.success) {
       setFunctionTested(true);
@@ -112,17 +114,24 @@ export function CampaignCallTester({
         phoneNumber,
         agentId,
         campaignId,
-        leadId,
-        callbackUrl
+        leadId
       });
       
-      // Use o hook make-call para fazer a chamada
-      const callResult = await makeCall({
-        phoneNumber,
-        agentId,
-        campaignId,
-        message: twimlInstructions
-      });
+      // Adicionar timeout maior para a chamada da função
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout: Não foi recebida resposta da função make-call em 30 segundos")), 30000)
+      );
+      
+      // Race entre a chamada real e o timeout
+      const callResult = await Promise.race([
+        makeCall({
+          phoneNumber,
+          agentId,
+          campaignId,
+          message: twimlInstructions
+        }),
+        timeoutPromise
+      ]);
 
       console.log("Resposta da função make-call:", callResult);
 
@@ -154,13 +163,29 @@ export function CampaignCallTester({
       }
     } catch (err: any) {
       console.error('Erro ao fazer chamada:', err);
-      setCallStatus(`Erro: ${err.message}`);
+      setCallStatus(`Erro: ${err.message || "Falha ao fazer chamada"}`);
       
-      // Adicionar detalhes técnicos para depuração
-      if (err.response) {
-        setErrorDetails(`Status: ${err.response.status}\nDetalhes: ${JSON.stringify(err.response.data)}`);
+      // Extract Twilio error details if available
+      if (err.message && err.message.includes('Erro do Twilio:')) {
+        try {
+          const twilioErrorStartIndex = err.message.indexOf('{');
+          if (twilioErrorStartIndex > -1) {
+            const twilioErrorJSON = err.message.substring(twilioErrorStartIndex);
+            const twilioError = JSON.parse(twilioErrorJSON);
+            setErrorDetails(`Erro do Twilio: ${twilioError.message || "Desconhecido"}\nCódigo: ${twilioError.code || "N/A"}\nDetalhes: ${twilioError.moreInfo || "Não disponível"}`);
+          } else {
+            setErrorDetails(err.message);
+          }
+        } catch (parseError) {
+          setErrorDetails(err.message);
+        }
       } else {
-        setErrorDetails(`Erro detalhado: ${err.stack || JSON.stringify(err)}`);
+        // Adicionar detalhes técnicos para depuração
+        if (err.response) {
+          setErrorDetails(`Status: ${err.response.status}\nDetalhes: ${JSON.stringify(err.response.data)}`);
+        } else {
+          setErrorDetails(`Erro detalhado: ${err.stack || JSON.stringify(err)}`);
+        }
       }
       
       // Check if the error is related to Twilio credentials
@@ -301,15 +326,15 @@ export function CampaignCallTester({
           <span>Fazer Chamada de Teste</span>
         </Button>
         
-        {!functionTested && (
-          <Button 
-            onClick={testFunctionConnectivity}
-            className="flex items-center gap-2 w-full"
-          >
-            <Loader2 className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Verificar Conectividade com a Função</span>
-          </Button>
-        )}
+        <Button 
+          onClick={testFunctionConnectivity}
+          disabled={isTesting}
+          className="flex items-center gap-2 w-full"
+          variant="outline"
+        >
+          <RefreshCw className={`h-4 w-4 ${isTesting ? 'animate-spin' : ''}`} />
+          <span>{isTesting ? "Verificando..." : "Verificar Conectividade"}</span>
+        </Button>
         
         {callStatus && (
           <div className={`p-3 rounded-md text-sm ${callStatus.includes('Erro') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>

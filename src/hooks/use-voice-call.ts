@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -262,6 +261,10 @@ export function useVoiceCall() {
       
       const startTime = Date.now();
       
+      // Adicionar timeout maior para funções edge
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      
       const { data, error } = await supabase.functions.invoke('make-call', {
         body: { 
           phoneNumber,
@@ -273,9 +276,17 @@ export function useVoiceCall() {
               <Say language="pt-BR">${message}</Say>
             </Response>
           ` : undefined,
+        },
+        abortSignal: controller.signal
+      }).catch(err => {
+        if (err.name === 'AbortError') {
+          throw new Error('Timeout: A função demorou muito para responder');
         }
+        throw err;
       });
 
+      clearTimeout(timeoutId);
+      
       const endTime = Date.now();
       console.log(`Tempo de resposta da função make-call: ${endTime - startTime}ms`);
 
@@ -307,9 +318,21 @@ export function useVoiceCall() {
     setError(null);
     
     try {
+      // Adicionar timeout para funções edge
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
       const { data, error } = await supabase.functions.invoke('make-call', {
-        body: { test: true }
+        body: { test: true },
+        abortSignal: controller.signal
+      }).catch(err => {
+        if (err.name === 'AbortError') {
+          throw new Error('Timeout: A função não respondeu em tempo hábil');
+        }
+        throw err;
       });
+      
+      clearTimeout(timeoutId);
       
       if (error) {
         throw new Error(`Erro ao testar função make-call: ${error.message}`);
