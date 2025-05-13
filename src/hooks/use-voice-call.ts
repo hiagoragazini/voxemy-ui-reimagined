@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 
 interface MakeCallParams {
   phoneNumber: string;
@@ -71,7 +71,11 @@ export function useVoiceCall() {
     } catch (err: any) {
       console.error('Erro na conversão de texto para voz:', err);
       setError(err.message);
-      toast.error('Erro ao converter texto para voz: ' + err.message);
+      toast({
+        variant: "destructive",
+        title: "Erro ao converter texto para voz",
+        description: err.message
+      });
       return null;
     } finally {
       setIsLoading(false);
@@ -266,6 +270,7 @@ export function useVoiceCall() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000);
       
+      // Remove the 'signal' property since it's not supported in FunctionInvokeOptions
       const { data, error } = await supabase.functions.invoke('make-call', {
         body: { 
           phoneNumber,
@@ -277,8 +282,7 @@ export function useVoiceCall() {
               <Say language="pt-BR">${message}</Say>
             </Response>
           ` : undefined,
-        },
-        signal: controller.signal  // Changed from abortSignal to signal
+        }
       }).catch(err => {
         if (err.name === 'AbortError') {
           throw new Error('Timeout: A função demorou muito para responder');
@@ -301,12 +305,19 @@ export function useVoiceCall() {
         throw new Error(data?.error || 'Falha ao iniciar chamada');
       }
 
-      toast.success('Chamada iniciada com sucesso!');
+      toast({
+        title: "Sucesso!",
+        description: "Chamada iniciada com sucesso!",
+      });
       return data;
     } catch (err: any) {
       console.error('Erro ao fazer chamada:', err);
       setError(err.message);
-      toast.error('Erro ao fazer chamada: ' + err.message);
+      toast({
+        variant: "destructive",
+        title: "Erro ao fazer chamada",
+        description: err.message
+      });
       return null;
     } finally {
       setIsLoading(false);
@@ -323,9 +334,9 @@ export function useVoiceCall() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
       
+      // Remove the 'signal' property since it's not supported in FunctionInvokeOptions
       const { data, error } = await supabase.functions.invoke('make-call', {
-        body: { test: true },
-        signal: controller.signal  // Changed from abortSignal to signal
+        body: { test: true }
       }).catch(err => {
         if (err.name === 'AbortError') {
           throw new Error('Timeout: A função não respondeu em tempo hábil');
