@@ -130,7 +130,11 @@ export function useVoiceCall() {
         console.error('Código do erro:', audio.error ? audio.error.code : 'desconhecido');
         console.error('Mensagem do erro:', audio.error ? audio.error.message : 'desconhecido');
         
-        toast.error(`Erro ao reproduzir áudio: ${audio.error?.message || 'Erro desconhecido'}`);
+        toast({
+          variant: "destructive",
+          title: "Erro ao reproduzir áudio",
+          description: audio.error?.message || 'Erro desconhecido'
+        });
         setIsPlaying(false);
       };
 
@@ -206,7 +210,11 @@ export function useVoiceCall() {
                 .catch(err => {
                   console.error('Erro ao iniciar reprodução (método HTML5):', err);
                   setIsPlaying(false);
-                  toast.error('Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som.');
+                  toast({
+                    variant: "destructive", 
+                    title: "Erro de reprodução",
+                    description: 'Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som.'
+                  });
                 });
             }
           }
@@ -229,7 +237,11 @@ export function useVoiceCall() {
             .catch(err => {
               console.error('Erro ao iniciar reprodução (método HTML5):', err);
               setIsPlaying(false);
-              toast.error('Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som e se o volume está ativado.');
+              toast({
+                variant: "destructive",
+                title: "Erro de reprodução",
+                description: 'Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som e se o volume está ativado.'
+              });
             });
         }
       }
@@ -238,7 +250,11 @@ export function useVoiceCall() {
     } catch (err) {
       console.error('Falha ao reproduzir áudio:', err);
       setIsPlaying(false);
-      toast.error('Erro ao reproduzir áudio. Verifique as configurações de áudio do seu navegador.');
+      toast({
+        variant: "destructive",
+        title: "Erro de áudio",
+        description: 'Erro ao reproduzir áudio. Verifique as configurações de áudio do seu navegador.'
+      });
       return false;
     }
   };
