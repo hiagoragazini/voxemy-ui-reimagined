@@ -91,7 +91,7 @@ export function CampaignCallTester({
         leadId
       });
       
-      // Make the call
+      // Use the supabase.functions.invoke method with the correct project configuration 
       const { data, error } = await supabase.functions.invoke('make-call', {
         body: { 
           phoneNumber, 
