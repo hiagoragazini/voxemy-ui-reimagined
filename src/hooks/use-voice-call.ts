@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -277,7 +278,7 @@ export function useVoiceCall() {
             </Response>
           ` : undefined,
         },
-        abortSignal: controller.signal
+        signal: controller.signal  // Changed from abortSignal to signal
       }).catch(err => {
         if (err.name === 'AbortError') {
           throw new Error('Timeout: A função demorou muito para responder');
@@ -324,7 +325,7 @@ export function useVoiceCall() {
       
       const { data, error } = await supabase.functions.invoke('make-call', {
         body: { test: true },
-        abortSignal: controller.signal
+        signal: controller.signal  // Changed from abortSignal to signal
       }).catch(err => {
         if (err.name === 'AbortError') {
           throw new Error('Timeout: A função não respondeu em tempo hábil');
