@@ -1,11 +1,12 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, Phone, AlertCircle, HelpCircle, ExternalLink, ArrowRight } from "lucide-react";
+import { Loader2, Phone, AlertCircle, HelpCircle, ExternalLink, ArrowRight, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useVoiceCall } from "@/hooks/use-voice-call";
 
 interface CampaignCallTesterProps {
   campaignId?: string;
@@ -29,12 +30,36 @@ export function CampaignCallTester({
   onCallComplete
 }: CampaignCallTesterProps) {
   const [phoneNumber, setPhoneNumber] = useState(initialPhone);
-  const [isLoading, setIsLoading] = useState(false);
   const [callStatus, setCallStatus] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [showTroubleshooting, setShowTroubleshooting] = useState(false);
   const [callSid, setCallSid] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState(false);
+  const [functionTested, setFunctionTested] = useState(false);
+  const [functionTestResult, setFunctionTestResult] = useState<any>(null);
+  
+  const { isLoading, makeCall, error, testMakeCallFunction } = useVoiceCall();
+  
+  // Testar conectividade com a função na montagem
+  useEffect(() => {
+    testFunctionConnectivity();
+  }, []);
+  
+  const testFunctionConnectivity = async () => {
+    setCallStatus("Verificando conectividade com a função make-call...");
+    const result = await testMakeCallFunction();
+    
+    if (result && result.success) {
+      setFunctionTested(true);
+      setFunctionTestResult(result);
+      setCallStatus("Função make-call está acessível! Pronto para fazer chamadas.");
+    } else {
+      setFunctionTested(false);
+      setCallStatus("Erro: Não foi possível acessar a função make-call.");
+      setErrorDetails("A função make-call não está respondendo corretamente. Verifique os logs e configurações da função.");
+      setShowTroubleshooting(true);
+    }
+  };
   
   const formatPhoneForDisplay = (phone: string) => {
     // Simple formatting for display (not for API calls)
@@ -59,7 +84,6 @@ export function CampaignCallTester({
       return;
     }
     
-    setIsLoading(true);
     setCallStatus("Iniciando chamada...");
     setErrorDetails(null);
     setCallSid(null);
@@ -92,66 +116,52 @@ export function CampaignCallTester({
         callbackUrl
       });
       
-      // Use the supabase.functions.invoke method to call the function
-      try {
-        const { data, error } = await supabase.functions.invoke('make-call', {
-          body: { 
-            phoneNumber, 
-            callbackUrl,
-            agentId,
-            campaignId,
-            agentName,
-            leadId,
-            twimlInstructions,
-            recordCall: true,
-            transcribeCall: true
-          }
-        });
+      // Use o hook make-call para fazer a chamada
+      const callResult = await makeCall({
+        phoneNumber,
+        agentId,
+        campaignId,
+        message: twimlInstructions
+      });
 
-        console.log("Resposta completa da função make-call:", data, error);
+      console.log("Resposta da função make-call:", callResult);
 
-        if (error) {
-          console.error("Erro da função make-call:", error);
-          throw new Error(`Erro na função make-call: ${error.message}`);
-        }
-        
-        if (!data || !data.success) {
-          console.error("Falha na resposta da função make-call:", data);
-          throw new Error(data?.error || "Falha ao fazer chamada: resposta inválida");
-        }
+      if (!callResult) {
+        throw new Error(error || "Falha ao fazer chamada: nenhuma resposta recebida");
+      }
 
-        // Update lead status if we have a leadId
-        if (leadId) {
-          await supabase
-            .from("leads")
-            .update({
-              status: "called",
-              call_result: "Chamada de teste realizada"
-            })
-            .eq("id", leadId);
-            
-          if (onCallComplete) {
-            onCallComplete();
-          }
+      // Update lead status if we have a leadId
+      if (leadId) {
+        await supabase
+          .from("leads")
+          .update({
+            status: "called",
+            call_result: "Chamada de teste realizada"
+          })
+          .eq("id", leadId);
+          
+        if (onCallComplete) {
+          onCallComplete();
         }
+      }
 
-        setCallSid(data.callSid);
-        setCallStatus(`Chamada iniciada com sucesso! Status: ${data.status || 'iniciada'}`);
-        toast.success("Chamada iniciada com sucesso!");
-        
-        // Poll for call status updates if we have a call SID
-        if (data.callSid) {
-          pollCallStatus(data.callSid);
-        }
-      } catch (invokeError: any) {
-        console.error("Erro ao invocar função:", invokeError);
-        throw new Error(`Erro ao invocar função make-call: ${invokeError.message}`);
+      setCallSid(callResult.callSid);
+      setCallStatus(`Chamada iniciada com sucesso! Status: ${callResult.status || 'iniciada'}`);
+      
+      // Poll for call status updates if we have a call SID
+      if (callResult.callSid) {
+        pollCallStatus(callResult.callSid);
       }
     } catch (err: any) {
       console.error('Erro ao fazer chamada:', err);
       setCallStatus(`Erro: ${err.message}`);
-      setErrorDetails(`Detalhes do erro: ${JSON.stringify(err, null, 2)}\n\nVerifique os logs do console para mais informações.`);
-      toast.error("Erro ao fazer chamada: " + err.message);
+      
+      // Adicionar detalhes técnicos para depuração
+      if (err.response) {
+        setErrorDetails(`Status: ${err.response.status}\nDetalhes: ${JSON.stringify(err.response.data)}`);
+      } else {
+        setErrorDetails(`Erro detalhado: ${err.stack || JSON.stringify(err)}`);
+      }
       
       // Check if the error is related to Twilio credentials
       if (err.message?.includes("Twilio") || 
@@ -159,8 +169,6 @@ export function CampaignCallTester({
           err.message?.includes("credentials")) {
         setShowTroubleshooting(true);
       }
-    } finally {
-      setIsLoading(false);
     }
   };
   
@@ -228,6 +236,36 @@ export function CampaignCallTester({
         </p>
       </div>
 
+      {/* Status da função make-call */}
+      {functionTested && functionTestResult && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-3">
+          <div className="flex items-start gap-2">
+            <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-green-800">Função make-call está acessível</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Variáveis de ambiente: {" "}
+                {functionTestResult.env?.twilioAccountSidConfigured ? (
+                  <span className="text-green-600">TWILIO_ACCOUNT_SID ✓</span>
+                ) : (
+                  <span className="text-red-600">TWILIO_ACCOUNT_SID ✗</span>
+                )}{", "}
+                {functionTestResult.env?.twilioAuthTokenConfigured ? (
+                  <span className="text-green-600">TWILIO_AUTH_TOKEN ✓</span>
+                ) : (
+                  <span className="text-red-600">TWILIO_AUTH_TOKEN ✗</span>
+                )}{", "}
+                {functionTestResult.env?.twilioPhoneNumberConfigured ? (
+                  <span className="text-green-600">TWILIO_PHONE_NUMBER ✓</span>
+                ) : (
+                  <span className="text-red-600">TWILIO_PHONE_NUMBER ✗</span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3">
         <div className="space-y-1">
           <label htmlFor="phoneNumber" className="text-sm font-medium">
@@ -252,7 +290,7 @@ export function CampaignCallTester({
         
         <Button 
           onClick={handleMakeCall}
-          disabled={isLoading || !phoneNumber}
+          disabled={isLoading || !phoneNumber || !functionTested}
           className="flex items-center gap-2 w-full bg-blue-700 hover:bg-blue-800"
         >
           {isLoading ? (
@@ -262,6 +300,16 @@ export function CampaignCallTester({
           )}
           <span>Fazer Chamada de Teste</span>
         </Button>
+        
+        {!functionTested && (
+          <Button 
+            onClick={testFunctionConnectivity}
+            className="flex items-center gap-2 w-full"
+          >
+            <Loader2 className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Verificar Conectividade com a Função</span>
+          </Button>
+        )}
         
         {callStatus && (
           <div className={`p-3 rounded-md text-sm ${callStatus.includes('Erro') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>

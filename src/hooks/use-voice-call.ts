@@ -260,6 +260,8 @@ export function useVoiceCall() {
       console.log('Com agentId:', agentId);
       console.log('Com campaignId:', campaignId);
       
+      const startTime = Date.now();
+      
       const { data, error } = await supabase.functions.invoke('make-call', {
         body: { 
           phoneNumber,
@@ -273,6 +275,9 @@ export function useVoiceCall() {
           ` : undefined,
         }
       });
+
+      const endTime = Date.now();
+      console.log(`Tempo de resposta da função make-call: ${endTime - startTime}ms`);
 
       if (error) {
         console.error('Erro na função make-call:', error);
@@ -296,6 +301,31 @@ export function useVoiceCall() {
     }
   };
 
+  // Função para testar se a função make-call está acessível
+  const testMakeCallFunction = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('make-call', {
+        body: { test: true }
+      });
+      
+      if (error) {
+        throw new Error(`Erro ao testar função make-call: ${error.message}`);
+      }
+      
+      console.log("Resultado do teste da função make-call:", data);
+      return data;
+    } catch (err: any) {
+      console.error('Erro ao testar função make-call:', err);
+      setError(err.message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     isLoading,
     isPlaying,
@@ -303,6 +333,7 @@ export function useVoiceCall() {
     textToSpeech,
     playAudio,
     playLastAudio,
-    makeCall
+    makeCall,
+    testMakeCallFunction
   };
 }

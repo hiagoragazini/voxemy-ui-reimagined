@@ -3,8 +3,12 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-// Importação correta do Twilio para Deno/ESM
-import twilio from "https://esm.sh/twilio@4.20.0";
+// Método alternativo de importação do Twilio compatível com Deno
+const getTwilioClient = async (accountSid: string, authToken: string) => {
+  // Importação dinâmica do cliente Twilio
+  const { Twilio } = await import("https://esm.sh/twilio@4.20.0");
+  return new Twilio(accountSid, authToken);
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -40,7 +44,7 @@ serve(async (req) => {
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     
     if (!twilioAccountSid || !twilioAuthToken) {
-      throw new Error("Credenciais do Twilio não estão configuradas");
+      throw new Error("Credenciais do Twilio não estão configuradas nas variáveis de ambiente");
     }
 
     // Log with credentials masked for security
@@ -69,8 +73,8 @@ serve(async (req) => {
 
     console.log(`Iniciando chamada para ${phoneNumber}`);
 
-    // Inicializar cliente Twilio corretamente usando a nova importação
-    const client = twilio(twilioAccountSid, twilioAuthToken);
+    // Inicializar cliente Twilio corretamente usando a importação dinâmica
+    const client = await getTwilioClient(twilioAccountSid, twilioAuthToken);
 
     // Formatar o número para o formato internacional
     const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
