@@ -257,6 +257,8 @@ export function useVoiceCall() {
       const callbackUrl = `${window.location.origin}/api/call-status`;
 
       console.log('Iniciando chamada para:', phoneNumber);
+      console.log('Com agentId:', agentId);
+      console.log('Com campaignId:', campaignId);
       
       const { data, error } = await supabase.functions.invoke('make-call', {
         body: { 
@@ -272,8 +274,15 @@ export function useVoiceCall() {
         }
       });
 
-      if (error) throw new Error(error.message);
-      if (!data.success) throw new Error(data.error || 'Falha ao iniciar chamada');
+      if (error) {
+        console.error('Erro na função make-call:', error);
+        throw new Error(error.message);
+      }
+      
+      if (!data || !data.success) {
+        console.error('Resposta da função make-call:', data);
+        throw new Error(data?.error || 'Falha ao iniciar chamada');
+      }
 
       toast.success('Chamada iniciada com sucesso!');
       return data;

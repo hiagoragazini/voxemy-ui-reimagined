@@ -13,6 +13,28 @@ serve(async (req) => {
   }
 
   try {
+    // Parse request body
+    const requestBody = await req.json();
+
+    // Se for apenas um teste, não faz a chamada, apenas retorna que a função está acessível
+    if (requestBody.test === true) {
+      console.log("Teste de conectividade com a função make-call");
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Função make-call está acessível",
+          env: {
+            twilioAccountSidConfigured: Boolean(Deno.env.get("TWILIO_ACCOUNT_SID")),
+            twilioAuthTokenConfigured: Boolean(Deno.env.get("TWILIO_AUTH_TOKEN")),
+            twilioPhoneNumberConfigured: Boolean(Deno.env.get("TWILIO_PHONE_NUMBER"))
+          }
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Verificar se as credenciais do Twilio estão configuradas
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -39,7 +61,7 @@ serve(async (req) => {
       twimlInstructions,
       recordCall = true,
       transcribeCall = true
-    } = await req.json();
+    } = requestBody;
 
     if (!phoneNumber) {
       throw new Error("Número de telefone é obrigatório");

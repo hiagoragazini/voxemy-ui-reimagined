@@ -88,62 +88,69 @@ export function CampaignCallTester({
         phoneNumber,
         agentId,
         campaignId,
-        leadId
+        leadId,
+        callbackUrl
       });
       
-      // Use the supabase.functions.invoke method with the correct project configuration 
-      const { data, error } = await supabase.functions.invoke('make-call', {
-        body: { 
-          phoneNumber, 
-          callbackUrl,
-          agentId,
-          campaignId,
-          agentName,
-          leadId,
-          twimlInstructions,
-          recordCall: true,
-          transcribeCall: true
+      // Use the supabase.functions.invoke method to call the function
+      try {
+        const { data, error } = await supabase.functions.invoke('make-call', {
+          body: { 
+            phoneNumber, 
+            callbackUrl,
+            agentId,
+            campaignId,
+            agentName,
+            leadId,
+            twimlInstructions,
+            recordCall: true,
+            transcribeCall: true
+          }
+        });
+
+        console.log("Resposta completa da função make-call:", data, error);
+
+        if (error) {
+          console.error("Erro da função make-call:", error);
+          throw new Error(`Erro na função make-call: ${error.message}`);
         }
-      });
-
-      if (error) {
-        console.error("Erro da função make-call:", error);
-        throw new Error(error.message);
-      }
-      
-      console.log("Resposta da função make-call:", data);
-      
-      if (!data.success) {
-        throw new Error(data.error || "Falha ao fazer chamada");
-      }
-
-      // Update lead status if we have a leadId
-      if (leadId) {
-        await supabase
-          .from("leads")
-          .update({
-            status: "called",
-            call_result: "Chamada de teste realizada"
-          })
-          .eq("id", leadId);
-          
-        if (onCallComplete) {
-          onCallComplete();
+        
+        if (!data || !data.success) {
+          console.error("Falha na resposta da função make-call:", data);
+          throw new Error(data?.error || "Falha ao fazer chamada: resposta inválida");
         }
-      }
 
-      setCallSid(data.callSid);
-      setCallStatus(`Chamada iniciada com sucesso! Status: ${data.status}`);
-      toast.success("Chamada iniciada com sucesso!");
-      
-      // Poll for call status updates if we have a call SID
-      if (data.callSid) {
-        pollCallStatus(data.callSid);
+        // Update lead status if we have a leadId
+        if (leadId) {
+          await supabase
+            .from("leads")
+            .update({
+              status: "called",
+              call_result: "Chamada de teste realizada"
+            })
+            .eq("id", leadId);
+            
+          if (onCallComplete) {
+            onCallComplete();
+          }
+        }
+
+        setCallSid(data.callSid);
+        setCallStatus(`Chamada iniciada com sucesso! Status: ${data.status || 'iniciada'}`);
+        toast.success("Chamada iniciada com sucesso!");
+        
+        // Poll for call status updates if we have a call SID
+        if (data.callSid) {
+          pollCallStatus(data.callSid);
+        }
+      } catch (invokeError: any) {
+        console.error("Erro ao invocar função:", invokeError);
+        throw new Error(`Erro ao invocar função make-call: ${invokeError.message}`);
       }
     } catch (err: any) {
       console.error('Erro ao fazer chamada:', err);
       setCallStatus(`Erro: ${err.message}`);
-      setErrorDetails(`Detalhes: ${JSON.stringify(err, null, 2)}`);
+      setErrorDetails(`Detalhes do erro: ${JSON.stringify(err, null, 2)}\n\nVerifique os logs do console para mais informações.`);
       toast.error("Erro ao fazer chamada: " + err.message);
       
       // Check if the error is related to Twilio credentials
@@ -281,7 +288,7 @@ export function CampaignCallTester({
                     </button>
                     
                     {showLogs && (
-                      <div className="mt-1 text-xs bg-red-100 p-2 rounded overflow-auto max-h-24">
+                      <div className="mt-1 text-xs bg-red-100 p-2 rounded overflow-auto max-h-40">
                         <pre>{errorDetails}</pre>
                       </div>
                     )}
