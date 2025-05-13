@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -40,9 +39,9 @@ export function useVoiceCall() {
     setError(null);
     
     try {
-      console.log('Enviando texto para conversão:', text);
-      console.log('Usando voice ID:', voiceId || 'padrão');
-      console.log('Usando model:', model || 'padrão');
+      console.log('Sending text for conversion:', text);
+      console.log('Using voice ID:', voiceId || 'default');
+      console.log('Using model:', model || 'default');
       
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { 
@@ -53,27 +52,27 @@ export function useVoiceCall() {
       });
 
       if (error) {
-        console.error('Erro na função text-to-speech:', error);
+        console.error('Error in text-to-speech function:', error);
         throw new Error(error.message);
       }
       
       if (!data.success) {
-        console.error('Falha na resposta text-to-speech:', data.error);
-        throw new Error(data.error || 'Falha ao gerar áudio');
+        console.error('Text-to-speech function response:', data.error);
+        throw new Error(data.error || 'Failed to generate audio');
       }
 
-      console.log('Áudio recebido com sucesso:', data.metadata ? JSON.stringify(data.metadata) : 'sem metadados');
+      console.log('Audio received successfully:', data.metadata ? JSON.stringify(data.metadata) : 'no metadata');
       
-      // Armazenar o conteúdo do áudio para reprodução posterior
+      // Store the audio content for playback later
       setLastAudioContent(data.audioContent);
       
-      return data.audioContent; // Conteúdo do áudio em base64
+      return data.audioContent; // Content of the audio in base64
     } catch (err: any) {
-      console.error('Erro na conversão de texto para voz:', err);
+      console.error('Error converting text to voice:', err);
       setError(err.message);
       toast({
         variant: "destructive",
-        title: "Erro ao converter texto para voz",
+        title: "Error converting text to voice",
         description: err.message
       });
       return null;
@@ -85,78 +84,78 @@ export function useVoiceCall() {
   // Função para reproduzir áudio base64 com melhor gerenciamento de erro
   const playAudio = (base64Audio: string) => {
     try {
-      console.log('Iniciando reprodução de áudio...');
+      console.log('Starting audio playback...');
       
-      // Se já existir um elemento de áudio, pare-o
+      // If there's already an audio element, pause it
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
       }
 
-      // Verificar se o base64 está correto
+      // Verify if the base64 is valid
       if (!base64Audio || base64Audio.trim() === '') {
-        throw new Error('Áudio inválido recebido');
+        throw new Error('Invalid audio received');
       }
       
-      // Criar novo elemento de áudio para evitar problemas de cache
+      // Create a new audio element to avoid cache issues
       const audio = new Audio();
       
-      // Adicionar event listeners antes de definir a fonte para evitar race conditions
+      // Add event listeners before setting the source to avoid race conditions
       audio.onloadedmetadata = () => {
-        console.log('Áudio carregado:', audio.duration, 'segundos');
-        // Forçar um layout reflow para garantir que o navegador reconheça o elemento de áudio
+        console.log('Audio loaded:', audio.duration, 'seconds');
+        // Force a layout reflow to ensure the browser recognizes the audio element
         document.body.appendChild(audio);
         document.body.removeChild(audio);
       };
       
       audio.onplay = () => {
-        console.log('Reprodução iniciada');
+        console.log('Playback started');
         setIsPlaying(true);
       };
       
       audio.onended = () => {
-        console.log('Reprodução finalizada');
+        console.log('Playback finished');
         setIsPlaying(false);
       };
       
       audio.onpause = () => {
-        console.log('Reprodução pausada');
+        console.log('Playback paused');
         setIsPlaying(false);
       };
       
-      // Configurar evento de erro com detalhes
+      // Set error event with details
       audio.onerror = (e) => {
-        console.error('Erro ao reproduzir áudio:', e);
-        console.error('Código do erro:', audio.error ? audio.error.code : 'desconhecido');
-        console.error('Mensagem do erro:', audio.error ? audio.error.message : 'desconhecido');
+        console.error('Error playing audio:', e);
+        console.error('Error code:', audio.error ? audio.error.code : 'unknown');
+        console.error('Error message:', audio.error ? audio.error.message : 'unknown');
         
         toast({
           variant: "destructive",
-          title: "Erro ao reproduzir áudio",
-          description: audio.error?.message || 'Erro desconhecido'
+          title: "Error playing audio",
+          description: audio.error?.message || 'Unknown error'
         });
         setIsPlaying(false);
       };
 
-      // Definir volume alto para garantir que não esteja mudo
+      // Set high volume to ensure it's not muted
       audio.volume = 1.0;
       
-      // Forçar o carregamento do áudio de forma síncrona
+      // Force the audio to load synchronously
       audio.preload = "auto";
       
-      // Definir a fonte do áudio
+      // Set the audio source
       audio.src = `data:audio/mp3;base64,${base64Audio}`;
       
-      // Armazenar referência
+      // Store reference
       audioRef.current = audio;
       
-      // Tentativa 1: Usar a API de áudio Web
-      console.log('Tentando reproduzir com API Web Audio...');
+      // Try 1: Use the Web Audio API
+      console.log('Trying to play with Web Audio API...');
       try {
-        // Criar contexto de áudio
+        // Create an audio context
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         
-        // Decodificar base64 para array buffer
+        // Decode base64 to array buffer
         const binaryString = atob(base64Audio);
         const len = binaryString.length;
         const bytes = new Uint8Array(len);
@@ -164,56 +163,56 @@ export function useVoiceCall() {
           bytes[i] = binaryString.charCodeAt(i);
         }
         
-        // Decodificar array buffer para áudio
+        // Decode array buffer to audio
         audioContext.decodeAudioData(
           bytes.buffer,
           (buffer) => {
-            console.log('Áudio decodificado com sucesso');
-            // Criar source node
+            console.log('Audio decoded successfully');
+            // Create source node
             const source = audioContext.createBufferSource();
             source.buffer = buffer;
             
-            // Conectar ao destino (alto-falantes)
+            // Connect to destination (speakers)
             source.connect(audioContext.destination);
             
-            // Iniciar reprodução
+            // Start playback
             source.start(0);
             setIsPlaying(true);
             
-            // Definir evento para quando a reprodução terminar
+            // Define event for when playback ends
             source.onended = () => {
-              console.log('Reprodução Web Audio finalizada');
+              console.log('Web Audio API playback finished');
               setIsPlaying(false);
             };
           },
           (err) => {
-            console.error('Erro ao decodificar áudio com Web Audio API:', err);
-            console.log('Tentando método alternativo...');
+            console.error('Error decoding audio with Web Audio API:', err);
+            console.log('Trying alternative method...');
             
-            // Tentativa 2: Usar a API de áudio HTML5 padrão
+            // Try 2: Use the HTML5 audio standard
             const playPromise = audio.play();
             
             if (playPromise !== undefined) {
               playPromise
                 .then(() => {
-                  console.log('Reprodução iniciada com sucesso (método HTML5)');
+                  console.log('Playback started with HTML5 method');
                   setIsPlaying(true);
-                  // Verificar se há áudio sendo reproduzido após 500ms
+                  // Check if audio is progressing after 500ms
                   setTimeout(() => {
                     if (audio.currentTime > 0) {
-                      console.log('Áudio está progredindo:', audio.currentTime);
+                      console.log('Audio is progressing:', audio.currentTime);
                     } else {
-                      console.log('Áudio não está progredindo');
+                      console.log('Audio is not progressing');
                     }
                   }, 500);
                 })
                 .catch(err => {
-                  console.error('Erro ao iniciar reprodução (método HTML5):', err);
+                  console.error('Error starting playback (HTML5 method):', err);
                   setIsPlaying(false);
                   toast({
                     variant: "destructive", 
-                    title: "Erro de reprodução",
-                    description: 'Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som.'
+                    title: "Playback error",
+                    description: 'Failed to play audio. Check if your browser allows automatic audio playback and if the volume is enabled.'
                   });
                 });
             }
@@ -222,25 +221,25 @@ export function useVoiceCall() {
         
         return true;
       } catch (webAudioErr) {
-        console.error('Falha ao usar Web Audio API:', webAudioErr);
-        console.log('Tentando método HTML5 padrão...');
+        console.error('Failed to use Web Audio API:', webAudioErr);
+        console.log('Trying HTML5 standard method...');
         
-        // Tentativa 2: Usar a API de áudio HTML5 padrão
+        // Try 2: Use the HTML5 audio standard
         const playPromise = audio.play();
         
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              console.log('Reprodução iniciada com sucesso (método HTML5)');
+              console.log('Playback started with HTML5 method');
               setIsPlaying(true);
             })
             .catch(err => {
-              console.error('Erro ao iniciar reprodução (método HTML5):', err);
+              console.error('Error starting playback (HTML5 method):', err);
               setIsPlaying(false);
               toast({
                 variant: "destructive",
-                title: "Erro de reprodução",
-                description: 'Não foi possível reproduzir o áudio. Verifique se seu navegador permite reprodução automática de som e se o volume está ativado.'
+                title: "Playback error",
+                description: 'Failed to play audio. Check if your browser allows automatic audio playback and if the volume is enabled.'
               });
             });
         }
@@ -248,12 +247,12 @@ export function useVoiceCall() {
       
       return true;
     } catch (err) {
-      console.error('Falha ao reproduzir áudio:', err);
+      console.error('Failed to play audio:', err);
       setIsPlaying(false);
       toast({
         variant: "destructive",
-        title: "Erro de áudio",
-        description: 'Erro ao reproduzir áudio. Verifique as configurações de áudio do seu navegador.'
+        title: "Audio error",
+        description: 'Failed to play audio. Check your audio settings.'
       });
       return false;
     }
@@ -273,20 +272,20 @@ export function useVoiceCall() {
     setError(null);
     
     try {
-      // URL para receber callbacks de status de chamada
+      // URL to receive callbacks for call status
       const callbackUrl = `${window.location.origin}/api/call-status`;
 
-      console.log('Iniciando chamada para:', phoneNumber);
-      console.log('Com agentId:', agentId);
-      console.log('Com campaignId:', campaignId);
+      console.log('Starting call to:', phoneNumber);
+      console.log('With agentId:', agentId);
+      console.log('With campaignId:', campaignId);
       
       const startTime = Date.now();
       
-      // Adicionar timeout maior para funções edge
+      // Add longer timeout for edge functions
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000);
       
-      // Remove the 'signal' property since it's not supported in FunctionInvokeOptions
+      // Invoke the function without the 'signal' property
       const { data, error } = await supabase.functions.invoke('make-call', {
         body: { 
           phoneNumber,
@@ -301,7 +300,7 @@ export function useVoiceCall() {
         }
       }).catch(err => {
         if (err.name === 'AbortError') {
-          throw new Error('Timeout: A função demorou muito para responder');
+          throw new Error('Timeout: Function took too long to respond');
         }
         throw err;
       });
@@ -309,29 +308,29 @@ export function useVoiceCall() {
       clearTimeout(timeoutId);
       
       const endTime = Date.now();
-      console.log(`Tempo de resposta da função make-call: ${endTime - startTime}ms`);
+      console.log(`Response time for make-call function: ${endTime - startTime}ms`);
 
       if (error) {
-        console.error('Erro na função make-call:', error);
+        console.error('Error in make-call function:', error);
         throw new Error(error.message);
       }
       
       if (!data || !data.success) {
-        console.error('Resposta da função make-call:', data);
-        throw new Error(data?.error || 'Falha ao iniciar chamada');
+        console.error('make-call function response:', data);
+        throw new Error(data?.error || 'Failed to start call');
       }
 
       toast({
-        title: "Sucesso!",
-        description: "Chamada iniciada com sucesso!",
+        title: "Success!",
+        description: "Call started successfully!",
       });
       return data;
     } catch (err: any) {
-      console.error('Erro ao fazer chamada:', err);
+      console.error('Error making call:', err);
       setError(err.message);
       toast({
         variant: "destructive",
-        title: "Erro ao fazer chamada",
+        title: "Error making call",
         description: err.message
       });
       return null;
@@ -346,16 +345,16 @@ export function useVoiceCall() {
     setError(null);
     
     try {
-      // Adicionar timeout para funções edge
+      // Add timeout for edge functions
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
       
-      // Remove the 'signal' property since it's not supported in FunctionInvokeOptions
+      // Invoke the function without the 'signal' property
       const { data, error } = await supabase.functions.invoke('make-call', {
         body: { test: true }
       }).catch(err => {
         if (err.name === 'AbortError') {
-          throw new Error('Timeout: A função não respondeu em tempo hábil');
+          throw new Error('Timeout: Function did not respond in time');
         }
         throw err;
       });
@@ -363,13 +362,13 @@ export function useVoiceCall() {
       clearTimeout(timeoutId);
       
       if (error) {
-        throw new Error(`Erro ao testar função make-call: ${error.message}`);
+        throw new Error(`Error testing make-call function: ${error.message}`);
       }
       
-      console.log("Resultado do teste da função make-call:", data);
+      console.log("make-call function test result:", data);
       return data;
     } catch (err: any) {
-      console.error('Erro ao testar função make-call:', err);
+      console.error('Error testing make-call function:', err);
       setError(err.message);
       return null;
     } finally {

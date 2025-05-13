@@ -1,20 +1,19 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-// Método atualizado para importação do Twilio compatível com Deno
-const getTwilioClient = async (accountSid: string, authToken: string) => {
+// Updated method for importing Twilio compatible with Deno
+async function getTwilioClient(accountSid, authToken) {
   try {
-    const twilioModule = await import("https://esm.sh/twilio@4.20.0");
-    if (!twilioModule || !twilioModule.Twilio) {
-      throw new Error("Falha ao importar o módulo Twilio");
-    }
-    return new twilioModule.Twilio(accountSid, authToken);
+    // Import Twilio using a compatible ESM import for Deno
+    const twilio = await import("npm:twilio@4.20.0");
+    return new twilio.default(accountSid, authToken);
   } catch (error) {
-    console.error("Erro ao inicializar cliente Twilio:", error);
-    throw new Error(`Erro ao inicializar cliente Twilio: ${error.message}`);
+    console.error("Error initializing Twilio client:", error);
+    throw new Error(`Failed to initialize Twilio client: ${error.message}`);
   }
-};
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -26,13 +25,13 @@ serve(async (req) => {
     // Parse request body
     const requestBody = await req.json();
 
-    // Se for apenas um teste, não faz a chamada, apenas retorna que a função está acessível
+    // If it's just a test, don't make the call, just return that the function is accessible
     if (requestBody.test === true) {
-      console.log("Teste de conectividade com a função make-call");
+      console.log("Connectivity test for make-call function");
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: "Função make-call está acessível",
+          message: "make-call function is accessible",
           env: {
             twilioAccountSidConfigured: Boolean(Deno.env.get("TWILIO_ACCOUNT_SID")),
             twilioAuthTokenConfigured: Boolean(Deno.env.get("TWILIO_AUTH_TOKEN")),
@@ -45,25 +44,25 @@ serve(async (req) => {
       );
     }
 
-    // Verificar se as credenciais do Twilio estão configuradas
+    // Check if Twilio credentials are configured
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
     
     if (!twilioAccountSid || !twilioAuthToken) {
-      throw new Error("Credenciais do Twilio não estão configuradas nas variáveis de ambiente");
+      throw new Error("Twilio credentials are not configured in environment variables");
     }
 
     if (!twilioPhone) {
-      console.warn("Número de telefone do Twilio não configurado. Por favor, configure a variável TWILIO_PHONE_NUMBER.");
-      throw new Error("Número de telefone do Twilio (TWILIO_PHONE_NUMBER) não está configurado nas variáveis de ambiente");
+      console.warn("Twilio phone number not configured. Please set the TWILIO_PHONE_NUMBER variable.");
+      throw new Error("Twilio phone number (TWILIO_PHONE_NUMBER) is not configured in environment variables");
     }
 
-    // Log with credentials masked for security
-    console.log(`Usando credenciais do Twilio: SID: ${twilioAccountSid.substring(0, 5)}...${twilioAccountSid.substring(twilioAccountSid.length - 4)}`);
-    console.log(`Usando número de telefone do Twilio: ${twilioPhone}`);
+    // Log with masked credentials for security
+    console.log(`Using Twilio credentials: SID: ${twilioAccountSid.substring(0, 5)}...${twilioAccountSid.substring(twilioAccountSid.length - 4)}`);
+    console.log(`Using Twilio phone number: ${twilioPhone}`);
 
-    // Obter dados da requisição
+    // Get request data
     const { 
       phoneNumber, 
       callbackUrl,
@@ -81,33 +80,33 @@ serve(async (req) => {
     } = requestBody;
 
     if (!phoneNumber) {
-      throw new Error("Número de telefone é obrigatório");
+      throw new Error("Phone number is required");
     }
 
-    console.log(`Iniciando chamada para ${phoneNumber}`);
+    console.log(`Starting call to ${phoneNumber}`);
 
     try {
-      // Inicializar cliente Twilio com tratamento de erros adicional
-      console.log("Iniciando a criação do cliente Twilio...");
+      // Initialize Twilio client with improved error handling
+      console.log("Starting Twilio client creation...");
       const client = await getTwilioClient(twilioAccountSid, twilioAuthToken);
-      console.log("Cliente Twilio criado com sucesso");
+      console.log("Twilio client created successfully");
 
-      // Formatar o número para o formato internacional
+      // Format the number to international format
       const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
-      console.log(`Número formatado: ${formattedPhoneNumber}`);
+      console.log(`Formatted number: ${formattedPhoneNumber}`);
       
-      // Base URL para funções
+      // Base URL for functions
       const baseUrl = Deno.env.get("SUPABASE_URL") || "";
       if (!baseUrl) {
-        console.warn("URL do Supabase não configurada, links de callback podem não funcionar corretamente");
+        console.warn("Supabase URL not configured, callback links may not work properly");
       }
       
-      // Criar TwiML para a chamada
+      // Create TwiML for the call
       let twiml = twimlInstructions;
       if (!twiml) {
-        // Se estiver usando IA conversacional
+        // If using conversational AI
         if (useAI) {
-          // Integração com função de AI + TTS para chamadas inteligentes
+          // Integration with AI + TTS function for smart calls
           const webhookBase = `${baseUrl}/functions/v1/call-handler?`;
           const params = new URLSearchParams();
           
@@ -122,7 +121,7 @@ serve(async (req) => {
           
           const webhookUrl = `${webhookBase}${params.toString()}`;
           
-          console.log(`Configurando Stream URL para: ${webhookUrl}`);
+          console.log(`Configuring Stream URL to: ${webhookUrl}`);
           
           twiml = `
             <Response>
@@ -133,7 +132,7 @@ serve(async (req) => {
             </Response>
           `;
         } else {
-          // Chamada simples sem IA
+          // Simple call without AI
           twiml = `
             <Response>
               <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
@@ -145,7 +144,7 @@ serve(async (req) => {
         }
       }
 
-      // Parâmetros para a URL de callback
+      // Parameters for the callback URL
       let callbackParams = '';
       if (callbackUrl) {
         if (agentId) callbackParams += `&agentId=${agentId}`;
@@ -154,35 +153,35 @@ serve(async (req) => {
         if (recordCall) callbackParams += `&recordCall=true`;
         if (transcribeCall) callbackParams += `&transcribeCall=true`;
         
-        // Adicionar os parâmetros à URL de callback se houver
+        // Add parameters to the callback URL if there are any
         const finalCallbackUrl = callbackParams 
           ? `${callbackUrl}${callbackUrl.includes('?') ? '&' : '?'}${callbackParams.substring(1)}`
           : callbackUrl;
           
-        console.log(`URL de callback configurada: ${finalCallbackUrl}`);
+        console.log(`Callback URL configured: ${finalCallbackUrl}`);
       } else {
-        console.log("Nenhuma URL de callback fornecida");
+        console.log("No callback URL provided");
       }
 
       // Get the Twilio phone number from environment variables
-      console.log(`Usando número do Twilio: ${twilioPhone}`);
-      console.log(`TWIML configurado: ${twiml.substring(0, 100)}...`);
+      console.log(`Using Twilio number: ${twilioPhone}`);
+      console.log(`TwiML configured: ${twiml.substring(0, 100)}...`);
 
-      // Fazer a chamada com tratamento de erros melhorado
+      // Make the call with improved error handling
       try {
-        console.log("Criando chamada via API Twilio...");
+        console.log("Creating call via Twilio API...");
         const call = await client.calls.create({
           twiml: twiml,
           to: formattedPhoneNumber,
-          from: twilioPhone, // Usar o número configurado nas variáveis de ambiente
+          from: twilioPhone, // Use the number configured in environment variables
           statusCallback: callbackUrl || undefined,
           statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
           statusCallbackMethod: 'POST',
           record: recordCall,
         });
         
-        console.log("Chamada criada com sucesso:", call.sid);
-        console.log("Status inicial da chamada:", call.status);
+        console.log("Call created successfully:", call.sid);
+        console.log("Initial call status:", call.status);
         
         // Update lead status if leadId is provided
         if (leadId) {
@@ -197,11 +196,11 @@ serve(async (req) => {
                 .from("leads")
                 .update({ 
                   status: "called",
-                  call_result: "Chamada iniciada"
+                  call_result: "Call started"
                 })
                 .eq("id", leadId);
                 
-              console.log(`Status do lead ${leadId} atualizado para 'called'`);
+              console.log(`Status of lead ${leadId} updated to 'called'`);
               
               // Create initial call log entry
               await supabase.from("call_logs").insert({
@@ -214,9 +213,9 @@ serve(async (req) => {
                 lead_id: leadId
               });
               
-              console.log(`Log de chamada inicial criado para SID: ${call.sid}`);
+              console.log(`Initial call log created for SID: ${call.sid}`);
             } else {
-              console.warn("Credenciais do Supabase não encontradas, não foi possível atualizar status do lead");
+              console.warn("Supabase credentials not found, could not update lead status");
             }
           } catch (err) {
             console.error("Error updating lead status:", err);
@@ -235,38 +234,38 @@ serve(async (req) => {
           }
         );
       } catch (twilioError) {
-        console.error("Erro do Twilio:", twilioError);
+        console.error("Twilio error:", twilioError);
         
         // Detailed error logging
-        console.error("Código do erro:", twilioError.code);
-        console.error("Mensagem do erro:", twilioError.message);
+        console.error("Error code:", twilioError.code);
+        console.error("Error message:", twilioError.message);
         console.error("Status:", twilioError.status);
         console.error("Stack trace:", twilioError.stack);
         
         if (twilioError.moreInfo) {
-          console.error("Mais informações:", twilioError.moreInfo);
+          console.error("More information:", twilioError.moreInfo);
         }
         
         // Enhanced error reporting
         const errorDetails = {
-          message: twilioError.message || "Erro desconhecido do Twilio",
+          message: twilioError.message || "Unknown Twilio error",
           code: twilioError.code,
           moreInfo: twilioError.moreInfo,
           status: twilioError.status
         };
         
-        throw new Error(`Erro do Twilio: ${JSON.stringify(errorDetails)}`);
+        throw new Error(`Twilio Error: ${JSON.stringify(errorDetails)}`);
       }
     } catch (twilioSetupError) {
-      console.error("Erro na configuração do Twilio:", twilioSetupError);
-      throw new Error(`Falha ao configurar cliente Twilio: ${twilioSetupError.message}`);
+      console.error("Error in Twilio setup:", twilioSetupError);
+      throw new Error(`Failed to set up Twilio client: ${twilioSetupError.message}`);
     }
   } catch (error) {
-    console.error("Erro ao fazer chamada:", error);
+    console.error("Error making call:", error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || "Erro ao processar a solicitação" 
+        error: error.message || "Error processing request" 
       }),
       {
         status: 400,
@@ -276,24 +275,21 @@ serve(async (req) => {
   }
 });
 
-// Função para formatar número de telefone para o formato internacional
+// Function to format phone number to international format
 function formatPhoneNumber(phoneNumber: string): string {
-  // Remover caracteres não numéricos
+  // Remove non-numeric characters
   let cleaned = phoneNumber.replace(/\D/g, '');
   
-  // Se começar com 0, remover
+  // If starts with 0, remove it
   if (cleaned.startsWith('0')) {
     cleaned = cleaned.substring(1);
   }
   
-  // Remover o 9 extra se o número tiver 11 dígitos (para números de celular brasileiros)
-  // Por exemplo: 11987654321 -> 11 + 8765-4321 (não removemos o 9 inicial)
-  
-  // Tratar números especificamente para o Brasil
+  // Handle numbers specifically for Brazil
   if (cleaned.length === 11 || cleaned.length === 10) {
-    // Se não começar com +, adicionar código do Brasil (+55)
+    // If doesn't start with +, add Brazil country code (+55)
     if (!phoneNumber.startsWith('+')) {
-      // Se já começar com 55, adicionar apenas o +
+      // If already starts with 55, just add the +
       if (cleaned.startsWith('55')) {
         cleaned = '+' + cleaned;
       } else {
@@ -301,12 +297,12 @@ function formatPhoneNumber(phoneNumber: string): string {
       }
     }
   } else {
-    // Para números internacionais, apenas adicionar + se não existir
+    // For international numbers, just add + if it doesn't exist
     if (!phoneNumber.startsWith('+')) {
       cleaned = '+' + cleaned;
     }
   }
   
-  console.log(`Número original: ${phoneNumber}, Formatado: ${cleaned}`);
+  console.log(`Original number: ${phoneNumber}, Formatted: ${cleaned}`);
   return cleaned;
 }
