@@ -42,13 +42,20 @@ serve(async (req) => {
     // Verificar se as credenciais do Twilio estão configuradas
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
     
     if (!twilioAccountSid || !twilioAuthToken) {
       throw new Error("Credenciais do Twilio não estão configuradas nas variáveis de ambiente");
     }
 
+    if (!twilioPhone) {
+      console.warn("Número de telefone do Twilio não configurado. Por favor, configure a variável TWILIO_PHONE_NUMBER.");
+      throw new Error("Número de telefone do Twilio (TWILIO_PHONE_NUMBER) não está configurado nas variáveis de ambiente");
+    }
+
     // Log with credentials masked for security
     console.log(`Usando credenciais do Twilio: SID: ${twilioAccountSid.substring(0, 5)}...${twilioAccountSid.substring(twilioAccountSid.length - 4)}`);
+    console.log(`Usando número de telefone do Twilio: ${twilioPhone}`);
 
     // Obter dados da requisição
     const { 
@@ -149,12 +156,7 @@ serve(async (req) => {
     }
 
     // Get the Twilio phone number from environment variables
-    const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
-    if (!twilioPhone) {
-      console.warn("Número de telefone do Twilio não configurado nas variáveis de ambiente, usando número padrão");
-    }
-
-    console.log(`Usando número do Twilio: ${twilioPhone || "padrão"}`);
+    console.log(`Usando número do Twilio: ${twilioPhone}`);
     console.log(`TWIML configurado: ${twiml.substring(0, 100)}...`);
 
     // Fazer a chamada com tratamento de erros melhorado
@@ -162,7 +164,7 @@ serve(async (req) => {
       const call = await client.calls.create({
         twiml: twiml,
         to: formattedPhoneNumber,
-        from: twilioPhone || "+15155172542", // Use env var if available, fall back to default
+        from: twilioPhone, // Usar o número configurado nas variáveis de ambiente
         statusCallback: callbackUrl || undefined,
         statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
         statusCallbackMethod: 'POST',
@@ -195,7 +197,7 @@ serve(async (req) => {
             await supabase.from("call_logs").insert({
               call_sid: call.sid,
               status: call.status,
-              from_number: twilioPhone || "+15155172542",
+              from_number: twilioPhone,
               to_number: formattedPhoneNumber,
               agent_id: agentId,
               campaign_id: campaignId,
