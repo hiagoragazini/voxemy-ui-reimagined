@@ -30,10 +30,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }, props.duration || 5000);
   }, []);
 
-  return (
-    <ToastContext.Provider value={{ toast, toasts }}>
-      {children}
-    </ToastContext.Provider>
+  // When using JSX in a .ts file, TypeScript will throw errors
+  // Instead of using JSX, we'll use React.createElement
+  return React.createElement(
+    ToastContext.Provider,
+    { value: { toast, toasts } },
+    children
   );
 }
 
