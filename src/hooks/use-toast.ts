@@ -2,17 +2,20 @@
 // Custom toast hook implementation
 import * as React from "react"
 
-type ToastProps = {
+export type ToastProps = {
   title?: string
   description?: string
   variant?: "default" | "destructive"
   duration?: number
+  action?: React.ReactNode
 }
 
-const ToastContext = React.createContext<{
+type ToastContextType = {
   toast: (props: ToastProps) => void
   toasts: (ToastProps & { id: string })[]
-}>({
+}
+
+const ToastContext = React.createContext<ToastContextType>({
   toast: () => {}, // Default no-op implementation
   toasts: []
 })
@@ -44,6 +47,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           >
             {t.title && <h3 className="font-medium mb-1">{t.title}</h3>}
             {t.description && <p className="text-sm">{t.description}</p>}
+            {t.action}
           </div>
         ))}
       </div>
