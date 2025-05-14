@@ -30,10 +30,12 @@ serve(async (req) => {
 
     // Usar o voiceId fornecido ou um padrão otimizado para português
     const selectedVoiceId = voiceId || "FGY2WhTYpPnrIDTdsKH5"; // Laura - voz feminina otimizada para português
-    // Usar o modelo fornecido ou um padrão
-    const selectedModel = model || "eleven_multilingual_v2";
-
-    console.log(`Enviando requisição para Eleven Labs com voice ID ${selectedVoiceId} e modelo ${selectedModel}`);
+    
+    // Usar especificamente o modelo eleven_multilingual_v1 para melhor interpretação de português
+    // Conforme solicitado pelo usuário
+    const selectedModel = "eleven_multilingual_v1";
+    
+    console.log(`Usando modelo específico para português: ${selectedModel}`);
 
     // Configurações de voz otimizadas para português brasileiro
     const settings = {
@@ -46,6 +48,7 @@ serve(async (req) => {
     console.log("Configurações de voz:", settings);
 
     // Fazer a requisição para a API do Eleven Labs
+    // Explicitamente definindo o model_id como eleven_multilingual_v1 para garantir interpretação em português
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`,
       {
@@ -56,7 +59,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           text: text,
-          model_id: selectedModel,
+          model_id: selectedModel, // Fixando o modelo para interpretar português corretamente
           voice_settings: settings,
         }),
       }

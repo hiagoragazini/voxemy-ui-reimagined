@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Loader2, Volume2 } from "lucide-react";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
+import { VOICES } from "@/constants/voices";
 
 interface AgentVoiceTesterProps {
   agentName?: string;
@@ -25,6 +26,9 @@ export function AgentVoiceTester({
   const [audioContent, setAudioContent] = useState<string | null>(null);
   const { isLoading, textToSpeech, playAudio } = useVoiceCall();
   
+  // Use a voz Laura que tem boa qualidade para português
+  const defaultVoiceId = "FGY2WhTYpPnrIDTdsKH5"; // Laura - melhor para português
+  
   const handleTestVoice = async () => {
     if (!text.trim()) {
       toast.error("Por favor, insira um texto para testar");
@@ -32,10 +36,14 @@ export function AgentVoiceTester({
     }
     
     try {
+      // Usar configurações otimizadas para português com modelo fixo
       const audioData = await textToSpeech({ 
         text, 
-        voiceId: voiceId || "EXAVITQu4vr4xnSDxMaL", // Use Sarah as default if no voice ID
-        model: "eleven_multilingual_v2"
+        voiceId: voiceId || defaultVoiceId,
+        model: "eleven_multilingual_v1", // Forçando modelo específico para português
+        stability: 0.7,         // Valor mais baixo para mais naturalidade
+        similarity_boost: 0.8,  // Equilibrado para manter identidade da voz
+        style: 0.4              // Valor menor para reduzir robótica
       });
       
       if (audioData) {

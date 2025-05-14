@@ -42,7 +42,7 @@ export function useVoiceCall() {
   const textToSpeech = async ({ 
     text, 
     voiceId = "FGY2WhTYpPnrIDTdsKH5", // Laura - melhor para português
-    model = "eleven_multilingual_v2",
+    model = "eleven_multilingual_v1", // Modelo específico para interpretar o texto em português
     stability,
     similarity_boost,
     style 
@@ -55,11 +55,21 @@ export function useVoiceCall() {
       console.log('Using voice ID:', voiceId || 'default');
       console.log('Using model:', model || 'default');
       
+      const voiceSettings = {
+        stability: stability || 0.7,         // Valor mais baixo para mais naturalidade
+        similarity_boost: similarity_boost || 0.8, // Equilibrado
+        style: style || 0.4,                // Valor menor para reduzir robótica
+        use_speaker_boost: true            // Ativar melhoria de alto-falante
+      };
+      
+      console.log('Voice settings:', voiceSettings);
+      
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { 
           text, 
           voiceId,
-          model
+          model, // Usando o modelo específico para português
+          voice_settings: voiceSettings
         }
       });
 

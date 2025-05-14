@@ -21,27 +21,27 @@ export function useVoiceCallSimple() {
   // Função para converter texto em áudio usando Eleven Labs com qualidade aprimorada
   const textToSpeech = async ({ 
     text, 
-    voiceId, 
-    model, 
-    stability = 0.75, 
-    similarity_boost = 0.85, 
-    style = 0.6,
-    use_speaker_boost = true
+    voiceId = "FGY2WhTYpPnrIDTdsKH5", // Laura - melhor para português
+    model = "eleven_multilingual_v1", // Forçando modelo específico para português
+    stability = 0.7,          // Valor mais baixo para mais naturalidade
+    similarity_boost = 0.8,   // Equilibrado para manter identidade da voz
+    style = 0.4,              // Valor menor para reduzir robótica
+    use_speaker_boost = true  // Ativar melhoria de alto-falante
   }: TextToSpeechParams) => {
     setIsLoading(true);
     setError(null);
     
     try {
       console.log('Enviando texto para conversão:', text);
-      console.log('Usando voice ID:', voiceId || 'padrão');
-      console.log('Usando model:', model || 'padrão');
+      console.log('Usando voice ID:', voiceId);
+      console.log('Usando model:', model);
       console.log('Configurações de voz:', { stability, similarity_boost, style, use_speaker_boost });
       
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { 
           text, 
           voiceId,
-          model,
+          model, // Usando modelo específico para português
           voice_settings: {
             stability,
             similarity_boost,
