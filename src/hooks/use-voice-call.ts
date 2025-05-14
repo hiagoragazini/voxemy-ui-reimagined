@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -7,8 +8,8 @@ interface MakeCallParams {
   twimlInstructions?: string;
   agentId?: string;
   campaignId?: string;
-  message?: string; // Manter para compatibilidade com código existente
-  voiceId?: string;  // Added voiceId parameter to fix the type error
+  message?: string;
+  voiceId?: string;
 }
 
 interface TextToSpeechParams {
@@ -64,13 +65,18 @@ export function useVoiceCall() {
       
       console.log('Voice settings:', voiceSettings);
       
+      // Log detalhado do payload antes do envio
+      const payload = { 
+        text, 
+        voiceId,
+        model, // Usando o modelo específico para português
+        voice_settings: voiceSettings
+      };
+      
+      console.log('Payload completo para text-to-speech:', JSON.stringify(payload, null, 2));
+      
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
-        body: { 
-          text, 
-          voiceId,
-          model, // Usando o modelo específico para português
-          voice_settings: voiceSettings
-        }
+        body: payload
       });
 
       if (error) {
@@ -83,7 +89,7 @@ export function useVoiceCall() {
         throw new Error(data.error || 'Failed to generate audio');
       }
 
-      console.log('Audio received successfully:', data.metadata ? JSON.stringify(data.metadata) : 'no metadata');
+      console.log('Audio received successfully:', data.metadata ? JSON.stringify(data.metadata, null, 2) : 'no metadata');
       
       // Store the audio content for playback later
       setLastAudioContent(data.audioContent);
@@ -295,15 +301,30 @@ export function useVoiceCall() {
     
     try {
       // URL to receive callbacks for call status
-      const callbackUrl = `${window.location.origin}/api/call-status`;
+      const origin = window.location.origin;
+      const callbackUrl = `${origin}/api/call-status`;
 
       console.log('Starting call to:', phoneNumber);
       console.log('With agentId:', agentId);
       console.log('With campaignId:', campaignId);
       console.log('With twimlInstructions:', twimlInstructions ? 'provided' : 'not provided');
-      console.log('With voiceId:', voiceId || 'not provided');
+      console.log('With message:', message || 'not provided');
+      console.log('With voiceId:', voiceId || 'not provided (will use Laura)');
       
       const startTime = Date.now();
+      
+      // Log detalhado do payload completo antes do envio
+      const payload = { 
+        phoneNumber,
+        callbackUrl,
+        agentId,
+        campaignId,
+        twimlInstructions, // Será null ou será fornecido
+        message, // Fornecido explicitamente para geração de áudio
+        voiceId // Pass voiceId to the edge function
+      };
+      
+      console.log('Payload completo para make-call:', JSON.stringify(payload, null, 2));
       
       // Add longer timeout for edge functions
       const controller = new AbortController();
@@ -311,14 +332,7 @@ export function useVoiceCall() {
       
       // Invoke the function without the 'signal' property
       const { data, error } = await supabase.functions.invoke('make-call', {
-        body: { 
-          phoneNumber,
-          callbackUrl,
-          agentId,
-          campaignId,
-          twimlInstructions: twimlInstructions || message, // Usar twimlInstructions se fornecido, senão usar message
-          voiceId, // Pass voiceId to the edge function
-        }
+        body: payload
       }).catch(err => {
         if (err.name === 'AbortError') {
           throw new Error('Timeout: Function took too long to respond');

@@ -17,12 +17,13 @@ serve(async (req) => {
     const { text, voiceId, model, voice_settings } = requestBody;
 
     // Log de diagnóstico detalhado
-    console.log("=== TEXT-TO-SPEECH DIAGNÓSTICO ===");
-    console.log("Corpo da requisição completo:", JSON.stringify(requestBody));
-    console.log(`Texto recebido: "${text}"`);
-    console.log(`Voice ID recebido: ${voiceId || "não especificado"}`);
-    console.log(`Modelo recebido: ${model || "não especificado"}`);
-    console.log(`Voice settings recebidos: ${JSON.stringify(voice_settings || {})}`);
+    console.log("\n=== TEXT-TO-SPEECH DEBUG DIAGNOSTICS ===");
+    console.log(`Timestamp: ${new Date().toISOString()}`);
+    console.log("Request body (full):", JSON.stringify(requestBody, null, 2));
+    console.log(`Text received: "${text}"`);
+    console.log(`Voice ID received: ${voiceId || "não especificado"}`);
+    console.log(`Model received: ${model || "não especificado"}`);
+    console.log(`Voice settings received: ${JSON.stringify(voice_settings || {}, null, 2)}`);
 
     if (!text) {
       throw new Error("O texto é obrigatório");
@@ -33,7 +34,7 @@ serve(async (req) => {
       throw new Error("A chave de API do Eleven Labs não está configurada");
     }
 
-    console.log(`Gerando áudio para o texto: ${text.substring(0, 50)}...`);
+    console.log(`\nGenerating audio for text: ${text.substring(0, 50)}...`);
     console.log(`Voice ID: ${voiceId || 'usando padrão'}`);
     console.log(`Model: ${model || 'usando padrão'}`);
 
@@ -41,12 +42,11 @@ serve(async (req) => {
     const selectedVoiceId = voiceId || "FGY2WhTYpPnrIDTdsKH5"; // Laura - voz feminina otimizada para português
     
     // Usar especificamente o modelo eleven_multilingual_v1 para melhor interpretação de português
-    // Conforme solicitado pelo usuário
     const selectedModel = "eleven_multilingual_v1";
     
-    console.log(`Usando modelo específico para português: ${selectedModel}`);
-    console.log(`Voice ID final selecionado: ${selectedVoiceId}`);
-    console.log(`É a voz Laura?: ${selectedVoiceId === "FGY2WhTYpPnrIDTdsKH5" ? "SIM" : "NÃO"}`);
+    console.log(`Using specific model for Portuguese: ${selectedModel}`);
+    console.log(`Selected Voice ID: ${selectedVoiceId}`);
+    console.log(`Is it Laura?: ${selectedVoiceId === "FGY2WhTYpPnrIDTdsKH5" ? "YES" : "NO"}`);
 
     // Configurações de voz otimizadas para português brasileiro
     const settings = {
@@ -56,7 +56,7 @@ serve(async (req) => {
       use_speaker_boost: voice_settings?.use_speaker_boost ?? true,
     };
 
-    console.log("Configurações de voz finais:", JSON.stringify(settings));
+    console.log("Final voice settings:", JSON.stringify(settings, null, 2));
 
     // Preparar payload completo para verificação
     const payload = {
@@ -65,11 +65,11 @@ serve(async (req) => {
       voice_settings: settings,
     };
     
-    console.log("Payload para API ElevenLabs:", JSON.stringify(payload));
+    console.log("\nFinal API payload for ElevenLabs:", JSON.stringify(payload, null, 2));
+    console.log("API URL:", `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`);
 
     // Fazer a requisição para a API do Eleven Labs
-    // Explicitamente definindo o model_id como eleven_multilingual_v1 para garantir interpretação em português
-    console.log("Enviando requisição para ElevenLabs API...");
+    console.log("\nSending request to ElevenLabs API...");
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`,
       {
@@ -82,21 +82,21 @@ serve(async (req) => {
       }
     );
 
-    console.log(`Status da resposta ElevenLabs: ${response.status}`);
-    console.log("Headers da resposta:", JSON.stringify(Object.fromEntries(response.headers)));
+    console.log(`\nElevenLabs response status: ${response.status} ${response.statusText}`);
+    console.log("Response headers:", JSON.stringify(Object.fromEntries(response.headers), null, 2));
 
     if (!response.ok) {
       const errorText = await response.text();
-      let errorMessage = `Falha ao gerar fala: ${response.status} ${response.statusText}`;
+      let errorMessage = `Failed to generate speech: ${response.status} ${response.statusText}`;
       
       try {
         const errorData = JSON.parse(errorText);
-        console.error("Erro na API do Eleven Labs:", JSON.stringify(errorData));
+        console.error("ElevenLabs API error:", JSON.stringify(errorData, null, 2));
         if (errorData.detail && errorData.detail.message) {
-          errorMessage = `Erro do Eleven Labs: ${errorData.detail.message}`;
+          errorMessage = `ElevenLabs Error: ${errorData.detail.message}`;
         }
       } catch (e) {
-        console.error("Erro ao processar resposta de erro:", errorText);
+        console.error("Error processing error response:", errorText);
       }
       
       throw new Error(errorMessage);
@@ -107,11 +107,11 @@ serve(async (req) => {
     
     // Verificar se temos dados de áudio
     if (audioBuffer.byteLength === 0) {
-      throw new Error("Eleven Labs retornou um arquivo de áudio vazio");
+      throw new Error("ElevenLabs returned an empty audio file");
     }
     
     // Logar o tamanho dos dados para verificação
-    console.log("Áudio gerado com sucesso, tamanho:", audioBuffer.byteLength, "bytes");
+    console.log(`\nAudio generated successfully, size: ${audioBuffer.byteLength} bytes`);
     
     // Converter para base64 para transporte seguro
     const base64Audio = btoa(
@@ -119,7 +119,7 @@ serve(async (req) => {
     );
     
     // Logar o tamanho do base64 para verificação
-    console.log("Tamanho do base64:", base64Audio.length);
+    console.log(`Base64 size: ${base64Audio.length}`);
 
     return new Response(
       JSON.stringify({ 
@@ -145,13 +145,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Erro na função text-to-speech:", error);
+    console.error("Error in text-to-speech function:", error);
     console.error("Stack trace:", error.stack);
     
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || "Erro ao processar a solicitação",
+        error: error.message || "Error processing request",
         timestamp: new Date().toISOString()
       }),
       {

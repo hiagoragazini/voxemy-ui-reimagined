@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,19 +101,21 @@ export function CampaignCallTester({
       const origin = window.location.origin;
       const callbackUrl = `${origin}/api/call-status`;
       
-      // Create TwiML with the custom message
-      const twimlInstructions = `
-        <Response>
-          <Say language="pt-BR">${customMessage}</Say>
-        </Response>
-      `;
-
+      // Diagnóstico detalhado dos parâmetros da chamada
+      console.log("DEBUG - Parâmetros da chamada:");
+      console.log("Mensagem customizada:", customMessage);
+      console.log("VoiceId selecionado:", selectedVoice);
+      console.log("É Laura?", selectedVoice === "FGY2WhTYpPnrIDTdsKH5" ? "SIM" : "NÃO");
+      console.log("Número de telefone:", phoneNumber);
+      console.log("Agent ID:", agentId);
+      console.log("Campaign ID:", campaignId);
+      
       console.log("Enviando requisição para make-call com:", {
         phoneNumber,
         agentId,
         campaignId,
         leadId,
-        twimlInstructions,
+        message: customMessage,
         voiceId: selectedVoice
       });
       
@@ -127,9 +130,9 @@ export function CampaignCallTester({
           phoneNumber,
           agentId,
           campaignId,
-          voiceId: selectedVoice,
+          message: customMessage, // Passando explicitamente a mensagem
+          voiceId: selectedVoice, // Passando explicitamente o voiceId
           twimlInstructions: null, // Usar null para forçar a geração com ElevenLabs
-          message: customMessage
         }),
         timeoutPromise
       ]);
