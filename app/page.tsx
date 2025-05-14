@@ -1,4 +1,7 @@
 
+'use client';
+
+import React from "react";
 import Hero from "../src/components/landing/Hero";
 import Benefits from "../src/components/landing/Benefits";
 import HowItWorks from "../src/components/landing/HowItWorks";
