@@ -8,12 +8,16 @@ interface MakeCallParams {
   agentId?: string;
   campaignId?: string;
   message?: string; // Manter para compatibilidade com código existente
+  voiceId?: string;  // Added voiceId parameter to fix the type error
 }
 
 interface TextToSpeechParams {
   text: string;
   voiceId?: string;
   model?: string;
+  stability?: number;
+  similarity_boost?: number;
+  style?: number;
 }
 
 export function useVoiceCall() {
@@ -35,7 +39,14 @@ export function useVoiceCall() {
   }, []);
 
   // Função para converter texto em áudio usando Eleven Labs
-  const textToSpeech = async ({ text, voiceId, model }: TextToSpeechParams) => {
+  const textToSpeech = async ({ 
+    text, 
+    voiceId = "FGY2WhTYpPnrIDTdsKH5", // Laura - melhor para português
+    model = "eleven_multilingual_v2",
+    stability,
+    similarity_boost,
+    style 
+  }: TextToSpeechParams) => {
     setIsLoading(true);
     setError(null);
     
@@ -268,7 +279,7 @@ export function useVoiceCall() {
   };
 
   // Função para fazer uma chamada usando Twilio
-  const makeCall = async ({ phoneNumber, twimlInstructions, message, agentId, campaignId }: MakeCallParams) => {
+  const makeCall = async ({ phoneNumber, twimlInstructions, message, agentId, campaignId, voiceId }: MakeCallParams) => {
     setIsLoading(true);
     setError(null);
     
@@ -280,6 +291,7 @@ export function useVoiceCall() {
       console.log('With agentId:', agentId);
       console.log('With campaignId:', campaignId);
       console.log('With twimlInstructions:', twimlInstructions ? 'provided' : 'not provided');
+      console.log('With voiceId:', voiceId || 'not provided');
       
       const startTime = Date.now();
       
@@ -295,6 +307,7 @@ export function useVoiceCall() {
           agentId,
           campaignId,
           twimlInstructions: twimlInstructions || message, // Usar twimlInstructions se fornecido, senão usar message
+          voiceId, // Pass voiceId to the edge function
         }
       }).catch(err => {
         if (err.name === 'AbortError') {
