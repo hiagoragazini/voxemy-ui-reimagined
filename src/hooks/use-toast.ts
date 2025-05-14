@@ -11,8 +11,10 @@ type ToastProps = {
 
 const ToastContext = React.createContext<{
   toast: (props: ToastProps) => void
+  toasts: (ToastProps & { id: string })[]
 }>({
   toast: () => {}, // Default no-op implementation
+  toasts: []
 })
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -29,7 +31,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={{ toast, toasts }}>
       {children}
       {/* Basic toast rendering - you could expand this as needed */}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
