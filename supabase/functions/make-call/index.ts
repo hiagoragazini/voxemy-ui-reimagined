@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -111,6 +112,13 @@ serve(async (req) => {
             // Usar voiceId definido ou Laura (melhor para português brasileiro)
             const selectedVoiceId = voiceId || "FGY2WhTYpPnrIDTdsKH5"; // Laura - voz feminina otimizada para português
             
+            // ADICIONANDO LOGS DETALHADOS PARA DIAGNÓSTICO
+            console.log("=== DIAGNÓSTICO ELEVENLABS ===");
+            console.log(`Texto a ser convertido: "${text}"`);
+            console.log(`Voice ID selecionado: ${selectedVoiceId}`);
+            console.log(`Voice ID é Laura?: ${selectedVoiceId === "FGY2WhTYpPnrIDTdsKH5" ? "SIM" : "NÃO"}`);
+            console.log(`Modelo a ser usado: eleven_multilingual_v1 (forçado para português)`);
+            
             // Configurações de voz otimizadas para telefonia e português
             const settings = {
               stability: 0.7,            // Menor valor para mais naturalidade na voz
@@ -119,34 +127,47 @@ serve(async (req) => {
               use_speaker_boost: true    // Ativa melhoria de alto-falante
             };
             
-            console.log("Gerando áudio de alta qualidade com ElevenLabs para:", text.substring(0, 50) + "...");
-            console.log("Usando voz:", selectedVoiceId === "FGY2WhTYpPnrIDTdsKH5" ? "Laura (otimizada para português)" : selectedVoiceId);
-            console.log("Configurações de voz:", settings);
+            console.log("Configurações de voz:", JSON.stringify(settings));
+            
+            // Preparar payload completo para verificação
+            const payload = {
+              text,
+              voiceId: selectedVoiceId,
+              model_id: "eleven_multilingual_v1", // Forçando modelo que interpreta português corretamente
+              voice_settings: settings
+            };
+            
+            console.log("Payload completo para ElevenLabs:", JSON.stringify(payload));
             
             // Fazer a requisição para nossa função Edge do ElevenLabs
-            const { data, error } = await fetch(`${baseUrl}/functions/v1/text-to-speech`, {
+            console.log(`Chamando função text-to-speech em: ${baseUrl}/functions/v1/text-to-speech`);
+            const elevenlabsResponse = await fetch(`${baseUrl}/functions/v1/text-to-speech`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
               },
-              body: JSON.stringify({
-                text,
-                voiceId: selectedVoiceId,
-                model: "eleven_multilingual_v1", // Forçando modelo que interpreta português corretamente
-                voice_settings: settings
-              }),
-            }).then(r => r.json());
+              body: JSON.stringify(payload),
+            });
             
-            if (error) {
-              console.error("Erro ao gerar áudio com ElevenLabs:", error);
-              throw new Error("Falha ao gerar áudio: " + error);
+            console.log(`Status da resposta ElevenLabs: ${elevenlabsResponse.status}`);
+            console.log(`Headers da resposta:`, JSON.stringify(Object.fromEntries(elevenlabsResponse.headers)));
+            
+            const data = await elevenlabsResponse.json();
+            
+            if (elevenlabsResponse.status !== 200) {
+              console.error("Resposta de erro ElevenLabs completa:", JSON.stringify(data));
+              throw new Error(`Erro na API ElevenLabs: ${elevenlabsResponse.status} ${JSON.stringify(data.error || data)}`);
             }
             
             if (!data.success) {
               console.error("ElevenLabs retornou erro:", data.error);
               throw new Error(data.error || "Falha ao gerar áudio");
             }
+            
+            console.log("Metadados do áudio gerado:", data.metadata ? JSON.stringify(data.metadata) : "não disponível");
+            console.log(`Tamanho do conteúdo áudio base64: ${data.audioContent ? data.audioContent.length : 0} caracteres`);
+            console.log(`Áudio gerado com sucesso: ${data.success ? "SIM" : "NÃO"}`);
             
             // Usar o áudio gerado pela ElevenLabs no TwiML
             const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
@@ -160,13 +181,15 @@ serve(async (req) => {
             console.log("Áudio ElevenLabs gerado e adicionado ao TwiML");
           } catch (audioError) {
             console.error("Erro ao gerar áudio com ElevenLabs:", audioError);
+            console.error("Stack trace:", audioError.stack);
+            
             // Fallback para TTS padrão do Twilio em caso de erro
             twiml = `
               <Response>
                 <Say language="pt-BR">${requestBody.message}</Say>
               </Response>
             `;
-            console.log("Usando TTS padrão do Twilio como fallback");
+            console.log("Usando TTS padrão do Twilio como fallback devido a erro:", audioError.message);
           }
         } else {
           // Fallback para TTS padrão do Twilio
@@ -188,7 +211,7 @@ serve(async (req) => {
       }
 
       // Log the configured TwiML for debugging
-      console.log(`TwiML configured: ${twiml.substring(0, 100)}...`);
+      console.log(`TwiML configurado: ${twiml.substring(0, 100)}...`);
 
       // Parameters for the callback URL
       let callbackParams = '';

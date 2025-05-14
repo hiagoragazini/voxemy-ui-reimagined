@@ -13,7 +13,16 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voiceId, model, voice_settings } = await req.json();
+    const requestBody = await req.json();
+    const { text, voiceId, model, voice_settings } = requestBody;
+
+    // Log de diagnóstico detalhado
+    console.log("=== TEXT-TO-SPEECH DIAGNÓSTICO ===");
+    console.log("Corpo da requisição completo:", JSON.stringify(requestBody));
+    console.log(`Texto recebido: "${text}"`);
+    console.log(`Voice ID recebido: ${voiceId || "não especificado"}`);
+    console.log(`Modelo recebido: ${model || "não especificado"}`);
+    console.log(`Voice settings recebidos: ${JSON.stringify(voice_settings || {})}`);
 
     if (!text) {
       throw new Error("O texto é obrigatório");
@@ -36,6 +45,8 @@ serve(async (req) => {
     const selectedModel = "eleven_multilingual_v1";
     
     console.log(`Usando modelo específico para português: ${selectedModel}`);
+    console.log(`Voice ID final selecionado: ${selectedVoiceId}`);
+    console.log(`É a voz Laura?: ${selectedVoiceId === "FGY2WhTYpPnrIDTdsKH5" ? "SIM" : "NÃO"}`);
 
     // Configurações de voz otimizadas para português brasileiro
     const settings = {
@@ -45,10 +56,20 @@ serve(async (req) => {
       use_speaker_boost: voice_settings?.use_speaker_boost ?? true,
     };
 
-    console.log("Configurações de voz:", settings);
+    console.log("Configurações de voz finais:", JSON.stringify(settings));
+
+    // Preparar payload completo para verificação
+    const payload = {
+      text: text,
+      model_id: selectedModel, // Fixando o modelo para interpretar português corretamente
+      voice_settings: settings,
+    };
+    
+    console.log("Payload para API ElevenLabs:", JSON.stringify(payload));
 
     // Fazer a requisição para a API do Eleven Labs
     // Explicitamente definindo o model_id como eleven_multilingual_v1 para garantir interpretação em português
+    console.log("Enviando requisição para ElevenLabs API...");
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`,
       {
@@ -57,13 +78,12 @@ serve(async (req) => {
           "Content-Type": "application/json",
           "xi-api-key": elevenlabsApiKey,
         },
-        body: JSON.stringify({
-          text: text,
-          model_id: selectedModel, // Fixando o modelo para interpretar português corretamente
-          voice_settings: settings,
-        }),
+        body: JSON.stringify(payload),
       }
     );
+
+    console.log(`Status da resposta ElevenLabs: ${response.status}`);
+    console.log("Headers da resposta:", JSON.stringify(Object.fromEntries(response.headers)));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -71,7 +91,7 @@ serve(async (req) => {
       
       try {
         const errorData = JSON.parse(errorText);
-        console.error("Erro na API do Eleven Labs:", errorData);
+        console.error("Erro na API do Eleven Labs:", JSON.stringify(errorData));
         if (errorData.detail && errorData.detail.message) {
           errorMessage = `Erro do Eleven Labs: ${errorData.detail.message}`;
         }
@@ -126,6 +146,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Erro na função text-to-speech:", error);
+    console.error("Stack trace:", error.stack);
     
     return new Response(
       JSON.stringify({ 
