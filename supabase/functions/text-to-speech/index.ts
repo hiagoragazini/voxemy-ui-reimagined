@@ -28,18 +28,18 @@ serve(async (req) => {
     console.log(`Voice ID: ${voiceId || 'usando padrão'}`);
     console.log(`Model: ${model || 'usando padrão'}`);
 
-    // Usar o voiceId fornecido ou um padrão
-    const selectedVoiceId = voiceId || "EXAVITQu4vr4xnSDxMaL"; // Sarah - voz feminina de alta qualidade
+    // Usar o voiceId fornecido ou um padrão otimizado para português
+    const selectedVoiceId = voiceId || "FGY2WhTYpPnrIDTdsKH5"; // Laura - voz feminina otimizada para português
     // Usar o modelo fornecido ou um padrão
     const selectedModel = model || "eleven_multilingual_v2";
 
     console.log(`Enviando requisição para Eleven Labs com voice ID ${selectedVoiceId} e modelo ${selectedModel}`);
 
-    // Configurações de voz otimizadas para melhor qualidade
+    // Configurações de voz otimizadas para português brasileiro
     const settings = {
-      stability: voice_settings?.stability ?? 0.75,
-      similarity_boost: voice_settings?.similarity_boost ?? 0.85,
-      style: voice_settings?.style ?? 0.6,
+      stability: voice_settings?.stability ?? 0.7,           // Menor valor para mais naturalidade
+      similarity_boost: voice_settings?.similarity_boost ?? 0.8, // Equilibrado para identidade vocal
+      style: voice_settings?.style ?? 0.4,                  // Valor baixo para reduzir o som robótico
       use_speaker_boost: voice_settings?.use_speaker_boost ?? true,
     };
 

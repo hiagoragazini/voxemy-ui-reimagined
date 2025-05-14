@@ -39,6 +39,8 @@ export function CampaignCallTester({
   const [functionTestResult, setFunctionTestResult] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [customMessage, setCustomMessage] = useState<string>(`Olá, aqui é ${agentName}. Esta é uma chamada de teste da plataforma Voxemy. Obrigado por testar nosso sistema.`);
+  // Adicionando estado para escolher a voz
+  const [selectedVoice, setSelectedVoice] = useState<string>("FGY2WhTYpPnrIDTdsKH5"); // Laura por padrão
   
   const { isLoading, makeCall, error, testMakeCallFunction } = useVoiceCall();
   
@@ -110,7 +112,8 @@ export function CampaignCallTester({
         agentId,
         campaignId,
         leadId,
-        twimlInstructions
+        twimlInstructions,
+        voiceId: selectedVoice
       });
       
       // Adicionar timeout maior para a chamada da função
@@ -124,7 +127,9 @@ export function CampaignCallTester({
           phoneNumber,
           agentId,
           campaignId,
-          twimlInstructions: twimlInstructions
+          voiceId: selectedVoice,
+          twimlInstructions: null, // Usar null para forçar a geração com ElevenLabs
+          message: customMessage
         }),
         timeoutPromise
       ]);
@@ -245,6 +250,12 @@ export function CampaignCallTester({
     window.open('/dashboard/logs', '_blank');
   };
   
+  const voiceOptions = [
+    { id: "FGY2WhTYpPnrIDTdsKH5", name: "Laura (Português)" },
+    { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah (Inglês)" },
+    { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily (Inglês)" }
+  ];
+  
   return (
     <Card className="p-4 space-y-4">
       <div className="space-y-1">
@@ -288,6 +299,28 @@ export function CampaignCallTester({
       )}
 
       <div className="space-y-3">
+        {/* Voice selector */}
+        <div className="space-y-1">
+          <label htmlFor="voiceSelector" className="text-sm font-medium">
+            Voz para a chamada
+          </label>
+          <select 
+            id="voiceSelector"
+            className="w-full border border-gray-300 rounded-md px-3 py-2"
+            value={selectedVoice}
+            onChange={(e) => setSelectedVoice(e.target.value)}
+          >
+            {voiceOptions.map(voice => (
+              <option key={voice.id} value={voice.id}>
+                {voice.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-blue-600">
+            Recomendado: Laura (voz feminina otimizada para português)
+          </p>
+        </div>
+
         {/* Custom message textarea */}
         <div className="space-y-1">
           <label htmlFor="customMessage" className="text-sm font-medium">

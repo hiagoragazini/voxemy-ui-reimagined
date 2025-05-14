@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -108,18 +109,20 @@ serve(async (req) => {
           try {
             // Gerar áudio com ElevenLabs
             const text = requestBody.message;
-            // Usar voiceId definido ou um padrão de qualidade
-            const selectedVoiceId = voiceId || "EXAVITQu4vr4xnSDxMaL"; // Sarah - voz feminina de alta qualidade
+            // Usar voiceId definido ou Laura (melhor para português brasileiro)
+            const selectedVoiceId = voiceId || "FGY2WhTYpPnrIDTdsKH5"; // Laura - voz feminina otimizada para português
             
-            // Configurações de voz otimizadas para telefonia
+            // Configurações de voz otimizadas para telefonia e português
             const settings = {
-              stability: 0.75,
-              similarity_boost: 0.85,
-              style: 0.6,
-              use_speaker_boost: true
+              stability: 0.7,            // Menor valor para mais naturalidade na voz
+              similarity_boost: 0.8,     // Equilibrado para manter identidade vocal mas com naturalidade
+              style: 0.4,               // Valor baixo para reduzir o som robótico
+              use_speaker_boost: true    // Ativa melhoria de alto-falante
             };
             
             console.log("Gerando áudio de alta qualidade com ElevenLabs para:", text.substring(0, 50) + "...");
+            console.log("Usando voz:", selectedVoiceId === "FGY2WhTYpPnrIDTdsKH5" ? "Laura (otimizada para português)" : selectedVoiceId);
+            console.log("Configurações de voz:", settings);
             
             // Fazer a requisição para nossa função Edge do ElevenLabs
             const { data, error } = await fetch(`${baseUrl}/functions/v1/text-to-speech`, {
