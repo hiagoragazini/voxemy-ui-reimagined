@@ -1,5 +1,4 @@
 
-// Custom toast hook implementation
 import * as React from "react";
 
 export type ToastProps = {
@@ -8,6 +7,7 @@ export type ToastProps = {
   variant?: "default" | "destructive";
   duration?: number;
   action?: React.ReactNode;
+  id?: string;
 };
 
 type ToastContextType = {
@@ -15,10 +15,7 @@ type ToastContextType = {
   toasts: (ToastProps & { id: string })[];
 };
 
-const ToastContext = React.createContext<ToastContextType>({
-  toast: () => {}, // Default no-op implementation
-  toasts: [],
-});
+const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<(ToastProps & { id: string })[]>([]);
@@ -36,34 +33,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast, toasts }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map((t) => (
-          <div 
-            key={t.id} 
-            className={`p-4 rounded-md shadow-md max-w-md animate-in slide-in-from-bottom-5 ${
-              t.variant === "destructive" ? "bg-red-100 border-red-200 text-red-800" : "bg-white"
-            }`}
-          >
-            {t.title && <h3 className="font-medium mb-1">{t.title}</h3>}
-            {t.description && <p className="text-sm">{t.description}</p>}
-            {t.action}
-          </div>
-        ))}
-      </div>
     </ToastContext.Provider>
   );
 }
 
-export const useToast = () => {
+export function useToast() {
   const context = React.useContext(ToastContext);
   if (!context) {
     throw new Error("useToast must be used within a ToastProvider");
   }
   return context;
-};
+}
 
 // Standalone toast function for use outside of components
-export const toast = (props: ToastProps) => {
+export function toast(props: ToastProps) {
   // This is a simple implementation that just logs to console outside React components
   console.log(`Toast: ${props.title} - ${props.description}`);
-};
+}
