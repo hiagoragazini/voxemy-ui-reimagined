@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -104,43 +103,85 @@ serve(async (req) => {
       // Create TwiML for the call
       let twiml = twimlInstructions;
       if (!twiml) {
-        // If using conversational AI
-        if (useAI) {
-          // Integration with AI + TTS function for smart calls
-          const webhookBase = `${baseUrl}/functions/v1/call-handler?`;
-          const params = new URLSearchParams();
-          
-          if (agentId) params.append("agentId", agentId);
-          if (agentName) params.append("agentName", agentName);
-          if (campaignId) params.append("campaignId", campaignId);
-          if (leadId) params.append("leadId", leadId);
-          if (aiModel) params.append("aiModel", aiModel);
-          if (systemPrompt) params.append("systemPrompt", encodeURIComponent(systemPrompt));
-          if (voiceId) params.append("voiceId", voiceId);
-          if (transcribeCall) params.append("transcribe", "true");
-          
-          const webhookUrl = `${webhookBase}${params.toString()}`;
-          
-          console.log(`Configuring Stream URL to: ${webhookUrl}`);
-          
-          twiml = `
-            <Response>
-              <Connect>
-                <Stream url="${webhookUrl}"/>
-              </Connect>
-              ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
-            </Response>
-          `;
+        // Se temos um texto personalizado e ElevenLabs está configurado, usar voz de alta qualidade
+        if (requestBody.message && Deno.env.get("ELEVENLABS_API_KEY")) {
+          try {
+            // Gerar áudio com ElevenLabs
+            const text = requestBody.message;
+            // Usar voiceId definido ou um padrão de qualidade
+            const selectedVoiceId = voiceId || "EXAVITQu4vr4xnSDxMaL"; // Sarah - voz feminina de alta qualidade
+            
+            // Configurações de voz otimizadas para telefonia
+            const settings = {
+              stability: 0.75,
+              similarity_boost: 0.85,
+              style: 0.6,
+              use_speaker_boost: true
+            };
+            
+            console.log("Gerando áudio de alta qualidade com ElevenLabs para:", text.substring(0, 50) + "...");
+            
+            // Fazer a requisição para nossa função Edge do ElevenLabs
+            const { data, error } = await fetch(`${baseUrl}/functions/v1/text-to-speech`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: JSON.stringify({
+                text,
+                voiceId: selectedVoiceId,
+                model: "eleven_multilingual_v2",
+                voice_settings: settings
+              }),
+            }).then(r => r.json());
+            
+            if (error) {
+              console.error("Erro ao gerar áudio com ElevenLabs:", error);
+              throw new Error("Falha ao gerar áudio: " + error);
+            }
+            
+            if (!data.success) {
+              console.error("ElevenLabs retornou erro:", data.error);
+              throw new Error(data.error || "Falha ao gerar áudio");
+            }
+            
+            // Usar o áudio gerado pela ElevenLabs no TwiML
+            const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
+            
+            twiml = `
+              <Response>
+                <Play>${audioUrl}</Play>
+              </Response>
+            `;
+            
+            console.log("Áudio ElevenLabs gerado e adicionado ao TwiML");
+          } catch (audioError) {
+            console.error("Erro ao gerar áudio com ElevenLabs:", audioError);
+            // Fallback para TTS padrão do Twilio em caso de erro
+            twiml = `
+              <Response>
+                <Say language="pt-BR">${requestBody.message}</Say>
+              </Response>
+            `;
+            console.log("Usando TTS padrão do Twilio como fallback");
+          }
         } else {
-          // Simple call without AI
-          twiml = `
-            <Response>
-              <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
-              <Pause length="1"/>
-              <Say language="pt-BR">Esta é uma demonstração da Voxemy.</Say>
-              ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
-            </Response>
-          `;
+          // Fallback para TTS padrão do Twilio
+          twiml = requestBody.message ? 
+            `
+              <Response>
+                <Say language="pt-BR">${requestBody.message}</Say>
+              </Response>
+            ` : 
+            `
+              <Response>
+                <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
+                <Pause length="1"/>
+                <Say language="pt-BR">Esta é uma demonstração da Voxemy.</Say>
+                ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
+              </Response>
+            `;
         }
       }
 
