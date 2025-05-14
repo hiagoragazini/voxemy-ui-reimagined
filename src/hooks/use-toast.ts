@@ -1,37 +1,37 @@
 
 // Custom toast hook implementation
-import * as React from "react"
+import * as React from "react";
 
 export type ToastProps = {
-  title?: string
-  description?: string
-  variant?: "default" | "destructive"
-  duration?: number
-  action?: React.ReactNode
-}
+  title?: string;
+  description?: string;
+  variant?: "default" | "destructive";
+  duration?: number;
+  action?: React.ReactNode;
+};
 
 type ToastContextType = {
-  toast: (props: ToastProps) => void
-  toasts: (ToastProps & { id: string })[]
-}
+  toast: (props: ToastProps) => void;
+  toasts: (ToastProps & { id: string })[];
+};
 
 const ToastContext = React.createContext<ToastContextType>({
   toast: () => {}, // Default no-op implementation
-  toasts: []
-})
+  toasts: [],
+});
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = React.useState<(ToastProps & { id: string })[]>([])
+  const [toasts, setToasts] = React.useState<(ToastProps & { id: string })[]>([]);
 
   const toast = React.useCallback((props: ToastProps) => {
-    const id = Math.random().toString(36).substring(2, 9)
-    setToasts((prev) => [...prev, { ...props, id }])
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { ...props, id }]);
     
     // Auto-dismiss after the specified duration or default 5000ms
     setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id))
-    }, props.duration || 5000)
-  }, [])
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, props.duration || 5000);
+  }, []);
 
   return (
     <ToastContext.Provider value={{ toast, toasts }}>
@@ -52,19 +52,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         ))}
       </div>
     </ToastContext.Provider>
-  )
+  );
 }
 
 export const useToast = () => {
-  const context = React.useContext(ToastContext)
+  const context = React.useContext(ToastContext);
   if (!context) {
-    throw new Error("useToast must be used within a ToastProvider")
+    throw new Error("useToast must be used within a ToastProvider");
   }
-  return context
-}
+  return context;
+};
 
 // Standalone toast function for use outside of components
 export const toast = (props: ToastProps) => {
   // This is a simple implementation that just logs to console outside React components
-  console.log(`Toast: ${props.title} - ${props.description}`)
-}
+  console.log(`Toast: ${props.title} - ${props.description}`);
+};
