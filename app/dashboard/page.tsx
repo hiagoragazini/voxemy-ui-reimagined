@@ -69,7 +69,7 @@ export default function DashboardPage() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500">
             Dashboard
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
@@ -79,7 +79,7 @@ export default function DashboardPage() {
         
         {/* Estatísticas do topo */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
+          <Card className="p-4 border-border/40 hover:border-blue-200 transition-colors duration-200">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Total de Chamadas Hoje</p>
@@ -88,13 +88,13 @@ export default function DashboardPage() {
                   <span className="inline-block mr-1">↑</span> 12% em relação a ontem
                 </p>
               </div>
-              <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-full">
-                <PhoneCall className="w-5 h-5 text-violet-700 dark:text-violet-400" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                <PhoneCall className="w-5 h-5 text-blue-700 dark:text-blue-400" />
               </div>
             </div>
           </Card>
           
-          <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
+          <Card className="p-4 border-border/40 hover:border-blue-200 transition-colors duration-200">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Tempo Médio de Chamada</p>
@@ -109,7 +109,7 @@ export default function DashboardPage() {
             </div>
           </Card>
           
-          <Card className="p-4 border-border/40 hover:border-violet-200 transition-colors duration-200">
+          <Card className="p-4 border-border/40 hover:border-blue-200 transition-colors duration-200">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Taxa de Sucesso Global</p>
@@ -144,7 +144,7 @@ export default function DashboardPage() {
             </Button>
             
             <Button 
-              className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
               onClick={handleCreateAgent}
             >
               <Plus className="h-4 w-4 mr-1" />
@@ -202,21 +202,21 @@ export default function DashboardPage() {
               number={1}
               title="Testar uma chamada real"
               description="Selecione um agente e faça uma ligação para testar o sistema."
-              icon={<PhoneCall className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
+              icon={<PhoneCall className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
             />
             
             <NextStepCard 
               number={2}
               title="Adicionar leads"
               description="Importe seus contatos para o sistema realizar chamadas automatizadas."
-              icon={<Plus className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
+              icon={<Plus className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
             />
             
             <NextStepCard 
               number={3}
               title="Configurar integrações"
               description="Conecte seu CRM ou outras ferramentas para sincronizar dados."
-              icon={<Settings className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
+              icon={<Settings className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
             />
           </div>
         </div>
@@ -240,15 +240,15 @@ const NextStepCard = ({
   <div className="bg-white dark:bg-gray-800 p-5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 group">
     <div className="flex items-start gap-4">
       <div className="relative">
-        <div className="bg-violet-100 dark:bg-violet-900/30 p-2.5 rounded-lg">
+        <div className="bg-blue-100 dark:bg-blue-900/30 p-2.5 rounded-lg">
           {icon}
         </div>
-        <div className="absolute -top-2 -right-2 w-5 h-5 bg-violet-600 rounded-full flex items-center justify-center text-xs text-white font-medium">
+        <div className="absolute -top-2 -right-2 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-xs text-white font-medium">
           {number}
         </div>
       </div>
       <div className="flex-1">
-        <h3 className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">{title}</h3>
+        <h3 className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{title}</h3>
         <p className="text-sm text-muted-foreground mt-1">
           {description}
         </p>
@@ -263,9 +263,9 @@ const NextStepCard = ({
 // Utility function for avatar colors
 const getAvatarColor = (name: string) => {
   const colors = [
-    "bg-blue-100", "bg-purple-100", "bg-green-100", 
-    "bg-yellow-100", "bg-red-100", "bg-pink-100",
-    "bg-indigo-100", "bg-orange-100", "bg-violet-100"
+    "bg-blue-100", "bg-sky-100", "bg-cyan-100", 
+    "bg-teal-100", "bg-blue-100", "bg-sky-100",
+    "bg-cyan-100", "bg-teal-100", "bg-blue-100"
   ];
   
   const index = name.charCodeAt(0) % colors.length;

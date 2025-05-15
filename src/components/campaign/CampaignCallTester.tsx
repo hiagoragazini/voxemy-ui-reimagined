@@ -1,9 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Loader2, Phone, Volume2, Check } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Phone, Play, StopCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
@@ -34,40 +35,46 @@ export function CampaignCallTester({
   onClose,
   onCallComplete
 }: CampaignCallTesterProps) {
-  const [message, setMessage] = useState(
-    `Olá, aqui é ${agentName}. Esta é uma chamada de teste da plataforma Voxemy. Obrigado por testar nosso sistema.`
-  );
-  const [audioContent, setAudioContent] = useState<string | null>(null);
-  const [makingCall, setMakingCall] = useState(false);
-  const { isLoading, textToSpeech, makeCall, playAudio } = useVoiceCall();
+  const [testPhone, setTestPhone] = useState(phoneNumber);
+  const [testName, setTestName] = useState(leadName);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState(agentVoiceId || "");
   
-  // Buscar dados do agente se não temos o voiceId
-  const { data: agentData, isLoading: loadingAgent } = useQuery({
-    queryKey: ["agent-voice", agentId],
+  const { makeCall, playAudio, audioUrl, isLoading, stopAudio } = useVoiceCall();
+  
+  // Fetch agent data if agentId is provided
+  const { data: agentData } = useQuery({
+    queryKey: ['agent', agentId],
     queryFn: async () => {
       if (!agentId) return null;
       
-      // Só buscar no Supabase se não tivermos o agentVoiceId
-      if (agentVoiceId) return { voice_id: agentVoiceId };
-      
       const { data, error } = await supabase
-        .from("agents")
-        .select("voice_id")
-        .eq("id", agentId)
+        .from('agents')
+        .select('*')
+        .eq('id', agentId)
         .single();
         
       if (error) throw error;
       return data;
     },
-    enabled: !!agentId && !agentVoiceId
+    enabled: !!agentId,
   });
-
-  // Determinar qual voiceId usar
+  
+  // Update selected voice when agent data is loaded or changed
+  useEffect(() => {
+    if (agentData?.voice_id) {
+      setSelectedVoice(agentData.voice_id);
+    } else if (agentVoiceId) {
+      setSelectedVoice(agentVoiceId);
+    }
+  }, [agentData, agentVoiceId]);
+  
+  // Get best available voice ID
   const getVoiceId = () => {
-    // Prioridade 1: O voiceId fornecido diretamente como prop
-    if (agentVoiceId) return agentVoiceId;
+    // Prioridade 1: Voz selecionada no componente
+    if (selectedVoice) return selectedVoice;
     
-    // Prioridade 2: O voiceId obtido da consulta ao banco de dados
+    // Prioridade 2: Voz associada ao agente no banco de dados
     if (agentData?.voice_id) return agentData.voice_id;
     
     // Prioridade 3: Fallback para voz padrão em português
@@ -75,164 +82,137 @@ export function CampaignCallTester({
   };
 
   const handleTestVoice = async () => {
-    if (!message.trim()) {
-      toast.error("Por favor, digite uma mensagem para testar");
-      return;
-    }
-    
     try {
-      // Log detalhado para diagnóstico
-      console.log("[CampaignCallTester] Iniciando teste de voz");
-      console.log("[CampaignCallTester] Mensagem:", message);
-      console.log("[CampaignCallTester] Voice ID:", getVoiceId());
-      
-      // Usar configurações otimizadas para português
-      const audioData = await textToSpeech({
-        text: message,
-        voiceId: getVoiceId(),
-        model: "eleven_multilingual_v1", // Forçando modelo multilíngue que suporta português
-        stability: 0.7,
-        similarity_boost: 0.8,
-        style: 0.4
-      });
-      
-      if (audioData) {
-        // Log do resultado
-        console.log("[CampaignCallTester] Áudio gerado com sucesso");
-        
-        setAudioContent(audioData);
-        playAudio(audioData);
-      } else {
-        console.error("[CampaignCallTester] Falha ao gerar áudio");
-        toast.error("Não foi possível gerar áudio");
+      if (isPlaying) {
+        stopAudio();
+        setIsPlaying(false);
+        return;
       }
-    } catch (err) {
-      console.error("[CampaignCallTester] Erro ao testar voz:", err);
-      toast.error("Erro ao testar a voz");
+      
+      setIsPlaying(true);
+      
+      const voiceId = getVoiceId();
+      const testScript = `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`;
+      
+      await playAudio(testScript, voiceId);
+      
+      toast.success("Áudio de teste reproduzido com sucesso!");
+    } catch (err: any) {
+      console.error("Erro no teste de voz:", err);
+      toast.error(`Erro ao testar voz: ${err.message}`);
+    } finally {
+      setIsPlaying(false);
     }
   };
 
-  const handleMakeCall = async () => {
-    if (!phoneNumber) {
-      toast.error("Número de telefone inválido");
-      return;
-    }
-    
-    if (!message.trim()) {
-      toast.error("Por favor, digite uma mensagem para a chamada");
-      return;
-    }
-    
-    setMakingCall(true);
-    
+  const handleTestCall = async () => {
     try {
-      // Log detalhado para diagnóstico
-      console.log("[CampaignCallTester] Iniciando chamada de teste");
-      console.log("[CampaignCallTester] Telefone:", phoneNumber);
-      console.log("[CampaignCallTester] Mensagem:", message);
-      console.log("[CampaignCallTester] AgentId:", agentId);
-      console.log("[CampaignCallTester] Voice ID:", getVoiceId());
+      if (!testPhone) {
+        toast.warning("Por favor, insira um número de telefone para teste");
+        return;
+      }
       
-      // Configurando URL de callback para o registro de status da chamada
-      const origin = window.location.origin;
-      const callbackUrl = `${origin}/api/call-status`;
+      // Confirma se o número está no formato correto (apenas dígitos)
+      const cleanPhone = testPhone.replace(/\D/g, '');
       
-      const result = await makeCall({
-        phoneNumber,
-        message,
-        agentId,
-        campaignId,
-        twimlInstructions: null,
-        voiceId: getVoiceId() // Enviar a ID da voz específica do agente
+      if (cleanPhone.length < 10) {
+        toast.warning("Número de telefone inválido. Por favor, verifique e tente novamente.");
+        return;
+      }
+      
+      toast.info("Iniciando chamada de teste...");
+      
+      const voiceId = getVoiceId();
+      
+      await makeCall({
+        agentId: agentId || '',
+        campaignId: campaignId,
+        phoneNumber: cleanPhone,
+        leadName: testName,
+        leadId: leadId,
+        voiceId: voiceId
       });
       
-      if (result) {
-        console.log("[CampaignCallTester] Chamada iniciada com sucesso:", result);
-        toast.success("Chamada iniciada com sucesso!");
-        
-        if (onCallComplete) {
-          onCallComplete();
-        }
-        
-        if (onClose) {
-          onClose();
-        }
+      toast.success("Chamada de teste iniciada com sucesso!");
+      
+      if (onCallComplete) {
+        onCallComplete();
       }
-    } catch (err) {
-      console.error("[CampaignCallTester] Erro ao fazer chamada:", err);
-      toast.error("Erro ao iniciar chamada");
-    } finally {
-      setMakingCall(false);
+    } catch (err: any) {
+      console.error("Erro na chamada de teste:", err);
+      toast.error(`Erro ao realizar chamada: ${err.message}`);
     }
   };
 
   return (
-    <Card className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-medium">Testar chamada</h3>
-          <p className="text-sm text-muted-foreground">
-            {leadName ? leadName : 'Teste'} • {phoneNumber ? phoneNumber : 'Informe um número'}
-          </p>
-        </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <h3 className="text-lg font-semibold text-center">
+          Teste de Chamada
+        </h3>
+        <p className="text-sm text-center text-muted-foreground mb-2">
+          Teste a voz do agente {agentName} ou inicie uma chamada de teste
+        </p>
       </div>
       
-      <Textarea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Digite a mensagem que será dita na chamada..."
-        className="min-h-[100px]"
-      />
-
-      <div className="space-y-3">
-        {/* Mostrar botão para testar a voz */}
-        <Button 
-          onClick={handleTestVoice}
-          disabled={isLoading || !message.trim()}
-          variant="outline"
-          className="w-full"
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Volume2 className="h-4 w-4 mr-2" />
-          )}
-          Testar voz
-        </Button>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="test-name">Nome para teste</Label>
+          <Input 
+            id="test-name"
+            value={testName}
+            onChange={(e) => setTestName(e.target.value)}
+            placeholder="Nome do cliente para teste"
+          />
+        </div>
         
-        {/* Mostrar player de áudio se tiver conteúdo */}
-        {audioContent && (
-          <div className="flex justify-center p-2 bg-slate-50 rounded-md">
-            <AudioPlayer audioData={audioContent} isLoading={false} />
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label htmlFor="test-phone">Telefone para teste</Label>
+          <Input 
+            id="test-phone"
+            value={testPhone}
+            onChange={(e) => setTestPhone(e.target.value)}
+            placeholder="DDD + número (ex: 11999887766)"
+            type="tel"
+          />
+        </div>
         
-        {/* Botão para fazer a chamada */}
-        <Button 
-          onClick={handleMakeCall}
-          disabled={makingCall || !message.trim() || !phoneNumber}
-          className="w-full bg-blue-800 hover:bg-blue-900"
-        >
-          {makingCall ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Phone className="h-4 w-4 mr-2" />
-          )}
-          Fazer chamada
-        </Button>
-        
-        {/* Botão para cancelar/fechar */}
-        {onClose && !makingCall && (
+        <div className="space-y-4">
           <Button 
-            onClick={onClose}
-            variant="ghost"
+            onClick={handleTestVoice} 
             className="w-full"
+            disabled={isLoading}
+            variant={isPlaying ? "secondary" : "default"}
           >
-            <Check className="h-4 w-4 mr-2" />
-            Concluído
+            {isPlaying ? (
+              <>
+                <StopCircle className="mr-2 h-4 w-4" />
+                Parar Áudio
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Testar Voz do Agente
+              </>
+            )}
           </Button>
-        )}
+          
+          {audioUrl && !isPlaying && (
+            <div className="mb-2">
+              <AudioPlayer url={audioUrl} />
+            </div>
+          )}
+          
+          <Button 
+            onClick={handleTestCall} 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={isLoading || !testPhone}
+          >
+            <Phone className="mr-2 h-4 w-4" />
+            Iniciar Chamada de Teste
+          </Button>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 }
