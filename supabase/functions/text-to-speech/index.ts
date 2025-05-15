@@ -42,7 +42,7 @@ serve(async (req) => {
     const selectedVoiceId = voiceId || "FGY2WhTYpPnrIDTdsKH5"; // Laura - voz feminina otimizada para português
     
     // Usar especificamente o modelo eleven_multilingual_v1 para melhor interpretação de português
-    const selectedModel = "eleven_multilingual_v1";
+    const selectedModel = model || "eleven_multilingual_v1";
     
     console.log(`Using specific model for Portuguese: ${selectedModel}`);
     console.log(`Selected Voice ID: ${selectedVoiceId}`);
@@ -53,7 +53,7 @@ serve(async (req) => {
       stability: voice_settings?.stability ?? 0.7,           // Menor valor para mais naturalidade
       similarity_boost: voice_settings?.similarity_boost ?? 0.8, // Equilibrado para identidade vocal
       style: voice_settings?.style ?? 0.4,                  // Valor baixo para reduzir o som robótico
-      use_speaker_boost: voice_settings?.use_speaker_boost ?? true,
+      use_speaker_boost: voice_settings?.use_speaker_boost ?? true, // Ativar melhoria de falante
     };
 
     console.log("Final voice settings:", JSON.stringify(settings, null, 2));

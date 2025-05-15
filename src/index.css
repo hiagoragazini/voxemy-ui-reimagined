@@ -14,16 +14,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 217 71% 25%; /* Darker blue primary color */
+    --primary: 210 100% 30%; /* Azul principal escuro */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 63% 95%; /* Light blue/gray for secondary elements */
+    --secondary: 214 95% 93%; /* Azul claro secundário */
     --secondary-foreground: 222 47% 11%;
 
     --muted: 215 63% 95%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 215 63% 95%;
+    --accent: 214 95% 93%;
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
@@ -31,7 +31,7 @@
 
     --border: 214.3 31.8% 91.4%; /* Light border color */
     --input: 214.3 31.8% 91.4%;
-    --ring: 217 71% 25%; /* Blue for focus rings */
+    --ring: 210 100% 30%; /* Blue for focus rings */
 
     --radius: 0.4rem;
   }
@@ -46,7 +46,7 @@
     --popover: 222 47% 11%;
     --popover-foreground: 215 63% 98%;
 
-    --primary: 217 71% 25%; /* Darker blue primary color preserved in dark mode */
+    --primary: 210 100% 40%; /* Azul principal para modo escuro */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -63,7 +63,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --ring: 210 90% 60%;
   }
 }
 

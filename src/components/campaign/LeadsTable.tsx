@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,6 +9,7 @@ import { CampaignCallTester } from "./CampaignCallTester";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 interface Lead {
   id: string;
@@ -37,6 +39,24 @@ export function LeadsTable({ campaignId, agentId, agentName }: LeadsTableProps) 
   const [showNotes, setShowNotes] = useState(false);
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  
+  // Buscar dados do agente para ter a voiceId
+  const { data: agentData } = useQuery({
+    queryKey: ["agent", agentId],
+    queryFn: async () => {
+      if (!agentId) return null;
+      
+      const { data, error } = await supabase
+        .from("agents")
+        .select("*")
+        .eq("id", agentId)
+        .single();
+        
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!agentId
+  });
 
   useEffect(() => {
     fetchLeads();
@@ -217,6 +237,7 @@ export function LeadsTable({ campaignId, agentId, agentName }: LeadsTableProps) 
               campaignId={campaignId}
               agentId={agentId}
               agentName={agentName}
+              agentVoiceId={agentData?.voice_id}
               phoneNumber={selectedLead.phone}
               leadName={selectedLead.name}
               leadId={selectedLead.id}

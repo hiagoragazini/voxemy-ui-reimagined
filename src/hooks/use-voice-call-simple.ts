@@ -32,10 +32,11 @@ export function useVoiceCallSimple() {
     setError(null);
     
     try {
-      console.log('Enviando texto para conversão:', text);
-      console.log('Usando voice ID:', voiceId);
-      console.log('Usando model:', model);
-      console.log('Configurações de voz:', { stability, similarity_boost, style, use_speaker_boost });
+      // Log detalhado para diagnóstico
+      console.log('[useVoiceCallSimple] Enviando texto para conversão:', text);
+      console.log('[useVoiceCallSimple] Usando voice ID:', voiceId);
+      console.log('[useVoiceCallSimple] Usando model:', model);
+      console.log('[useVoiceCallSimple] Configurações de voz:', { stability, similarity_boost, style, use_speaker_boost });
       
       const { data, error } = await supabase.functions.invoke('text-to-speech', {
         body: { 
@@ -52,23 +53,23 @@ export function useVoiceCallSimple() {
       });
 
       if (error) {
-        console.error('Erro na função text-to-speech:', error);
+        console.error('[useVoiceCallSimple] Erro na função text-to-speech:', error);
         throw new Error(error.message);
       }
       
       if (!data.success) {
-        console.error('Falha na resposta text-to-speech:', data.error);
+        console.error('[useVoiceCallSimple] Falha na resposta text-to-speech:', data.error);
         throw new Error(data.error || 'Falha ao gerar áudio');
       }
 
-      console.log('Áudio recebido com sucesso:', data.metadata);
+      console.log('[useVoiceCallSimple] Áudio recebido com sucesso:', data.metadata);
       
       // Armazenar o conteúdo do áudio para reprodução
       setAudioContent(data.audioContent);
       
       return data.audioContent;
     } catch (err: any) {
-      console.error('Erro na conversão de texto para voz:', err);
+      console.error('[useVoiceCallSimple] Erro na conversão de texto para voz:', err);
       setError(err.message);
       toast.error('Erro ao converter texto para voz: ' + err.message);
       return null;
@@ -77,10 +78,37 @@ export function useVoiceCallSimple() {
     }
   };
 
+  // Função para reproduzir áudio
+  const playAudio = (base64Audio: string) => {
+    if (!base64Audio) return false;
+    
+    try {
+      // Criar elemento de áudio
+      const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
+      
+      // Configurar volume alto
+      audio.volume = 1.0;
+      
+      // Reproduzir
+      audio.play().catch(err => {
+        console.error('[useVoiceCallSimple] Erro ao reproduzir áudio:', err);
+        toast.error('Erro ao reproduzir áudio');
+        return false;
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('[useVoiceCallSimple] Erro ao criar elemento de áudio:', err);
+      toast.error('Erro ao reproduzir áudio');
+      return false;
+    }
+  };
+
   return {
     isLoading,
     error,
     audioContent,
-    textToSpeech
+    textToSpeech,
+    playAudio
   };
 }
