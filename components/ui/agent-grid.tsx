@@ -1,4 +1,3 @@
-
 "use client";
 
 import { AgentCard, AgentCardSkeleton, AgentCardProps } from "@/components/ui/agent-card";
@@ -106,6 +105,14 @@ export const AgentGrid = ({
     setShowCallTester(agentId);
     if (onTestCall) {
       onTestCall(agentId);
+    }
+  };
+  
+  const handleEditClick = (id: string) => {
+    if (onAgentEditClick) {
+      onAgentEditClick(id);
+    } else {
+      router.push(`/agentes/${id}/editar`);
     }
   };
   
@@ -247,7 +254,7 @@ export const AgentGrid = ({
             key={agent.id}
             {...agent}
             onStatusChange={handleStatusChange}
-            onEditClick={onAgentEditClick}
+            onEditClick={handleEditClick}
             onTestVoice={onTestVoice}
             onTestCall={() => handleTestCall(agent.id)}
           />

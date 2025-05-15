@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -8,8 +9,6 @@ import { Plus, ChevronRight, PhoneCall, Clock, CheckCircle2, ArrowRight } from "
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAgents } from "@/hooks/use-agents";
-import { AgentCardProps } from "@/components/agents/AgentCard";
-import { getAvatarColor } from "@/utils/colors";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -21,9 +20,7 @@ export default function DashboardPage() {
   } = useAgents();
 
   // Get top agents for dashboard display - use the same agents data from the Agents page
-  const topAgents = agents.slice(0, 2).map(agent => ({
-    ...agent
-  }));
+  const topAgents = agents.slice(0, 2);
 
   // Navegar para a página de todos os agentes
   const viewAllAgents = () => {
@@ -247,18 +244,6 @@ const NextStepCard = ({
     </div>
   </div>
 );
-
-// Utility function for avatar colors
-const getAvatarColor = (name: string) => {
-  const colors = [
-    "bg-blue-100", "bg-sky-100", "bg-cyan-100", 
-    "bg-teal-100", "bg-blue-100", "bg-sky-100",
-    "bg-cyan-100", "bg-teal-100", "bg-blue-100"
-  ];
-  
-  const index = name.charCodeAt(0) % colors.length;
-  return colors[index];
-};
 
 const Settings = (props: React.SVGAttributes<SVGElement>) => (
   <svg

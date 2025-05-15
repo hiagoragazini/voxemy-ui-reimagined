@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState } from "react";
-import { Clock, CheckCircle2, XCircle, BarChart3, Phone, Settings } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, BarChart3, Phone, Settings, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { VoiceTester } from "@/components/ui/voice-tester";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
+import { useRouter } from "next/navigation";
 
 export interface AgentCardProps {
   id: string;
@@ -56,6 +55,7 @@ export const AgentCard = ({
   onStatusChange,
   onTestVoice
 }: AgentCardProps) => {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [showVoiceTester, setShowVoiceTester] = useState(false);
 
@@ -71,18 +71,27 @@ export const AgentCard = ({
     }
     setShowVoiceTester(true);
   };
+  
+  const handleEdit = () => {
+    if (onEditClick) {
+      onEditClick(id);
+    } else {
+      // Direct navigation if no handler provided
+      router.push(`/agentes/${id}/editar`);
+    }
+  };
 
   return (
     <>
       <Card className={`border-border/40 hover:border-primary/30 transition-all duration-300 hover:shadow-md hover:scale-[1.01] relative ${isTopPerformer ? 'ring-2 ring-violet-300 ring-offset-2' : ''}`}>
         {isTopPerformer && (
-          <Badge className="absolute -top-2 -right-2 bg-violet-600">Top Performer</Badge>
+          <Badge className="absolute -top-2 -right-2 bg-blue-600">Top Performer</Badge>
         )}
         
         <div className="p-5">
           <div className="flex items-start gap-3">
-            <Avatar className={`h-10 w-10 ${avatarColor || 'bg-violet-100'}`}>
-              <AvatarFallback className="text-violet-600">
+            <Avatar className={`h-10 w-10 ${avatarColor || 'bg-blue-100'}`}>
+              <AvatarFallback className="text-blue-600">
                 {avatarLetter || name.charAt(0)}
               </AvatarFallback>
             </Avatar>
@@ -99,7 +108,7 @@ export const AgentCard = ({
               <div className="flex items-center gap-2 mb-1">
                 <Badge 
                   variant="outline"
-                  className="font-normal text-xs bg-violet-50 text-violet-700 border-violet-200"
+                  className="font-normal text-xs bg-blue-50 text-blue-700 border-blue-200"
                 >
                   {category}
                 </Badge>
@@ -144,7 +153,7 @@ export const AgentCard = ({
               
               {description && description.length > 100 && (
                 <button
-                  className="text-xs text-violet-600 mt-1 hover:text-violet-800 transition-colors"
+                  className="text-xs text-blue-600 mt-1 hover:text-blue-800 transition-colors"
                   onClick={() => setIsExpanded(!isExpanded)}
                 >
                   {isExpanded ? 'Ver menos' : 'Ver mais'}
@@ -155,19 +164,19 @@ export const AgentCard = ({
           
           <div className="grid grid-cols-3 gap-2 mt-4">
             <div className="border rounded-md p-2 flex flex-col items-center justify-center">
-              <Phone className="h-4 w-4 text-violet-600 mb-1" />
+              <Phone className="h-4 w-4 text-blue-600 mb-1" />
               <p className="text-sm font-medium">{calls}</p>
               <p className="text-xs text-muted-foreground">Chamadas</p>
             </div>
             
             <div className="border rounded-md p-2 flex flex-col items-center justify-center">
-              <Clock className="h-4 w-4 text-violet-600 mb-1" />
+              <Clock className="h-4 w-4 text-blue-600 mb-1" />
               <p className="text-sm font-medium">{avgTime}</p>
               <p className="text-xs text-muted-foreground">Tempo Méd.</p>
             </div>
             
             <div className="border rounded-md p-2 flex flex-col items-center justify-center">
-              <BarChart3 className="h-4 w-4 text-violet-600 mb-1" />
+              <BarChart3 className="h-4 w-4 text-blue-600 mb-1" />
               <p className="text-sm font-medium">{successRate}%</p>
               <p className="text-xs text-muted-foreground">Sucesso</p>
             </div>
@@ -181,7 +190,7 @@ export const AgentCard = ({
               </div>
               <div className="w-full bg-gray-100 rounded-full h-1.5">
                 <div
-                  className="bg-violet-600 h-1.5 rounded-full"
+                  className="bg-blue-600 h-1.5 rounded-full"
                   style={{ width: `${(voiceUsage.current / voiceUsage.total) * 100}%` }}
                 ></div>
               </div>
@@ -199,8 +208,23 @@ export const AgentCard = ({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-violet-600"
-              onClick={() => onEditClick && onEditClick(id)}
+              className="h-7 w-7 text-blue-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEdit();
+              }}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-blue-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTestVoice();
+              }}
             >
               <Settings className="h-4 w-4" />
             </Button>
