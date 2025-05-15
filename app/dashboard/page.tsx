@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -8,45 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Plus, ChevronRight, PhoneCall, Clock, CheckCircle2, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AgentCardProps } from "@/components/ui/agent-card";
-
-// Dados de exemplo para os agentes baseados na imagem
-const mockAgents: AgentCardProps[] = [
-  {
-    id: "1",
-    name: "Assistente de Vendas",
-    category: "Comercial",
-    description: "Agente inteligente para atendimento e qualificação de leads de vendas.",
-    status: "active",
-    calls: 127,
-    avgTime: "4:32",
-    successRate: 68,
-    successChange: "+5.2%",
-    lastActivity: "Hoje, 14:30",
-  },
-  {
-    id: "2",
-    name: "Atendente de Suporte",
-    category: "Suporte",
-    description: "Responde dúvidas e resolve problemas de clientes automaticamente.",
-    status: "active",
-    calls: 85,
-    avgTime: "5:15",
-    successRate: 92,
-    successChange: "+1.2%",
-    lastActivity: "Ontem, 17:20",
-  }
-];
+import { useAgents } from "@/hooks/use-agents";
+import { AgentCardProps } from "@/components/agents/AgentCard";
+import { getAvatarColor } from "@/utils/colors";
 
 export default function DashboardPage() {
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { 
+    agents, 
+    isLoading, 
+    isRefreshing,
+    handleManualRefresh 
+  } = useAgents();
 
-  // Top agentes (versão resumida para não repetir a página completa)
-  const topAgents = mockAgents.slice(0, 2).map(agent => ({
-    ...agent,
-    avatarLetter: agent.name.split(' ')[0][0] + (agent.name.split(' ')[1]?.[0] || ''),
-    avatarColor: getAvatarColor(agent.name)
+  // Get top agents for dashboard display - use the same agents data from the Agents page
+  const topAgents = agents.slice(0, 2).map(agent => ({
+    ...agent
   }));
 
   // Navegar para a página de todos os agentes
@@ -153,44 +129,56 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Top agentes cards */}
+        {/* Top agentes cards - usando dados reais em vez de mock */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-          {topAgents.map(agent => (
-            <Card 
-              key={agent.id}
-              className="flex p-4 gap-4 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => handleAgentEditClick(agent.id)}
-            >
-              <div className={`${agent.avatarColor} h-12 w-12 rounded-full flex items-center justify-center font-medium text-lg`}>
-                {agent.avatarLetter}
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold">{agent.name}</h3>
-                    <p className="text-sm text-muted-foreground">{agent.category}</p>
-                  </div>
-                  <Badge variant={agent.status === "active" ? "success" : agent.status === "paused" ? "warning" : "outline"}>
-                    {agent.status === "active" ? "Ativo" : agent.status === "paused" ? "Pausado" : "Inativo"}
-                  </Badge>
+          {isLoading ? (
+            <p>Carregando agentes...</p>
+          ) : topAgents.length > 0 ? (
+            topAgents.map(agent => (
+              <Card 
+                key={agent.id}
+                className="flex p-4 gap-4 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleAgentEditClick(agent.id)}
+              >
+                <div className={`${agent.avatarColor} h-12 w-12 rounded-full flex items-center justify-center font-medium text-lg`}>
+                  {agent.avatarLetter}
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-1">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Chamadas</p>
-                    <p className="font-semibold">{agent.calls}</p>
+                <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">{agent.name}</h3>
+                      <p className="text-sm text-muted-foreground">{agent.category}</p>
+                    </div>
+                    <Badge variant={agent.status === "active" ? "success" : agent.status === "paused" ? "warning" : "outline"}>
+                      {agent.status === "active" ? "Ativo" : agent.status === "paused" ? "Pausado" : "Inativo"}
+                    </Badge>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Sucesso</p>
-                    <p className="font-semibold">{agent.successRate}%</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Tempo Médio</p>
-                    <p className="font-semibold">{agent.avgTime}</p>
+                  <div className="mt-2 grid grid-cols-3 gap-1">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Chamadas</p>
+                      <p className="font-semibold">{agent.calls}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Sucesso</p>
+                      <p className="font-semibold">{agent.successRate}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Tempo Médio</p>
+                      <p className="font-semibold">{agent.avgTime}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Card>
+            ))
+          ) : (
+            <Card className="col-span-2 p-8 text-center">
+              <p className="mb-4 text-muted-foreground">Nenhum agente encontrado. Crie seu primeiro agente para começar.</p>
+              <Button onClick={handleCreateAgent} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-1" />
+                Criar Novo Agente
+              </Button>
             </Card>
-          ))}
+          )}
         </div>
 
         {/* Próximos passos com melhorias visuais */}
