@@ -1,9 +1,9 @@
 
-// Implementação do hook para toast
-import { useToast as useToastInternal } from "@/components/ui/use-toast";
+// Re-export from the UI component
+import { useToast, toast } from "@/components/ui/use-toast";
 
-export const useToast = useToastInternal;
+export { useToast, toast };
 
-// Re-export do toast
-import { toast as toastInternal } from "@/components/ui/toast";
-export const toast = toastInternal;
+// Also export the ToastProvider for use in the main.tsx
+import { ToastProvider } from "@/components/ui/toast";
+export { ToastProvider };

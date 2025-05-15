@@ -5,7 +5,7 @@ import App from './App.tsx'
 import './index.css'
 import { AuthProvider } from './contexts/AuthContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ToastProvider } from './hooks/use-toast'
+import { Toaster } from './components/ui/toaster'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -21,9 +21,8 @@ createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
+        <App />
+        <Toaster />
       </QueryClientProvider>
     </AuthProvider>
   </BrowserRouter>
