@@ -3,15 +3,6 @@ import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
-interface MakeCallParams {
-  phoneNumber: string;
-  twimlInstructions?: string;
-  agentId?: string;
-  campaignId?: string;
-  message?: string;
-  voiceId?: string;
-}
-
 interface TextToSpeechParams {
   text: string;
   voiceId?: string;
@@ -19,6 +10,16 @@ interface TextToSpeechParams {
   stability?: number;
   similarity_boost?: number;
   style?: number;
+}
+
+interface MakeCallParams {
+  phoneNumber: string;
+  agentId?: string;
+  campaignId?: string;
+  message?: string;
+  voiceId?: string;
+  twimlInstructions?: string;
+  leadId?: string;
 }
 
 export function useVoiceCall() {
@@ -110,7 +111,7 @@ export function useVoiceCall() {
   };
 
   // Função para reproduzir áudio base64 com melhor gerenciamento de erro
-  const playAudio = (base64Audio: string) => {
+  const playAudio = (base64Audio: string): boolean => {
     try {
       console.log('Starting audio playback...');
       
@@ -286,6 +287,17 @@ export function useVoiceCall() {
     }
   };
 
+  // Added this method to stop audio playback
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      return true;
+    }
+    return false;
+  };
+
   // Reproduzir o último áudio novamente
   const playLastAudio = () => {
     if (lastAudioContent) {
@@ -295,7 +307,7 @@ export function useVoiceCall() {
   };
 
   // Função para fazer uma chamada usando Twilio
-  const makeCall = async ({ phoneNumber, twimlInstructions, message, agentId, campaignId, voiceId }: MakeCallParams) => {
+  const makeCall = async (params: MakeCallParams) => {
     setIsLoading(true);
     setError(null);
     
@@ -304,24 +316,24 @@ export function useVoiceCall() {
       const origin = window.location.origin;
       const callbackUrl = `${origin}/api/call-status`;
 
-      console.log('Starting call to:', phoneNumber);
-      console.log('With agentId:', agentId);
-      console.log('With campaignId:', campaignId);
-      console.log('With twimlInstructions:', twimlInstructions ? 'provided' : 'not provided');
-      console.log('With message:', message || 'not provided');
-      console.log('With voiceId:', voiceId || 'not provided (will use Laura)');
+      console.log('Starting call to:', params.phoneNumber);
+      console.log('With agentId:', params.agentId);
+      console.log('With campaignId:', params.campaignId);
+      console.log('With message:', params.message || 'not provided');
+      console.log('With voiceId:', params.voiceId || 'not provided (will use Laura)');
       
       const startTime = Date.now();
       
       // Log detalhado do payload completo antes do envio
       const payload = { 
-        phoneNumber,
+        phoneNumber: params.phoneNumber,
         callbackUrl,
-        agentId,
-        campaignId,
-        twimlInstructions, // Será null ou será fornecido
-        message, // Fornecido explicitamente para geração de áudio
-        voiceId // Pass voiceId to the edge function
+        agentId: params.agentId,
+        campaignId: params.campaignId,
+        twimlInstructions: params.twimlInstructions, // Será null ou será fornecido
+        message: params.message, // Fornecido explicitamente para geração de áudio
+        voiceId: params.voiceId, // Pass voiceId to the edge function
+        leadId: params.leadId
       };
       
       console.log('Payload completo para make-call:', JSON.stringify(payload, null, 2));
@@ -419,6 +431,7 @@ export function useVoiceCall() {
     playAudio,
     playLastAudio,
     makeCall,
-    testMakeCallFunction
+    testMakeCallFunction,
+    stopAudio
   };
 }

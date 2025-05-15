@@ -3,12 +3,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Phone, Play, StopCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
-import { VOICES, VOICE_IDS } from "@/constants/voices";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -39,8 +37,9 @@ export function CampaignCallTester({
   const [testName, setTestName] = useState(leadName);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState(agentVoiceId || "");
+  const [audioContent, setAudioContent] = useState<string | null>(null);
   
-  const { makeCall, playAudio, audioUrl, isLoading, stopAudio } = useVoiceCall();
+  const { makeCall, textToSpeech, playAudio, isLoading } = useVoiceCall();
   
   // Fetch agent data if agentId is provided
   const { data: agentData } = useQuery({
@@ -84,8 +83,10 @@ export function CampaignCallTester({
   const handleTestVoice = async () => {
     try {
       if (isPlaying) {
-        stopAudio();
-        setIsPlaying(false);
+        // If already playing, stop playback
+        if (audioContent) {
+          setIsPlaying(false);
+        }
         return;
       }
       
@@ -94,9 +95,20 @@ export function CampaignCallTester({
       const voiceId = getVoiceId();
       const testScript = `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`;
       
-      await playAudio(testScript, voiceId);
+      // Generate the audio from text
+      const audioData = await textToSpeech({
+        text: testScript,
+        voiceId: voiceId
+      });
       
-      toast.success("Áudio de teste reproduzido com sucesso!");
+      if (audioData) {
+        setAudioContent(audioData);
+        // Play the audio
+        playAudio(audioData);
+        toast.success("Áudio de teste reproduzido com sucesso!");
+      } else {
+        throw new Error("Falha ao gerar áudio");
+      }
     } catch (err: any) {
       console.error("Erro no teste de voz:", err);
       toast.error(`Erro ao testar voz: ${err.message}`);
@@ -128,7 +140,7 @@ export function CampaignCallTester({
         agentId: agentId || '',
         campaignId: campaignId,
         phoneNumber: cleanPhone,
-        leadName: testName,
+        message: `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`,
         leadId: leadId,
         voiceId: voiceId
       });
@@ -197,9 +209,9 @@ export function CampaignCallTester({
             )}
           </Button>
           
-          {audioUrl && !isPlaying && (
+          {audioContent && !isPlaying && (
             <div className="mb-2">
-              <AudioPlayer url={audioUrl} />
+              <AudioPlayer audioData={audioContent} />
             </div>
           )}
           
