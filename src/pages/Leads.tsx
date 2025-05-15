@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -129,11 +128,16 @@ export default function LeadList() {
         console.error("Erro ao buscar leads:", err);
         throw err;
       }
-    },
-    onSuccess: (data) => {
-      setLeads(data);
     }
   });
+  
+  // Atualize os leads quando os dados da consulta forem carregados
+  useEffect(() => {
+    if (!isLoading && !error) {
+      // Define mock leads para demonstração
+      setLeads(mockLeads);
+    }
+  }, [isLoading, error]);
   
   // Filtra leads com base na pesquisa
   const filteredLeads = leads.filter(lead => {

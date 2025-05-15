@@ -12,25 +12,25 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 interface CampaignCallTesterProps {
-  campaignId: string;
+  campaignId?: string; // Made optional
   agentId?: string;
   agentName?: string;
-  agentVoiceId?: string; // ID de voz configurado no agente
-  phoneNumber: string;
-  leadName: string;
-  leadId: string;
+  agentVoiceId?: string; 
+  phoneNumber?: string; // Made optional
+  leadName?: string; // Made optional
+  leadId?: string; // Made optional
   onClose?: () => void;
   onCallComplete?: () => void;
 }
 
 export function CampaignCallTester({
-  campaignId,
+  campaignId = '', // Default empty string
   agentId,
   agentName = "Agente",
-  agentVoiceId, // Usar esta ID de voz específica
-  phoneNumber,
-  leadName,
-  leadId,
+  agentVoiceId,
+  phoneNumber = '', // Default empty string
+  leadName = 'Teste', // Default value
+  leadId = '', // Default empty string
   onClose,
   onCallComplete
 }: CampaignCallTesterProps) {
@@ -70,8 +70,9 @@ export function CampaignCallTester({
     // Prioridade 2: O voiceId obtido da consulta ao banco de dados
     if (agentData?.voice_id) return agentData.voice_id;
     
-    // Prioridade 3: Fallback para Laura (voz feminina para português)
-    return VOICES.LAURA;
+    // Prioridade 3: Fallback para voz padrão em português
+    // Usando formato compatível com a constante VOICES
+    return "TxGEqnHWrfWFTfGW9XjX"; // ID da voz Laura
   };
 
   const handleTestVoice = async () => {
@@ -172,7 +173,7 @@ export function CampaignCallTester({
         <div>
           <h3 className="text-lg font-medium">Testar chamada</h3>
           <p className="text-sm text-muted-foreground">
-            {leadName} • {phoneNumber}
+            {leadName ? leadName : 'Teste'} • {phoneNumber ? phoneNumber : 'Informe um número'}
           </p>
         </div>
       </div>
@@ -210,7 +211,7 @@ export function CampaignCallTester({
         {/* Botão para fazer a chamada */}
         <Button 
           onClick={handleMakeCall}
-          disabled={makingCall || !message.trim()}
+          disabled={makingCall || !message.trim() || !phoneNumber}
           className="w-full bg-blue-800 hover:bg-blue-900"
         >
           {makingCall ? (
