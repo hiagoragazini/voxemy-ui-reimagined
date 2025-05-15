@@ -21,9 +21,9 @@ const Logo = ({ className = "", size = "md", variant = "default" }: LogoProps) =
       suffix: "text-blue-700",
     },
     dashboard: {
-      main: "text-violet-600",
-      end: "text-violet-700",
-      suffix: "text-violet-500",
+      main: "text-blue-600",
+      end: "text-blue-700",
+      suffix: "text-blue-500",
     },
   };
 

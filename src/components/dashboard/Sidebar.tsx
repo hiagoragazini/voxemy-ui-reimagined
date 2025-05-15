@@ -85,7 +85,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   className={({ isActive }) =>
                     `flex items-center gap-2 rounded-lg px-3 py-2 text-gray-700 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50 ${
                       isActive
-                        ? "bg-violet-100 text-violet-900 dark:bg-violet-800/30 dark:text-violet-400"
+                        ? "bg-blue-100 text-blue-900 dark:bg-blue-800/30 dark:text-blue-400"
                         : "hover:bg-gray-100 dark:hover:bg-gray-800"
                     }`
                   }
@@ -105,7 +105,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   className={({ isActive }) =>
                     `flex items-center gap-2 rounded-lg px-3 py-2 text-gray-700 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50 ${
                       isActive
-                        ? "bg-violet-100 text-violet-900 dark:bg-violet-800/30 dark:text-violet-400"
+                        ? "bg-blue-100 text-blue-900 dark:bg-blue-800/30 dark:text-blue-400"
                         : "hover:bg-gray-100 dark:hover:bg-gray-800"
                     }`
                   }
@@ -136,7 +136,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 className={({ isActive }) =>
                   `flex items-center gap-3 rounded-lg px-3 py-2 text-gray-700 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50 ${
                     isActive
-                      ? "bg-violet-100 text-violet-900 dark:bg-violet-800/30 dark:text-violet-400"
+                      ? "bg-blue-100 text-blue-900 dark:bg-blue-800/30 dark:text-blue-400"
                       : "hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`
                 }
@@ -155,7 +155,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 className={({ isActive }) =>
                   `flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50 ${
                     isActive
-                      ? "bg-violet-100 text-violet-900 dark:bg-violet-800/30 dark:text-violet-400"
+                      ? "bg-blue-100 text-blue-900 dark:bg-blue-800/30 dark:text-blue-400"
                       : "hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`
                 }
@@ -168,17 +168,17 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </div>
 
         <div className="absolute bottom-4 left-0 right-0 px-4">
-          <div className="rounded-lg bg-violet-50 p-4 dark:bg-violet-900/30">
+          <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/30">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-violet-900 dark:text-violet-400">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-400">
                   Sistema em Tempo Real
                 </p>
-                <p className="text-xs text-violet-800 dark:text-violet-300 mt-1">
+                <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
                   Monitoramento ativo
                 </p>
               </div>
-              <Activity className="h-5 w-5 text-violet-600 dark:text-violet-400 animate-pulse" />
+              <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-pulse" />
             </div>
           </div>
         </div>

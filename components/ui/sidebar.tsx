@@ -67,8 +67,8 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
         )}>
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-md bg-violet-100 flex items-center justify-center">
-                <PhoneIcon className="h-4 w-4 text-violet-600" />
+              <div className="h-8 w-8 rounded-md bg-blue-100 flex items-center justify-center">
+                <PhoneIcon className="h-4 w-4 text-blue-600" />
               </div>
               <span className="text-lg font-semibold tracking-tight">Voxemy</span>
             </div>
@@ -102,8 +102,8 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2 transition-colors",
                     isActive
-                      ? "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400"
-                      : "text-muted-foreground hover:bg-violet-50 hover:text-violet-700 dark:hover:bg-violet-900/20 dark:hover:text-violet-400",
+                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-400",
                     collapsed && "justify-center px-0"
                   )}
                 >
@@ -118,7 +118,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
         <div className="border-t border-border/40 p-4">
           <div
             className={cn(
-              "rounded-md bg-violet-50 py-3 dark:bg-violet-900/20",
+              "rounded-md bg-blue-50 py-3 dark:bg-blue-900/20",
               collapsed ? "px-2" : "px-4"
             )}
           >
@@ -131,11 +131,11 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
                   <span className="text-xs text-muted-foreground">150 min</span>
                   <span className="text-xs font-medium">300 min</span>
                 </div>
-                <Progress className="h-1.5 my-1" value={50} fill="bg-violet-600" />
+                <Progress className="h-1.5 my-1" value={50} fill="bg-blue-600" />
               </div>
             ) : (
               <div className="flex items-center justify-center">
-                <Progress className="h-1.5 w-full" value={50} fill="bg-violet-600" />
+                <Progress className="h-1.5 w-full" value={50} fill="bg-blue-600" />
               </div>
             )}
           </div>
