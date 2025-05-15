@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -105,7 +106,7 @@ export default function LeadList() {
   const [currentTab, setCurrentTab] = useState("all");
   
   // Função para buscar leads do Supabase
-  const { isLoading, error } = useQuery({
+  const { isLoading, error, refetch } = useQuery({
     queryKey: ['leads'],
     queryFn: async () => {
       try {

@@ -7,30 +7,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
-import { VOICES } from "@/constants/voices";
+import { VOICES, VOICE_IDS } from "@/constants/voices";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 interface CampaignCallTesterProps {
-  campaignId?: string; // Made optional
+  campaignId?: string;
   agentId?: string;
   agentName?: string;
   agentVoiceId?: string; 
-  phoneNumber?: string; // Made optional
-  leadName?: string; // Made optional
-  leadId?: string; // Made optional
+  phoneNumber?: string;
+  leadName?: string;
+  leadId?: string;
   onClose?: () => void;
   onCallComplete?: () => void;
 }
 
 export function CampaignCallTester({
-  campaignId = '', // Default empty string
+  campaignId = '',
   agentId,
   agentName = "Agente",
   agentVoiceId,
-  phoneNumber = '', // Default empty string
-  leadName = 'Teste', // Default value
-  leadId = '', // Default empty string
+  phoneNumber = '',
+  leadName = 'Teste',
+  leadId = '',
   onClose,
   onCallComplete
 }: CampaignCallTesterProps) {
@@ -71,8 +71,7 @@ export function CampaignCallTester({
     if (agentData?.voice_id) return agentData.voice_id;
     
     // Prioridade 3: Fallback para voz padrão em português
-    // Usando formato compatível com a constante VOICES
-    return "TxGEqnHWrfWFTfGW9XjX"; // ID da voz Laura
+    return "FGY2WhTYpPnrIDTdsKH5"; // ID da voz Laura
   };
 
   const handleTestVoice = async () => {
