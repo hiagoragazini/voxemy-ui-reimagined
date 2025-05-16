@@ -112,111 +112,28 @@ serve(async (req) => {
       
       // Create TwiML for the call
       let twiml = twimlInstructions;
+      
+      // CORREÇÃO: Em vez de usar base64 direto no TwiML, usamos uma URL que será gerada pela função text-to-speech
       if (!twiml) {
-        // Se temos um texto personalizado e ElevenLabs está configurado, usar voz de alta qualidade
-        if (message && Deno.env.get("ELEVENLABS_API_KEY")) {
-          try {
-            // Gerar áudio com ElevenLabs
-            const text = message;
-            // Usar voiceId definido ou Laura (melhor para português brasileiro)
-            const selectedVoiceId = voiceId || "FGY2WhTYpPnrIDTdsKH5"; // Laura - voz feminina otimizada para português
-            
-            // ADICIONANDO LOGS DETALHADOS PARA DIAGNÓSTICO
-            console.log("\n=== ELEVENLABS DIAGNOSTIC DATA ===");
-            console.log(`Text to convert: "${text}"`);
-            console.log(`Selected Voice ID: ${selectedVoiceId}`);
-            console.log(`Is Voice ID Laura?: ${selectedVoiceId === "FGY2WhTYpPnrIDTdsKH5" ? "YES" : "NO"}`);
-            console.log(`Model to use: eleven_multilingual_v1 (forced for Portuguese)`);
-            
-            // Configurações de voz otimizadas para telefonia e português
-            const settings = {
-              stability: 0.7,            // Menor valor para mais naturalidade na voz
-              similarity_boost: 0.8,     // Equilibrado para manter identidade vocal mas com naturalidade
-              style: 0.4,               // Valor baixo para reduzir o som robótico
-              use_speaker_boost: true    // Ativa melhoria de alto-falante
-            };
-            
-            console.log("Voice settings:", JSON.stringify(settings, null, 2));
-            
-            // Preparar payload completo para verificação
-            const payload = {
-              text,
-              voiceId: selectedVoiceId,
-              model: "eleven_multilingual_v1", // Forçando modelo que interpreta português corretamente
-              voice_settings: settings
-            };
-            
-            console.log("\nFinal payload for ElevenLabs:", JSON.stringify(payload, null, 2));
-            
-            // Fazer a requisição para nossa função Edge do ElevenLabs
-            console.log(`\nCalling text-to-speech function at: ${baseUrl}/functions/v1/text-to-speech`);
-            const elevenlabsResponse = await fetch(`${baseUrl}/functions/v1/text-to-speech`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-              },
-              body: JSON.stringify(payload),
-            });
-            
-            console.log(`\nElevenLabs response status: ${elevenlabsResponse.status} ${elevenlabsResponse.statusText}`);
-            console.log(`Response headers:`, JSON.stringify(Object.fromEntries(elevenlabsResponse.headers), null, 2));
-            
-            const data = await elevenlabsResponse.json();
-            console.log("ElevenLabs response data structure:", Object.keys(data).join(", "));
-            
-            if (elevenlabsResponse.status !== 200) {
-              console.error("Complete ElevenLabs error response:", JSON.stringify(data, null, 2));
-              throw new Error(`ElevenLabs API error: ${elevenlabsResponse.status} ${JSON.stringify(data.error || data)}`);
-            }
-            
-            if (!data.success) {
-              console.error("ElevenLabs returned error:", data.error);
-              throw new Error(data.error || "Failed to generate audio");
-            }
-            
-            console.log("\nGenerated audio metadata:", data.metadata ? JSON.stringify(data.metadata, null, 2) : "not available");
-            console.log(`Audio content base64 length: ${data.audioContent ? data.audioContent.length : 0} characters`);
-            console.log(`Audio generated successfully: ${data.success ? "YES" : "NO"}`);
-            
-            // Usar o áudio gerado pela ElevenLabs no TwiML
-            const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
-            
-            twiml = `
-              <Response>
-                <Play>${audioUrl}</Play>
-              </Response>
-            `;
-            
-            console.log("\nElevenLabs audio generated and added to TwiML");
-          } catch (audioError) {
-            console.error("Error generating audio with ElevenLabs:", audioError);
-            console.error("Stack trace:", audioError.stack);
-            
-            // Fallback para TTS padrão do Twilio em caso de erro
-            twiml = `
-              <Response>
-                <Say language="pt-BR">${message}</Say>
-              </Response>
-            `;
-            console.log("\nUsing Twilio default TTS as fallback due to error:", audioError.message);
-          }
+        // Se temos uma mensagem e não temos TwiML pré-definido
+        if (message) {
+          // Usar Say com voz simples do Twilio em vez de áudio grande base64
+          twiml = `
+            <Response>
+              <Say language="pt-BR">${message}</Say>
+              ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
+            </Response>
+          `;
         } else {
-          // Fallback para TTS padrão do Twilio
-          twiml = message ? 
-            `
-              <Response>
-                <Say language="pt-BR">${message}</Say>
-              </Response>
-            ` : 
-            `
-              <Response>
-                <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
-                <Pause length="1"/>
-                <Say language="pt-BR">Esta é uma demonstração da Voxemy.</Say>
-                ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
-              </Response>
-            `;
+          // Mensagem padrão se nenhuma for fornecida
+          twiml = `
+            <Response>
+              <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
+              <Pause length="1"/>
+              <Say language="pt-BR">Esta é uma demonstração da Voxemy.</Say>
+              ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
+            </Response>
+          `;
         }
       }
 

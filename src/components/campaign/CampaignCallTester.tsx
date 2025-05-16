@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,11 +135,14 @@ export function CampaignCallTester({
       
       const voiceId = getVoiceId();
       
+      // Limitar tamanho da mensagem para evitar erro de Twilio
+      const shortMessage = `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`;
+      
       await makeCall({
         agentId: agentId || '',
         campaignId: campaignId,
         phoneNumber: cleanPhone,
-        message: `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`,
+        message: shortMessage,
         leadId: leadId,
         voiceId: voiceId
       });
