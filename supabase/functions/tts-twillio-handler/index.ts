@@ -73,6 +73,53 @@ serve(async (req) => {
       - textHash: ${textHash}
     `);
     
+    // Verificar se o bucket existe e criar se necessário
+    try {
+      const { data: bucketData, error: bucketError } = await supabase
+        .storage
+        .getBucket('tts_audio');
+        
+      if (bucketError) {
+        console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' não existe, tentando criar...`);
+        
+        // Tentar criar o bucket se não existir
+        const { error: createBucketError } = await supabase
+          .storage
+          .createBucket('tts_audio', { 
+            public: true,
+            fileSizeLimit: 50000000 // 50MB
+          });
+          
+        if (createBucketError) {
+          console.error(`[ERROR] TTS-Handler: Erro ao criar bucket: ${createBucketError.message}`);
+        } else {
+          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' criado com sucesso`);
+        }
+      } else {
+        console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' já existe`);
+        
+        // Verificar se o bucket é público
+        if (bucketData && !bucketData.public) {
+          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' não é público, ajustando...`);
+          
+          const { error: updateBucketError } = await supabase
+            .storage
+            .updateBucket('tts_audio', { 
+              public: true,
+              fileSizeLimit: 50000000 // 50MB  
+            });
+            
+          if (updateBucketError) {
+            console.error(`[ERROR] TTS-Handler: Erro ao atualizar bucket: ${updateBucketError.message}`);
+          } else {
+            console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' agora é público`);
+          }
+        }
+      }
+    } catch (bucketSetupErr) {
+      console.error(`[ERROR] TTS-Handler: Erro ao configurar bucket: ${bucketSetupErr}`);
+    }
+    
     // Verificar se o arquivo já existe no bucket
     const { data: existingFileData, error: getFileError } = await supabase
       .storage
@@ -96,6 +143,22 @@ serve(async (req) => {
       audioUrl = publicUrlData?.publicUrl;
       console.log(`[DEBUG] TTS-Handler: Arquivo encontrado no bucket: ${audioUrl}`);
       console.log(`[DEBUG] TTS-Handler: REUTILIZANDO áudio existente.`);
+      
+      // Verificar acessibilidade do arquivo
+      try {
+        const testResponse = await fetch(audioUrl, { method: 'HEAD' });
+        console.log(`[DEBUG] TTS-Handler: Verificação de acessibilidade da URL: ${testResponse.status} ${testResponse.statusText}`);
+        
+        if (!testResponse.ok) {
+          console.log(`[WARNING] TTS-Handler: URL do áudio não está acessível publicamente. Gerando novo arquivo.`);
+          audioUrl = null; // Forçar regeneração do áudio
+        } else {
+          console.log(`[DEBUG] TTS-Handler: URL do áudio verificada e acessível publicamente.`);
+        }
+      } catch (urlTestErr) {
+        console.error(`[ERROR] TTS-Handler: Erro ao testar URL do áudio: ${urlTestErr}`);
+        audioUrl = null; // Forçar regeneração do áudio
+      }
     }
     
     // Se não temos o áudio, gerar com ElevenLabs e salvar no bucket
@@ -185,13 +248,35 @@ serve(async (req) => {
         
       audioUrl = publicUrlData.publicUrl;
       
+      // Verificar se a URL é acessível publicamente
+      try {
+        const testResponse = await fetch(audioUrl, { method: 'HEAD' });
+        console.log(`[DEBUG] TTS-Handler: Verificação de URL após upload: ${testResponse.status} ${testResponse.statusText}`);
+        
+        if (!testResponse.ok) {
+          console.warn(`[WARNING] TTS-Handler: URL do áudio recém-criado não está acessível publicamente`);
+        }
+      } catch (urlCheckErr) {
+        console.warn(`[WARNING] TTS-Handler: Erro ao verificar URL do áudio recém-criado: ${urlCheckErr}`);
+      }
+      
       console.log(`[DEBUG] TTS-Handler: Áudio gerado e salvo com sucesso. URL: ${audioUrl}`);
-    } else {
-      console.log(`[DEBUG] TTS-Handler: Usando áudio existente no bucket: ${audioUrl}`);
     }
 
     if (!audioUrl) {
       throw new Error("Falha ao gerar URL para o áudio");
+    }
+
+    // Tornar URL absoluta se for relativa
+    if (audioUrl.startsWith('/')) {
+      audioUrl = `${supabaseUrl}${audioUrl}`;
+      console.log(`[DEBUG] TTS-Handler: URL convertida para absoluta: ${audioUrl}`);
+    }
+
+    // Verificar se a URL tem protocolo
+    if (!audioUrl.startsWith('http')) {
+      audioUrl = `https:${audioUrl.startsWith('//') ? '' : '//'}${audioUrl}`;
+      console.log(`[DEBUG] TTS-Handler: URL com protocolo adicionado: ${audioUrl}`);
     }
 
     // Configurar TwiML com tag Play para o áudio
