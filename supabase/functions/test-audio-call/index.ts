@@ -1,140 +1,104 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import twilio from "npm:twilio";
 
-// Função para importar o cliente Twilio
-async function getTwilioClient(accountSid, authToken) {
-  try {
-    // Import Twilio usando importação ESM compatível com Deno
-    const twilio = await import("npm:twilio@4.20.0");
-    return new twilio.default(accountSid, authToken);
-  } catch (error) {
-    console.error("Erro ao inicializar cliente Twilio:", error);
-    throw new Error(`Falha ao inicializar cliente Twilio: ${error.message}`);
-  }
-}
-
-// Função auxiliar para formatar número de telefone
-function formatPhoneNumber(phoneNumber: string): string {
-  // Remove non-numeric characters
-  let cleaned = phoneNumber.replace(/\D/g, '');
-  
-  // If starts with 0, remove it
-  if (cleaned.startsWith('0')) {
-    cleaned = cleaned.substring(1);
-  }
-  
-  // Handle numbers specifically for Brazil
-  if (cleaned.length === 11 || cleaned.length === 10) {
-    // If doesn't start with +, add Brazil country code (+55)
-    if (!phoneNumber.startsWith('+')) {
-      // If already starts with 55, just add the +
-      if (cleaned.startsWith('55')) {
-        cleaned = '+' + cleaned;
-      } else {
-        cleaned = '+55' + cleaned;
-      }
-    }
-  } else {
-    // For international numbers, just add + if it doesn't exist
-    if (!phoneNumber.startsWith('+')) {
-      cleaned = '+' + cleaned;
-    }
-  }
-  
-  return cleaned;
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  // Handle CORS preflight request
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 204,
+    });
   }
 
   try {
-    // Parse request body
-    const requestData = await req.json();
-    const { 
-      phoneNumber, 
-      testAudioUrl,
-      description = "Teste com arquivo MP3 simples"
-    } = requestData;
-
+    const { phoneNumber, audioUrl, description } = await req.json();
+    
     if (!phoneNumber) {
-      throw new Error("Número de telefone é obrigatório");
+      return new Response(JSON.stringify({ 
+        error: 'Phone number is required' 
+      }), { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
     }
 
-    if (!testAudioUrl) {
-      throw new Error("URL de áudio de teste é obrigatória");
+    if (!audioUrl) {
+      return new Response(JSON.stringify({ 
+        error: 'Audio URL is required' 
+      }), { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
     }
 
-    // Verificar se as credenciais Twilio estão configuradas
-    const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
-    const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-    const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
-    
-    if (!twilioAccountSid || !twilioAuthToken || !twilioPhone) {
-      throw new Error("Credenciais Twilio não configuradas corretamente");
+    // Format the phone number to E.164 format with default BR country code if not provided
+    let formattedPhone = phoneNumber;
+    if (!phoneNumber.startsWith('+')) {
+      // Add Brazil country code by default if not already included
+      formattedPhone = `+55${phoneNumber}`;
     }
 
-    // Log das informações
-    console.log(`\n=== TESTE DE ÁUDIO INICIADO ===`);
-    console.log(`Timestamp: ${new Date().toISOString()}`);
-    console.log(`Número de telefone: ${phoneNumber}`);
-    console.log(`URL do áudio de teste: ${testAudioUrl}`);
-    console.log(`Descrição: ${description}`);
+    console.log(`Making test call to ${formattedPhone} with audio URL: ${audioUrl}`);
 
-    // Criar cliente Twilio
-    const client = await getTwilioClient(twilioAccountSid, twilioAuthToken);
-    
-    // Formatar número de telefone
-    const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
-    console.log(`Número formatado: ${formattedPhoneNumber}`);
-    
-    // Criar TwiML simples apenas com a tag Play
+    // Initialize Twilio client
+    const client = twilio(
+      Deno.env.get("TWILIO_ACCOUNT_SID") || '',
+      Deno.env.get("TWILIO_AUTH_TOKEN") || '',
+    );
+
+    if (!Deno.env.get("TWILIO_ACCOUNT_SID") || !Deno.env.get("TWILIO_AUTH_TOKEN") || !Deno.env.get("TWILIO_PHONE_NUMBER")) {
+      throw new Error("Missing Twilio credentials. Please check environment variables.");
+    }
+
+    // Create simple TwiML to play the audio file
     const twiml = `
       <Response>
-        <Play>${testAudioUrl}</Play>
+        <Play>${audioUrl}</Play>
       </Response>
     `;
-    
-    console.log(`TwiML: ${twiml}`);
-    
-    // Fazer a chamada
+
+    // Make the call
     const call = await client.calls.create({
+      to: formattedPhone,
+      from: Deno.env.get("TWILIO_PHONE_NUMBER") || '',
       twiml: twiml,
-      to: formattedPhoneNumber,
-      from: twilioPhone,
-      record: true,
-      timeout: 30,
-      machineDetection: 'DetectMessageEnd',
+      statusCallback: `${Deno.env.get("SUPABASE_URL")}/functions/v1/call-status`,
+      statusCallbackEvent: ["completed", "answered", "busy", "no-answer", "failed"],
+      statusCallbackMethod: "POST",
     });
-    
-    console.log(`Chamada criada com sucesso: ${call.sid}`);
-    console.log(`Status inicial da chamada: ${call.status}`);
-    
-    // Retornar resultado
+
+    console.log("Call initiated successfully:", call.sid);
+
+    // Return success response with call details
     return new Response(
       JSON.stringify({ 
         success: true, 
         callSid: call.sid,
-        status: call.status,
-        message: "Chamada de teste com áudio simples iniciada"
+        testDescription: description || 'Simple MP3 audio test',
+        status: call.status
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
+
   } catch (error) {
-    console.error(`Erro ao fazer chamada de teste: ${error}`);
+    console.error("Error making test call:", error);
+    
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || "Erro desconhecido ao processar solicitação" 
+        error: error.message || "Unknown error occurred" 
       }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
   }
