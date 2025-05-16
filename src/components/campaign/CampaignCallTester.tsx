@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +55,8 @@ export function CampaignCallTester({
         .single();
         
       if (error) throw error;
+      
+      console.log("Agent data loaded:", data);
       return data;
     },
     enabled: !!agentId,
@@ -192,6 +193,18 @@ export function CampaignCallTester({
       console.log("Mensagem a ser enviada:", testMessage);
       console.log("Número de telefone:", cleanPhone);
       
+      // Add additional debug information
+      console.log("Tipo de voiceId:", typeof voiceId);
+      console.log("Comprimento do voiceId:", voiceId ? voiceId.length : "undefined/null");
+      console.log("Parâmetros completos para makeCall:", {
+        agentId,
+        campaignId,
+        phoneNumber: cleanPhone,
+        message: testMessage,
+        leadId,
+        voiceId
+      });
+      
       await makeCall({
         agentId: agentId || '',
         campaignId: campaignId,
@@ -246,7 +259,7 @@ export function CampaignCallTester({
           <Input 
             id="test-phone"
             value={testPhone}
-            onChange={handlePhoneChange}
+            onChange={(e) => setTestPhone(e.target.value)}
             placeholder="DDD + número (ex: 11999887766)"
             type="tel"
             className={!phoneValid ? "border-red-500" : ""}

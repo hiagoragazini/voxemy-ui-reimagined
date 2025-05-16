@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -85,7 +84,7 @@ serve(async (req) => {
 
     console.log("\n=== MAKE-CALL DEBUG DIAGNOSTICS ===");
     console.log(`Timestamp: ${new Date().toISOString()}`);
-    console.log("Full requestBody:", JSON.stringify(requestBody, null, 2));
+    console.log(`Full requestBody: ${JSON.stringify(requestBody, null, 2)}`);
     console.log(`Phone number: ${phoneNumber}`);
     console.log(`Voice ID received: ${voiceId || "not specified"}`);
     console.log(`Message parameter: "${message || "not provided"}"`);
@@ -123,15 +122,14 @@ serve(async (req) => {
         
         // Se temos uma mensagem, prepara um TwiML com ela
         if (message) {
-          // Limitar o tamanho da mensagem para evitar problemas no TwiML
-          const shortMessage = message.length > 500 ? message.substring(0, 500) + "..." : message;
-          
           // Criar URL para o nosso endpoint de TTS com os parâmetros necessários
-          const encodedMessage = encodeURIComponent(shortMessage);
+          const encodedMessage = encodeURIComponent(message);
           const encodedVoiceId = encodeURIComponent(voiceId || "FGY2WhTYpPnrIDTdsKH5"); // Laura - voz default
           const ttsUrl = `${baseUrl}/functions/v1/tts-twillio-handler?text=${encodedMessage}&voiceId=${encodedVoiceId}&callSid=${callId}`;
           
           console.log(`\n[DEBUG] URL de TTS gerada: ${ttsUrl}`);
+          console.log(`\n[DEBUG] Mensagem completa: "${message}"`);
+          console.log(`\n[DEBUG] VoiceId usado: ${encodedVoiceId}`);
           
           // Construir TwiML que usa <Play> com uma URL para o nosso serviço TTS
           twiml = `
@@ -141,12 +139,12 @@ serve(async (req) => {
             </Response>
           `;
         } else {
-          // Mensagem padrão se nenhuma for fornecida
+          // Mensagem padrão se nenhuma for fornecida - em português
           twiml = `
             <Response>
-              <Say language="pt-BR">Olá, esta é uma chamada automatizada. Obrigado por atender.</Say>
+              <Say language="pt-BR">Olá, esta é uma chamada automatizada da Voxemy. Obrigado por atender.</Say>
               <Pause length="1"/>
-              <Say language="pt-BR">Esta é uma demonstração da Voxemy.</Say>
+              <Say language="pt-BR">Esta é uma demonstração do nosso sistema de voz.</Say>
               ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
             </Response>
           `;
@@ -154,7 +152,7 @@ serve(async (req) => {
       }
 
       // Log the configured TwiML for debugging
-      console.log(`\nTwiML final configurado: ${twiml.replace(/\s+/g, ' ').substring(0, 150)}...`);
+      console.log(`\nTwiML final configurado: ${twiml}`);
 
       // Parameters for the callback URL
       let callbackParams = '';

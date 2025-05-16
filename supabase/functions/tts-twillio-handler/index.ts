@@ -26,6 +26,11 @@ serve(async (req) => {
       - callSid: ${callSid}
     `);
 
+    // Verifica se é um teste ou solicitação real
+    console.log(`[DEBUG] TTS-Handler: URL completo: ${req.url}`);
+    console.log(`[DEBUG] TTS-Handler: Origem da requisição: ${req.headers.get("origin") || "desconhecida"}`);
+    console.log(`[DEBUG] TTS-Handler: User-Agent: ${req.headers.get("user-agent") || "desconhecido"}`);
+
     if (!text) {
       throw new Error("Parâmetro text é obrigatório");
     }
@@ -47,12 +52,24 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verificar se já temos o áudio gerado para este texto e voz (cache)
-    const fileName = `${voiceId}_${Buffer.from(text).toString('base64').substring(0, 100)}.mp3`;
+    // Usando hash do texto para garantir nome seguro de arquivo
+    const textHash = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(text)
+    ).then(hash => {
+      return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("")
+        .substring(0, 40); // primeiros 40 caracteres do hash
+    });
+    
+    const fileName = `${voiceId}_${textHash}.mp3`;
     const filePath = `calls/${callSid}/${fileName}`;
     
     console.log(`[DEBUG] TTS-Handler: Verificando arquivo de áudio no bucket:
       - fileName: ${fileName}
       - filePath: ${filePath}
+      - textHash: ${textHash}
     `);
     
     // Verificar se o arquivo já existe no bucket
@@ -77,14 +94,15 @@ serve(async (req) => {
       
       audioUrl = publicUrlData?.publicUrl;
       console.log(`[DEBUG] TTS-Handler: Arquivo encontrado no bucket: ${audioUrl}`);
+      console.log(`[DEBUG] TTS-Handler: REUTILIZANDO áudio existente.`);
     }
     
     // Se não temos o áudio, gerar com ElevenLabs e salvar no bucket
     if (!audioUrl) {
-      console.log(`[DEBUG] TTS-Handler: Gerando novo áudio com ElevenLabs:
+      console.log(`[DEBUG] TTS-Handler: Gerando NOVO áudio com ElevenLabs:
         - voiceId: ${voiceId}
         - modelo: eleven_multilingual_v2
-        - texto: ${text.substring(0, 50)}...
+        - texto completo: "${text}"
       `);
       
       // Converter texto para áudio usando ElevenLabs
@@ -170,7 +188,7 @@ serve(async (req) => {
 </Response>`;
 
     console.log(`[DEBUG] TTS-Handler: Retornando TwiML:
-    ${twimlResponse.substring(0, 200)}${twimlResponse.length > 200 ? '...' : ''}
+    ${twimlResponse}
     `);
 
     // Retornar TwiML que o Twilio pode processar
