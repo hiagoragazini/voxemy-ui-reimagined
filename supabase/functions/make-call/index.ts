@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -120,12 +119,8 @@ serve(async (req) => {
       message  // Parâmetro de mensagem para ser utilizado no tts-twillio-handler
     } = requestBody;
 
-    // TESTE: Forçar voz em português e mensagem de teste 
-    voiceId = "21m00Tcm4TlvDq8ikWAM"; // Voz Antônio (pt-BR)
-    message = "Olá, tudo bem? Esta é uma ligação de teste da Voxemy. Obrigado por atender.";
-    console.log("\n=== TESTE FORÇADO COM VOZ PT-BR (Antônio) ===");
-    console.log(`Voz forçada para: ${voiceId}`);
-    console.log(`Mensagem forçada para: "${message}"`);
+    // NOTA: Removido o teste forçado de voz pois agora estamos usando Twilio Assets
+    // voiceId = voiceId || "21m00Tcm4TlvDq8ikWAM"; // Voz Antônio (pt-BR)
 
     console.log("\n=== MAKE-CALL DEBUG DIAGNOSTICS ===");
     console.log(`Timestamp: ${new Date().toISOString()}`);
@@ -160,7 +155,6 @@ serve(async (req) => {
       
       // Base URL for functions and callbacks
       const baseUrl = Deno.env.get("SUPABASE_URL") || "";
-      const appUrl = Deno.env.get("APP_URL") || "https://voxemy.vercel.app";
       
       if (!baseUrl) {
         console.warn("Supabase URL not configured, callback links may not work properly");
@@ -171,13 +165,12 @@ serve(async (req) => {
       
       // Se não temos TwiML pré-definido, criamos um usando a API da Twilio
       if (!twiml) {
-        // Criar um ID único para a chamada (será usado para o nome do arquivo no bucket)
+        // Criar um ID único para a chamada
         const callId = `call_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         
-        // Se temos uma mensagem, prepara um TwiML com ela
+        // Se temos uma mensagem, prepara um TwiML com ela usando o handler TTS
         if (message) {
-          // NOVO: Utilizar o proxy Vercel para servir o áudio com compatibilidade máxima para Twilio
-          // Criar URL para o nosso endpoint de TTS com os parâmetros necessários
+          // Usar o nosso handler TTS que agora faz upload para o Twilio Assets
           const encodedMessage = encodeURIComponent(message);
           const encodedVoiceId = encodeURIComponent(voiceId || "21m00Tcm4TlvDq8ikWAM"); // Antônio - voz default para português
           
@@ -186,39 +179,17 @@ serve(async (req) => {
             throw new Error("A mensagem de texto codificada está vazia. Verifique o parâmetro message");
           }
           
-          // NOVO: Adicionar um timestamp para prevenir cache
+          // Adicionar um timestamp para prevenir cache
           const timestamp = Date.now();
           const ttsUrl = `${baseUrl}/functions/v1/tts-twillio-handler?text=${encodedMessage}&voiceId=${encodedVoiceId}&callSid=${callId}&_t=${timestamp}`;
           
           console.log(`\n[DEBUG] URL de TTS gerada: ${ttsUrl}`);
-          console.log(`\n[DEBUG] Mensagem codificada: "${encodedMessage}"`);
-          console.log(`\n[DEBUG] Mensagem completa: "${message}"`);
-          console.log(`\n[DEBUG] VoiceId usado: ${encodedVoiceId}`);
           
-          // Verificar se há limitações no tamanho da URL
-          if (ttsUrl.length > 2000) {
-            console.warn(`[WARN] A URL gerada é muito longa (${ttsUrl.length} caracteres). Isto pode causar problemas.`);
-          }
-          
-          // NOVO: Validar URL antes de usar
-          const urlValidation = await validateAudioUrl(ttsUrl);
-          if (!urlValidation.valid) {
-            console.warn(`[WARN] Pré-validação da URL de áudio falhou: ${JSON.stringify(urlValidation)}`);
-            console.log("[DEBUG] Continuando mesmo assim, pois a URL será gerada dinamicamente pelo handler TTS");
-          }
-          
-          // NOVO: Usar URL direta do Supabase Storage como teste
-          const projectId = baseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || 'nklbbeavnbwvvatqimxw';
-          const directStorageUrl = `https://${projectId}.supabase.co/storage/v1/object/public/tts_audio/calls/${callId}`;
-          
-          console.log(`\n[DEBUG] URL alternativa de storage: ${directStorageUrl}`);
-          
-          // Construir TwiML com múltiplas opções para aumentar chances de sucesso
+          // Construir TwiML com uso do nosso handler TTS que agora retorna URL do Twilio Assets
           twiml = `
             <Response>
-              <Play>${ttsUrl}</Play>
-              <Pause length="1"/>
-              <Say language="pt-BR">Se você está ouvindo esta mensagem, ocorreu um problema ao reproduzir o áudio personalizado.</Say>
+              <Redirect method="GET">${ttsUrl}</Redirect>
+              <Say language="pt-BR">Se você está ouvindo esta mensagem, ocorreu um erro ao gerar o áudio personalizado.</Say>
               ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
             </Response>
           `;
@@ -265,7 +236,7 @@ serve(async (req) => {
       try {
         console.log("\nCreating call via Twilio API...");
         
-        // NOVO: Adicionar parâmetros para melhorar compatibilidade
+        // Adicionar parâmetros para melhorar compatibilidade
         const callParams = {
           twiml: twiml,
           to: formattedPhoneNumber,

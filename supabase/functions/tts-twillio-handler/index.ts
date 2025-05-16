@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -5,6 +6,66 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Função para importar o cliente Twilio
+async function getTwilioClient(accountSid, authToken) {
+  try {
+    // Import Twilio usando importação ESM compatível com Deno
+    const twilio = await import("npm:twilio@4.20.0");
+    return new twilio.default(accountSid, authToken);
+  } catch (error) {
+    console.error("Erro ao inicializar cliente Twilio:", error);
+    throw new Error(`Falha ao inicializar cliente Twilio: ${error.message}`);
+  }
+}
+
+// Função para upload do áudio para Twilio Assets
+async function uploadToTwilioAssets(audioBuffer, fileName, twilioClient) {
+  try {
+    console.log(`[DEBUG] TTS-Handler: Iniciando upload para Twilio Assets: ${fileName}`);
+    
+    // Converte o ArrayBuffer para Base64
+    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+    
+    // Cria um serviço Twilio Serverless para hospedar o asset
+    const service = await twilioClient.serverless.v1.services
+      .create({
+        friendlyName: 'Voxemy Audio Service',
+        includeCredentials: true,
+        uniqueName: `voxemy-audio-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+      });
+      
+    console.log(`[DEBUG] TTS-Handler: Serviço Twilio criado com SID: ${service.sid}`);
+    
+    // Faz upload do asset para o serviço
+    const asset = await twilioClient.serverless.v1.services(service.sid)
+      .assets
+      .create({
+        friendlyName: fileName,
+        contentType: 'audio/mpeg',
+        content: base64Audio
+      });
+      
+    console.log(`[DEBUG] TTS-Handler: Asset criado com SID: ${asset.sid}`);
+    
+    // Define o asset como público
+    await twilioClient.serverless.v1.services(service.sid)
+      .assets(asset.sid)
+      .assetVersions(asset.latestVersion)
+      .update({ visibility: 'public' });
+      
+    console.log(`[DEBUG] TTS-Handler: Asset definido como público`);
+    
+    // Constrói a URL pública do asset
+    const publicUrl = `https://serverless-${service.sid.toLowerCase()}.twil.io/${fileName}`;
+    
+    console.log(`[DEBUG] TTS-Handler: URL pública do asset: ${publicUrl}`);
+    return publicUrl;
+  } catch (error) {
+    console.error(`[ERROR] TTS-Handler: Erro ao fazer upload para Twilio Assets: ${error}`);
+    throw new Error(`Falha ao fazer upload para Twilio Assets: ${error.message}`);
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -50,10 +111,17 @@ serve(async (req) => {
       throw new Error(errorMessage);
     }
 
-    // Obter API key do ElevenLabs
+    // Obter API key do ElevenLabs e Twilio
     const elevenlabsApiKey = Deno.env.get("ELEVENLABS_API_KEY");
+    const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    
     if (!elevenlabsApiKey) {
       throw new Error("ElevenLabs API key não configurada");
+    }
+    
+    if (!twilioAccountSid || !twilioAuthToken) {
+      throw new Error("Credenciais Twilio não configuradas");
     }
 
     // Inicializar cliente Supabase
@@ -83,88 +151,6 @@ serve(async (req) => {
     // NOVO: Gerar um ID único para essa versão do arquivo para evitar problemas de cache
     const uniqueId = Date.now();
     const uniqueFileName = `${voiceId}_${textHash}_${uniqueId}.mp3`;
-    const uniqueFilePath = `calls/${callSid}/${uniqueFileName}`;
-    
-    // Verificar se o bucket existe e criar se necessário, garantindo que seja público
-    try {
-      const { data: bucketData, error: bucketError } = await supabase
-        .storage
-        .getBucket('tts_audio');
-        
-      if (bucketError) {
-        console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' não existe, criando...`);
-        
-        const { error: createBucketError } = await supabase
-          .storage
-          .createBucket('tts_audio', { 
-            public: true,
-            fileSizeLimit: 50000000 // 50MB
-          });
-          
-        if (createBucketError) {
-          console.error(`[ERROR] TTS-Handler: Erro ao criar bucket: ${createBucketError.message}`);
-          throw new Error(`Erro ao criar bucket de armazenamento: ${createBucketError.message}`);
-        } else {
-          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' criado com sucesso e definido como público`);
-        }
-      } else {
-        console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' já existe`);
-        
-        // Verificar se o bucket é público e atualizar se necessário
-        if (bucketData && !bucketData.public) {
-          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' não é público, atualizando...`);
-          
-          const { error: updateBucketError } = await supabase
-            .storage
-            .updateBucket('tts_audio', { 
-              public: true,
-              fileSizeLimit: 50000000 // 50MB  
-            });
-            
-          if (updateBucketError) {
-            console.error(`[ERROR] TTS-Handler: Erro ao atualizar bucket: ${updateBucketError.message}`);
-          } else {
-            console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' agora é público`);
-          }
-        } else {
-          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' já é público`);
-        }
-      }
-    } catch (bucketSetupErr) {
-      console.error(`[ERROR] TTS-Handler: Erro ao configurar bucket: ${bucketSetupErr}`);
-      throw new Error(`Erro na configuração do bucket de armazenamento: ${bucketSetupErr.message}`);
-    }
-    
-    // Forçar remoção de qualquer arquivo existente que possa causar conflito
-    try {
-      console.log(`[DEBUG] TTS-Handler: Removendo qualquer versão anterior do arquivo para garantir atualização`);
-      await supabase
-        .storage
-        .from('tts_audio')
-        .remove([uniqueFilePath]);
-    } catch (removeErr) {
-      console.log(`[DEBUG] TTS-Handler: Sem arquivo anterior para remover ou erro não crítico: ${removeErr}`);
-    }
-
-    let audioUrl = null;
-    
-    // Sempre gerar novo áudio para garantir que temos a versão mais recente
-    console.log(`[DEBUG] TTS-Handler: Gerando novo áudio com ElevenLabs:
-      - voiceId: ${voiceId} (Antônio - pt-BR)
-      - modelo: eleven_multilingual_v2
-      - texto decodificado: "${decodedText}"
-      - tamanho do texto: ${decodedText.length} caracteres
-    `);
-    
-    // NOVO: Testar a API com chamada de OPTIONS primeiro para verificar conectividade
-    try {
-      const testResponse = await fetch("https://api.elevenlabs.io/v1/text-to-speech/test", { 
-        method: 'OPTIONS'
-      });
-      console.log(`[DEBUG] TTS-Handler: Teste de conectividade com ElevenLabs: ${testResponse.status} ${testResponse.statusText}`);
-    } catch (testErr) {
-      console.warn(`[WARN] TTS-Handler: Teste de conectividade com ElevenLabs falhou: ${testErr}`);
-    }
     
     // Fazer a requisição real para geração de áudio
     const elevenlabsResponse = await fetch(
@@ -206,7 +192,7 @@ serve(async (req) => {
       console.error(`[ERROR] TTS-Handler: Áudio gerado é muito pequeno (${audioBuffer.byteLength} bytes), pode indicar erro`);
     }
     
-    // NOVO: Validar se o conteúdo parece ser realmente um MP3
+    // Verificar se o conteúdo parece ser realmente um MP3 válido
     try {
       // Verificar os primeiros bytes para confirmar que é um MP3 válido (header ID3 ou frame sync)
       const firstBytes = new Uint8Array(audioBuffer.slice(0, 4));
@@ -222,70 +208,52 @@ serve(async (req) => {
       console.warn(`[WARN] TTS-Handler: Erro ao validar conteúdo MP3: ${validationErr}`);
     }
     
-    // Criar diretório do call para manter organizado
+    // Inicializar cliente Twilio
+    console.log(`[DEBUG] TTS-Handler: Inicializando cliente Twilio`);
+    const twilioClient = await getTwilioClient(twilioAccountSid, twilioAuthToken);
+    
+    // Upload do áudio para Twilio Assets
+    console.log(`[DEBUG] TTS-Handler: Fazendo upload do áudio para Twilio Assets`);
+    const twilioAssetUrl = await uploadToTwilioAssets(audioBuffer, uniqueFileName, twilioClient);
+    
+    // Também salvar no Supabase Storage como backup
     try {
-      const { error: dirError } = await supabase
+      // Verificar se o bucket existe
+      const { data: bucketData, error: bucketError } = await supabase
+        .storage
+        .getBucket('tts_audio');
+        
+      if (bucketError) {
+        console.log(`[DEBUG] TTS-Handler: Criando bucket 'tts_audio'`);
+        await supabase.storage.createBucket('tts_audio', { public: true });
+      }
+      
+      // Salvar o áudio
+      const filePath = `calls/${callSid}/${uniqueFileName}`;
+      await supabase
         .storage
         .from('tts_audio')
-        .upload(`calls/${callSid}/.keep`, new Uint8Array(0), {
-          upsert: true,
-          contentType: "text/plain"
+        .upload(filePath, audioBuffer, {
+          contentType: 'audio/mpeg',
+          upsert: true
         });
         
-      if (dirError) {
-        console.warn(`[WARN] TTS-Handler: Erro ao criar diretório: ${dirError.message}`);
-      }
-    } catch (dirErr) {
-      console.log(`[DEBUG] TTS-Handler: Erro não crítico ao criar diretório: ${dirErr}`);
+      console.log(`[DEBUG] TTS-Handler: Áudio também salvo no Supabase Storage em: ${filePath}`);
+    } catch (storageErr) {
+      // Não falhar se o backup no Supabase falhar
+      console.warn(`[WARN] TTS-Handler: Não foi possível fazer backup no Supabase: ${storageErr}`);
     }
-    
-    // Salvar o áudio no bucket do Supabase com máxima compatibilidade
-    console.log(`[DEBUG] TTS-Handler: Salvando áudio no bucket 'tts_audio' em ${uniqueFilePath}`);
-    const { data: uploadData, error: uploadError } = await supabase
-      .storage
-      .from('tts_audio')
-      .upload(uniqueFilePath, audioBuffer, {
-        contentType: 'audio/mpeg',
-        upsert: true,
-        cacheControl: "public, max-age=31536000" // 1 ano de cache
-      });
-      
-    if (uploadError) {
-      console.error(`[ERROR] TTS-Handler: Erro ao salvar áudio no bucket: ${uploadError.message}`);
-      throw new Error(`Erro ao salvar áudio no bucket: ${uploadError.message}`);
-    }
-    
-    console.log(`[DEBUG] TTS-Handler: Áudio salvo com sucesso no bucket. Dados de upload: ${JSON.stringify(uploadData)}`);
-    
-    // NOVO: URL do servidor proxy Vercel (independente do ambiente)
-    // Extrair apenas o nome do arquivo para usar com o proxy
-    const fileName = uniqueFilePath.split('/').pop();
-    
-    // Determinar base URL para o proxy
-    const origin = Deno.env.get("APP_URL") || "https://voxemy.vercel.app";
-    const proxyUrl = `${origin}/api/serve-audio/${fileName}`;
-    
-    console.log(`[DEBUG] TTS-Handler: URL do proxy Vercel gerada: ${proxyUrl}`);
-    
-    // Adicionar timestamp para evitar cache
-    const finalProxyUrl = `${proxyUrl}?t=${Date.now()}`;
-    audioUrl = finalProxyUrl;
-    
-    console.log(`[DEBUG] TTS-Handler: URL final para Twilio: ${finalProxyUrl}`);
-    
-    // NOVO TESTE FINAL: Verificar se o áudio é realmente acessível via GET (mas pulamos para economizar tempo)
-    console.log(`[DEBUG] TTS-Handler: Pulando verificação de download para economizar tempo, confiando no proxy Vercel`);
-    
-    // Configurar TwiML com tag Play para o áudio e fallbacks detalhados
+
+    // Configurar TwiML com tag Play para o áudio Twilio Assets
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${audioUrl}</Play>
-  <Say language="pt-BR">Se você está ouvindo esta mensagem em vez do áudio personalizado, significa que o Twilio não conseguiu acessar o URL do áudio através do proxy Vercel.</Say>
+  <Play>${twilioAssetUrl}</Play>
+  <Say language="pt-BR">Se você está ouvindo esta mensagem em vez do áudio personalizado, significa que o áudio não pôde ser reproduzido.</Say>
   <Pause length="1"/>
   <Say language="pt-BR">Tamanho do áudio gerado: ${audioBuffer.byteLength} bytes. Hash do texto: ${textHash}</Say>
 </Response>`;
 
-    console.log(`[DEBUG] TTS-Handler: URL final do áudio no TwiML: ${audioUrl}`);
+    console.log(`[DEBUG] TTS-Handler: URL final do áudio no TwiML (Twilio Asset): ${twilioAssetUrl}`);
     console.log(`[DEBUG] TTS-Handler: Texto original decodificado: "${decodedText}"`);
     console.log(`[DEBUG] TTS-Handler: Retornando TwiML:
 ${twimlResponse}
@@ -296,11 +264,11 @@ ${twimlResponse}
       ...corsHeaders, 
       "Content-Type": "application/xml",
       "Cache-Control": "no-cache, no-store, must-revalidate",
-      "X-Audio-URL": audioUrl,
+      "X-Audio-URL": twilioAssetUrl,
       "X-Audio-Size": audioBuffer.byteLength.toString(),
       "X-Text-Hash": textHash,
       "X-Text-Length": decodedText.length.toString(),
-      "X-Proxy-Used": "vercel-edge",
+      "X-Asset-Host": "twilio-serverless",
     };
 
     // Retornar TwiML que o Twilio pode processar
