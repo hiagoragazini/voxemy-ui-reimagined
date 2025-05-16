@@ -118,17 +118,17 @@ serve(async (req) => {
       
       // Se não temos TwiML pré-definido, criamos um usando a API da Twilio
       if (!twiml) {
+        // Criar um ID único para a chamada (será usado para o nome do arquivo no bucket)
+        const callId = `call_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        
         // Se temos uma mensagem, prepara um TwiML com ela
         if (message) {
-          // Criar um ID único para a chamada (será usado para o nome do arquivo no bucket)
-          const callId = `call_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-          
           // Limitar o tamanho da mensagem para evitar problemas no TwiML
           const shortMessage = message.length > 500 ? message.substring(0, 500) + "..." : message;
           
           // Criar URL para o nosso endpoint de TTS com os parâmetros necessários
           const encodedMessage = encodeURIComponent(shortMessage);
-          const encodedVoiceId = encodeURIComponent(voiceId || "FGY2WhTYpPnrIDTdsKH5");
+          const encodedVoiceId = encodeURIComponent(voiceId || "FGY2WhTYpPnrIDTdsKH5"); // Laura - voz default
           const ttsUrl = `${baseUrl}/functions/v1/tts-twillio-handler?text=${encodedMessage}&voiceId=${encodedVoiceId}&callSid=${callId}`;
           
           console.log(`\n[DEBUG] URL de TTS gerada: ${ttsUrl}`);

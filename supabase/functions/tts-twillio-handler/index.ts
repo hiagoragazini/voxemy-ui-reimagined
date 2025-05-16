@@ -56,22 +56,35 @@ serve(async (req) => {
     `);
     
     // Verificar se o arquivo já existe no bucket
-    const { data: existingFile, error: getFileError } = await supabase
+    const { data: existingFileData, error: getFileError } = await supabase
       .storage
       .from('tts_audio')
-      .getPublicUrl(filePath);
+      .list(`calls/${callSid}`, {
+        limit: 100,
+        search: fileName
+      });
     
-    let audioUrl = existingFile?.publicUrl;
+    let audioUrl = null;
     
     if (getFileError) {
       console.error(`[ERROR] TTS-Handler: Erro ao verificar arquivo existente: ${getFileError.message}`);
+    } else if (existingFileData && existingFileData.length > 0) {
+      // Arquivo existe, obter URL pública
+      const { data: publicUrlData } = await supabase
+        .storage
+        .from('tts_audio')
+        .getPublicUrl(filePath);
+      
+      audioUrl = publicUrlData?.publicUrl;
+      console.log(`[DEBUG] TTS-Handler: Arquivo encontrado no bucket: ${audioUrl}`);
     }
     
     // Se não temos o áudio, gerar com ElevenLabs e salvar no bucket
     if (!audioUrl) {
       console.log(`[DEBUG] TTS-Handler: Gerando novo áudio com ElevenLabs:
         - voiceId: ${voiceId}
-        - modelo: eleven_multilingual_v1
+        - modelo: eleven_multilingual_v2
+        - texto: ${text.substring(0, 50)}...
       `);
       
       // Converter texto para áudio usando ElevenLabs
@@ -85,7 +98,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             text: text,
-            model_id: "eleven_multilingual_v1",
+            model_id: "eleven_multilingual_v2", // Modelo multilíngue mais recente para melhor suporte ao português
             voice_settings: {
               stability: 0.7,
               similarity_boost: 0.8,
@@ -144,6 +157,10 @@ serve(async (req) => {
       console.log(`[DEBUG] TTS-Handler: Áudio gerado e salvo com sucesso. URL: ${audioUrl}`);
     } else {
       console.log(`[DEBUG] TTS-Handler: Usando áudio existente no bucket: ${audioUrl}`);
+    }
+
+    if (!audioUrl) {
+      throw new Error("Falha ao gerar URL para o áudio");
     }
 
     // Configurar TwiML com tag Play para o áudio
