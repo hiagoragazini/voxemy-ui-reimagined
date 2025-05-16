@@ -10,17 +10,18 @@ import AgentDetails from "./pages/Agents"; // Temporarily pointing to Agents pag
 import CampaignList from "./pages/Campaigns";
 import CampaignNew from "./pages/CampaignForm";
 import CampaignDetails from "./pages/CampaignDetails";
-import LeadList from "./pages/Leads"; // Atualizando para a nova página de Leads
-import LeadImport from "./pages/LeadImport"; // Criar nova página para importação de leads
+import LeadList from "./pages/Leads";
+import LeadImport from "./pages/LeadImport";
 import CallsMonitoring from "./pages/CallsMonitoring";
-import Home from "./pages/Index"; // Update to correct home page
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 
 function App() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
         
         {/* Agents */}
         <Route path="/agents" element={<AgentList />} />
@@ -40,7 +41,7 @@ function App() {
         <Route path="/calls" element={<CallsMonitoring />} />
         
         {/* Redirect to dashboard for any other route */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       
       <Toaster />

@@ -7,15 +7,22 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from "react-router-dom";
+import { AuthProvider } from './contexts/AuthContext';
 
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import AudioTester from './pages/AudioTester';
+import Auth from './pages/Auth';
+import Index from './pages/Index';
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: <Index />,
+  },
+  {
+    path: "/auth",
+    element: <Auth />,
   },
   {
     path: "dashboard",
@@ -33,6 +40,8 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </React.StrictMode>,
 )
