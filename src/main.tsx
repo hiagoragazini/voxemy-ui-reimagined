@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -8,7 +9,6 @@ import {
 } from "react-router-dom";
 
 import Dashboard from './pages/Dashboard';
-import Call from './pages/Call';
 import Settings from './pages/Settings';
 import AudioTester from './pages/AudioTester';
 
@@ -20,10 +20,6 @@ const router = createBrowserRouter([
   {
     path: "dashboard",
     element: <Dashboard />,
-  },
-  {
-    path: "call",
-    element: <Call />,
   },
   {
     path: "settings",
