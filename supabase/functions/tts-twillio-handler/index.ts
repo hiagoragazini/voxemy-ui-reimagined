@@ -20,6 +20,12 @@ serve(async (req) => {
     const voiceId = url.searchParams.get('voiceId') || "FGY2WhTYpPnrIDTdsKH5"; // Laura - voz default
     const callSid = url.searchParams.get('callSid') || `manual-${Date.now()}`;
 
+    console.log(`[DEBUG] TTS-Handler: Parâmetros recebidos:
+      - text: ${text?.substring(0, 50)}${text?.length && text.length > 50 ? '...' : ''}
+      - voiceId: ${voiceId}
+      - callSid: ${callSid}
+    `);
+
     if (!text) {
       throw new Error("Parâmetro text é obrigatório");
     }
@@ -44,17 +50,29 @@ serve(async (req) => {
     const fileName = `${voiceId}_${Buffer.from(text).toString('base64').substring(0, 100)}.mp3`;
     const filePath = `calls/${callSid}/${fileName}`;
     
+    console.log(`[DEBUG] TTS-Handler: Verificando arquivo de áudio no bucket:
+      - fileName: ${fileName}
+      - filePath: ${filePath}
+    `);
+    
     // Verificar se o arquivo já existe no bucket
-    const { data: existingFile } = await supabase
+    const { data: existingFile, error: getFileError } = await supabase
       .storage
       .from('tts_audio')
       .getPublicUrl(filePath);
     
     let audioUrl = existingFile?.publicUrl;
     
+    if (getFileError) {
+      console.error(`[ERROR] TTS-Handler: Erro ao verificar arquivo existente: ${getFileError.message}`);
+    }
+    
     // Se não temos o áudio, gerar com ElevenLabs e salvar no bucket
     if (!audioUrl) {
-      console.log("Gerando novo áudio com ElevenLabs:", voiceId);
+      console.log(`[DEBUG] TTS-Handler: Gerando novo áudio com ElevenLabs:
+        - voiceId: ${voiceId}
+        - modelo: eleven_multilingual_v1
+      `);
       
       // Converter texto para áudio usando ElevenLabs
       const response = await fetch(
@@ -80,11 +98,26 @@ serve(async (req) => {
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`[ERROR] TTS-Handler: Falha na resposta do ElevenLabs: ${response.status} ${response.statusText} - ${errorText}`);
         throw new Error(`Falha ao gerar áudio: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       // Obter o áudio como ArrayBuffer
       const audioBuffer = await response.arrayBuffer();
+      
+      console.log(`[DEBUG] TTS-Handler: Áudio gerado com sucesso. Tamanho: ${audioBuffer.byteLength} bytes`);
+      
+      // Criar diretório do call para manter organizado
+      const { error: dirError } = await supabase
+        .storage
+        .from('tts_audio')
+        .upload(`calls/${callSid}/.keep`, new Uint8Array(0), {
+          upsert: true
+        });
+        
+      if (dirError) {
+        console.warn(`[WARN] TTS-Handler: Erro ao criar diretório: ${dirError.message}`);
+      }
       
       // Salvar o áudio no bucket do Supabase
       const { data: uploadData, error: uploadError } = await supabase
@@ -96,6 +129,7 @@ serve(async (req) => {
         });
         
       if (uploadError) {
+        console.error(`[ERROR] TTS-Handler: Erro ao salvar áudio no bucket: ${uploadError.message}`);
         throw new Error(`Erro ao salvar áudio no bucket: ${uploadError.message}`);
       }
       
@@ -107,9 +141,9 @@ serve(async (req) => {
         
       audioUrl = publicUrlData.publicUrl;
       
-      console.log("Áudio gerado e salvo com sucesso. URL:", audioUrl);
+      console.log(`[DEBUG] TTS-Handler: Áudio gerado e salvo com sucesso. URL: ${audioUrl}`);
     } else {
-      console.log("Usando áudio existente no bucket:", audioUrl);
+      console.log(`[DEBUG] TTS-Handler: Usando áudio existente no bucket: ${audioUrl}`);
     }
 
     // Configurar TwiML com tag Play para o áudio
@@ -117,6 +151,10 @@ serve(async (req) => {
 <Response>
   <Play>${audioUrl}</Play>
 </Response>`;
+
+    console.log(`[DEBUG] TTS-Handler: Retornando TwiML:
+    ${twimlResponse.substring(0, 200)}${twimlResponse.length > 200 ? '...' : ''}
+    `);
 
     // Retornar TwiML que o Twilio pode processar
     return new Response(twimlResponse, {
@@ -126,7 +164,7 @@ serve(async (req) => {
       },
     });
   } catch (error) {
-    console.error("Erro no handler TTS-Twilio:", error);
+    console.error(`[ERROR] TTS-Handler: Erro no handler TTS-Twilio: ${error}`);
     
     // Retornar TwiML de erro
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>

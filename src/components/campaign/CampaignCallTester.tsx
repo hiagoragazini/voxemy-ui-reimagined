@@ -39,6 +39,7 @@ export function CampaignCallTester({
   const [selectedVoice, setSelectedVoice] = useState(agentVoiceId || "");
   const [audioContent, setAudioContent] = useState<string | null>(null);
   const [phoneValid, setPhoneValid] = useState(true);
+  const [testMessage, setTestMessage] = useState<string>("");
   
   const { makeCall, textToSpeech, playAudio, isLoading, stopAudio } = useVoiceCall();
   
@@ -64,8 +65,10 @@ export function CampaignCallTester({
   useEffect(() => {
     if (agentData?.voice_id) {
       setSelectedVoice(agentData.voice_id);
+      console.log("Voice ID loaded from agent data:", agentData.voice_id);
     } else if (agentVoiceId) {
       setSelectedVoice(agentVoiceId);
+      console.log("Voice ID from props:", agentVoiceId);
     }
   }, [agentData, agentVoiceId]);
   
@@ -74,15 +77,29 @@ export function CampaignCallTester({
     validatePhone(testPhone);
   }, [testPhone]);
   
+  // Preparar a mensagem de teste
+  useEffect(() => {
+    const message = `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`;
+    setTestMessage(message);
+    console.log("Mensagem de teste atualizada:", message);
+  }, [testName, agentName]);
+  
   // Get best available voice ID
   const getVoiceId = () => {
     // Prioridade 1: Voz selecionada no componente
-    if (selectedVoice) return selectedVoice;
+    if (selectedVoice) {
+      console.log("Usando voice ID do state:", selectedVoice);
+      return selectedVoice;
+    }
     
     // Prioridade 2: Voz associada ao agente no banco de dados
-    if (agentData?.voice_id) return agentData.voice_id;
+    if (agentData?.voice_id) {
+      console.log("Usando voice ID do banco de dados:", agentData.voice_id);
+      return agentData.voice_id;
+    }
     
     // Prioridade 3: Fallback para voz padrão em português
+    console.log("Usando voice ID padrão (Laura)");
     return "FGY2WhTYpPnrIDTdsKH5"; // ID da voz Laura
   };
 
@@ -128,11 +145,12 @@ export function CampaignCallTester({
       setIsPlaying(true);
       
       const voiceId = getVoiceId();
-      const testScript = `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`;
+      console.log("Testando voz com voice ID:", voiceId);
+      console.log("Texto a ser falado:", testMessage);
       
       // Generate the audio from text
       const audioData = await textToSpeech({
-        text: testScript,
+        text: testMessage,
         voiceId: voiceId
       });
       
@@ -170,15 +188,15 @@ export function CampaignCallTester({
       toast.info("Iniciando chamada de teste...");
       
       const voiceId = getVoiceId();
-      
-      // Limitar tamanho da mensagem para evitar erro de Twilio
-      const shortMessage = `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`;
+      console.log("Iniciando chamada com voice ID:", voiceId);
+      console.log("Mensagem a ser enviada:", testMessage);
+      console.log("Número de telefone:", cleanPhone);
       
       await makeCall({
         agentId: agentId || '',
         campaignId: campaignId,
         phoneNumber: cleanPhone,
-        message: shortMessage,
+        message: testMessage,
         leadId: leadId,
         voiceId: voiceId
       });

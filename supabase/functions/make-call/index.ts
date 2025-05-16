@@ -131,6 +131,8 @@ serve(async (req) => {
           const encodedVoiceId = encodeURIComponent(voiceId || "FGY2WhTYpPnrIDTdsKH5");
           const ttsUrl = `${baseUrl}/functions/v1/tts-twillio-handler?text=${encodedMessage}&voiceId=${encodedVoiceId}&callSid=${callId}`;
           
+          console.log(`\n[DEBUG] URL de TTS gerada: ${ttsUrl}`);
+          
           // Construir TwiML que usa <Play> com uma URL para o nosso serviço TTS
           twiml = `
             <Response>
@@ -152,7 +154,7 @@ serve(async (req) => {
       }
 
       // Log the configured TwiML for debugging
-      console.log(`\nConfigured TwiML: ${twiml.substring(0, 100)}...`);
+      console.log(`\nTwiML final configurado: ${twiml.replace(/\s+/g, ' ').substring(0, 150)}...`);
 
       // Parameters for the callback URL
       let callbackParams = '';
@@ -168,7 +170,7 @@ serve(async (req) => {
           ? `${callbackUrl}${callbackUrl.includes('?') ? '&' : '?'}${callbackParams.substring(1)}`
           : callbackUrl;
           
-        console.log(`\nCallback URL configured: ${finalCallbackUrl}`);
+        console.log(`\nCallback URL configurado: ${finalCallbackUrl}`);
       } else {
         console.log("\nNo callback URL provided");
       }
