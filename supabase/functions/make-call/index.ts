@@ -120,22 +120,21 @@ serve(async (req) => {
       if (!twiml) {
         // Se temos uma mensagem, prepara um TwiML com ela
         if (message) {
-          // Em vez de usar a tag Say diretamente, vamos gerar uma URL para um TwiML dinâmico
-          // que será gerado pelo nosso endpoint de TTS
+          // Criar um ID único para a chamada (será usado para o nome do arquivo no bucket)
+          const callId = `call_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
           
           // Limitar o tamanho da mensagem para evitar problemas no TwiML
           const shortMessage = message.length > 500 ? message.substring(0, 500) + "..." : message;
           
+          // Criar URL para o nosso endpoint de TTS com os parâmetros necessários
           const encodedMessage = encodeURIComponent(shortMessage);
-          const encodedVoiceId = encodeURIComponent(voiceId || "");
-          const encodedAgentId = encodeURIComponent(agentId || "");
-          const encodedCampaignId = encodeURIComponent(campaignId || "");
-          const encodedLeadId = encodeURIComponent(leadId || "");
+          const encodedVoiceId = encodeURIComponent(voiceId || "FGY2WhTYpPnrIDTdsKH5");
+          const ttsUrl = `${baseUrl}/functions/v1/tts-twillio-handler?text=${encodedMessage}&voiceId=${encodedVoiceId}&callSid=${callId}`;
           
           // Construir TwiML que usa <Play> com uma URL para o nosso serviço TTS
           twiml = `
             <Response>
-              <Say language="pt-BR">${shortMessage}</Say>
+              <Play>${ttsUrl}</Play>
               ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
             </Response>
           `;
