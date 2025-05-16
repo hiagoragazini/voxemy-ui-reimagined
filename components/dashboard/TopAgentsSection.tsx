@@ -1,26 +1,29 @@
 
 import React from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight } from "lucide-react";
 import { AgentCardProps } from "@/components/agents/AgentCard";
 import { AgentSummaryCard } from "./AgentSummaryCard";
+import { Card } from "@/components/ui/card";
+import { useAgents } from "@/hooks/use-agents";
 
 interface TopAgentsSectionProps {
-  agents: AgentCardProps[];
-  isLoading: boolean;
   onViewAllClick: () => void;
   onCreateAgentClick: () => void;
   onAgentEditClick: (id: string) => void;
 }
 
 export function TopAgentsSection({
-  agents,
-  isLoading,
   onViewAllClick,
   onCreateAgentClick,
   onAgentEditClick,
 }: TopAgentsSectionProps) {
+  // Usar o hook useAgents para obter os mesmos dados da página de Agentes
+  const { agents = [], isLoading = false } = useAgents() || {};
+  
+  // Pegar apenas os 2 primeiros agentes para exibir
+  const topAgents = agents.slice(0, 2);
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -56,8 +59,8 @@ export function TopAgentsSection({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
         {isLoading ? (
           <p>Carregando agentes...</p>
-        ) : agents.length > 0 ? (
-          agents.map((agent) => (
+        ) : topAgents.length > 0 ? (
+          topAgents.map((agent) => (
             <AgentSummaryCard
               key={agent.id}
               agent={agent}
