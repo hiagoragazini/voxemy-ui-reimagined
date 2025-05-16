@@ -1,9 +1,11 @@
 
-# This file is used to configure the Supabase Edge Functions.
-project_id = "nklbbeavnbwvvatqimxw"
+project_id = "your-project-id"
 
 [functions.make-call]
 verify_jwt = true
 
 [functions.text-to-speech]
 verify_jwt = true
+
+[functions.tts-twillio-handler]
+verify_jwt = false

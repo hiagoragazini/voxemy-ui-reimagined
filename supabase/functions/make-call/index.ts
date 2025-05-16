@@ -35,7 +35,8 @@ serve(async (req) => {
           env: {
             twilioAccountSidConfigured: Boolean(Deno.env.get("TWILIO_ACCOUNT_SID")),
             twilioAuthTokenConfigured: Boolean(Deno.env.get("TWILIO_AUTH_TOKEN")),
-            twilioPhoneNumberConfigured: Boolean(Deno.env.get("TWILIO_PHONE_NUMBER"))
+            twilioPhoneNumberConfigured: Boolean(Deno.env.get("TWILIO_PHONE_NUMBER")),
+            elevenLabsKeyConfigured: Boolean(Deno.env.get("ELEVENLABS_API_KEY"))
           }
         }),
         {
@@ -48,6 +49,7 @@ serve(async (req) => {
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
+    const elevenLabsApiKey = Deno.env.get("ELEVENLABS_API_KEY");
     
     if (!twilioAccountSid || !twilioAuthToken) {
       throw new Error("Twilio credentials are not configured in environment variables");
@@ -61,6 +63,7 @@ serve(async (req) => {
     // Log with masked credentials for security
     console.log(`Using Twilio credentials: SID: ${twilioAccountSid.substring(0, 5)}...${twilioAccountSid.substring(twilioAccountSid.length - 4)}`);
     console.log(`Using Twilio phone number: ${twilioPhone}`);
+    console.log(`ElevenLabs API key configured: ${Boolean(elevenLabsApiKey)}`);
 
     // Get request data
     const { 
@@ -104,7 +107,7 @@ serve(async (req) => {
       const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
       console.log(`Formatted number: ${formattedPhoneNumber}`);
       
-      // Base URL for functions
+      // Base URL for functions and callbacks
       const baseUrl = Deno.env.get("SUPABASE_URL") || "";
       if (!baseUrl) {
         console.warn("Supabase URL not configured, callback links may not work properly");
@@ -113,14 +116,26 @@ serve(async (req) => {
       // Create TwiML for the call
       let twiml = twimlInstructions;
       
-      // CORREÇÃO: Em vez de usar base64 direto no TwiML, usamos uma URL que será gerada pela função text-to-speech
+      // Se não temos TwiML pré-definido, criamos um usando a API da Twilio
       if (!twiml) {
-        // Se temos uma mensagem e não temos TwiML pré-definido
+        // Se temos uma mensagem, prepara um TwiML com ela
         if (message) {
-          // Usar Say com voz simples do Twilio em vez de áudio grande base64
+          // Em vez de usar a tag Say diretamente, vamos gerar uma URL para um TwiML dinâmico
+          // que será gerado pelo nosso endpoint de TTS
+          
+          // Limitar o tamanho da mensagem para evitar problemas no TwiML
+          const shortMessage = message.length > 500 ? message.substring(0, 500) + "..." : message;
+          
+          const encodedMessage = encodeURIComponent(shortMessage);
+          const encodedVoiceId = encodeURIComponent(voiceId || "");
+          const encodedAgentId = encodeURIComponent(agentId || "");
+          const encodedCampaignId = encodeURIComponent(campaignId || "");
+          const encodedLeadId = encodeURIComponent(leadId || "");
+          
+          // Construir TwiML que usa <Play> com uma URL para o nosso serviço TTS
           twiml = `
             <Response>
-              <Say language="pt-BR">${message}</Say>
+              <Say language="pt-BR">${shortMessage}</Say>
               ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
             </Response>
           `;
@@ -168,7 +183,7 @@ serve(async (req) => {
         const call = await client.calls.create({
           twiml: twiml,
           to: formattedPhoneNumber,
-          from: twilioPhone, // Use the number configured in environment variables
+          from: twilioPhone,
           statusCallback: callbackUrl || undefined,
           statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
           statusCallbackMethod: 'POST',

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,8 +38,9 @@ export function CampaignCallTester({
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState(agentVoiceId || "");
   const [audioContent, setAudioContent] = useState<string | null>(null);
+  const [phoneValid, setPhoneValid] = useState(true);
   
-  const { makeCall, textToSpeech, playAudio, isLoading } = useVoiceCall();
+  const { makeCall, textToSpeech, playAudio, isLoading, stopAudio } = useVoiceCall();
   
   // Fetch agent data if agentId is provided
   const { data: agentData } = useQuery({
@@ -57,7 +59,7 @@ export function CampaignCallTester({
     },
     enabled: !!agentId,
   });
-  
+
   // Update selected voice when agent data is loaded or changed
   useEffect(() => {
     if (agentData?.voice_id) {
@@ -66,6 +68,11 @@ export function CampaignCallTester({
       setSelectedVoice(agentVoiceId);
     }
   }, [agentData, agentVoiceId]);
+  
+  // Validate phone number when it changes
+  useEffect(() => {
+    validatePhone(testPhone);
+  }, [testPhone]);
   
   // Get best available voice ID
   const getVoiceId = () => {
@@ -79,13 +86,42 @@ export function CampaignCallTester({
     return "FGY2WhTYpPnrIDTdsKH5"; // ID da voz Laura
   };
 
+  // Validate phone number format
+  const validatePhone = (phone: string) => {
+    // Limpa o número para conter apenas dígitos
+    const cleanedPhone = phone.replace(/\D/g, '');
+    
+    // Verifica se tem pelo menos 10 dígitos (DDD + número)
+    const isValid = cleanedPhone.length >= 10;
+    setPhoneValid(isValid);
+    return isValid;
+  };
+
+  // Format phone number for display
+  const formatPhoneForDisplay = (phone: string) => {
+    // Remove tudo que não for número
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Se tiver menos de 10 dígitos, não formata
+    if (cleaned.length < 10) return phone;
+    
+    // Formata como (XX) XXXXX-XXXX ou equivalente internacional
+    if (cleaned.length === 11) {
+      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 7)}-${cleaned.substring(7)}`;
+    } else if (cleaned.length === 10) {
+      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 6)}-${cleaned.substring(6)}`;
+    } 
+    
+    // Se for número internacional ou outro formato, apenas retorna como está
+    return phone;
+  };
+
   const handleTestVoice = async () => {
     try {
       if (isPlaying) {
         // If already playing, stop playback
-        if (audioContent) {
-          setIsPlaying(false);
-        }
+        stopAudio();
+        setIsPlaying(false);
         return;
       }
       
@@ -118,8 +154,8 @@ export function CampaignCallTester({
 
   const handleTestCall = async () => {
     try {
-      if (!testPhone) {
-        toast.warning("Por favor, insira um número de telefone para teste");
+      if (!validatePhone(testPhone)) {
+        toast.warning("Por favor, insira um número de telefone válido (pelo menos 10 dígitos)");
         return;
       }
       
@@ -158,6 +194,11 @@ export function CampaignCallTester({
     }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTestPhone(value);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -181,14 +222,22 @@ export function CampaignCallTester({
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="test-phone">Telefone para teste</Label>
+          <Label htmlFor="test-phone" className={!phoneValid ? "text-red-500" : ""}>
+            Telefone para teste {!phoneValid && "(Formato inválido)"}
+          </Label>
           <Input 
             id="test-phone"
             value={testPhone}
-            onChange={(e) => setTestPhone(e.target.value)}
+            onChange={handlePhoneChange}
             placeholder="DDD + número (ex: 11999887766)"
             type="tel"
+            className={!phoneValid ? "border-red-500" : ""}
           />
+          {!phoneValid && (
+            <p className="text-xs text-red-500 mt-1">
+              Digite um número válido com DDD + número (mín. 10 dígitos)
+            </p>
+          )}
         </div>
         
         <div className="space-y-4">
@@ -220,7 +269,7 @@ export function CampaignCallTester({
           <Button 
             onClick={handleTestCall} 
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            disabled={isLoading || !testPhone}
+            disabled={isLoading || !testPhone || !phoneValid}
           >
             <Phone className="mr-2 h-4 w-4" />
             Iniciar Chamada de Teste
