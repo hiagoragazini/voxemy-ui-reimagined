@@ -89,6 +89,7 @@ serve(async (req) => {
     console.log(`Phone number: ${phoneNumber}`);
     console.log(`Voice ID received: ${voiceId || "not specified"}`);
     console.log(`Message parameter: "${message || "not provided"}"`);
+    console.log(`Message length: ${message ? message.length : 0} characters`);
     console.log(`TwiML instructions provided: ${twimlInstructions ? "YES" : "NO"}`);
 
     if (!phoneNumber) {
@@ -98,6 +99,7 @@ serve(async (req) => {
     // Verificação explícita da mensagem
     if (!message) {
       console.warn("Warning: No message parameter provided for the call. This may result in a generic audio being played.");
+      throw new Error("Message parameter is required for the call. Please provide a text message for the agent to speak.");
     }
 
     console.log(`\nStarting call to ${phoneNumber}`);
@@ -131,11 +133,23 @@ serve(async (req) => {
           // Criar URL para o nosso endpoint de TTS com os parâmetros necessários
           const encodedMessage = encodeURIComponent(message);
           const encodedVoiceId = encodeURIComponent(voiceId || "FGY2WhTYpPnrIDTdsKH5"); // Laura - voz default
+          
+          // Garantir que o texto está sendo passado corretamente
+          if (encodedMessage.length === 0) {
+            throw new Error("A mensagem de texto codificada está vazia. Verifique o parâmetro message");
+          }
+          
           const ttsUrl = `${baseUrl}/functions/v1/tts-twillio-handler?text=${encodedMessage}&voiceId=${encodedVoiceId}&callSid=${callId}`;
           
           console.log(`\n[DEBUG] URL de TTS gerada: ${ttsUrl}`);
+          console.log(`\n[DEBUG] Mensagem codificada: "${encodedMessage}"`);
           console.log(`\n[DEBUG] Mensagem completa: "${message}"`);
           console.log(`\n[DEBUG] VoiceId usado: ${encodedVoiceId}`);
+          
+          // Verificar se há limitações no tamanho da URL
+          if (ttsUrl.length > 2000) {
+            console.warn(`[WARN] A URL gerada é muito longa (${ttsUrl.length} caracteres). Isto pode causar problemas.`);
+          }
           
           // Construir TwiML que usa <Play> com uma URL para o nosso serviço TTS
           twiml = `
@@ -146,6 +160,7 @@ serve(async (req) => {
           `;
         } else {
           // Mensagem padrão se nenhuma for fornecida - em português
+          console.error("Erro crítico: nenhuma mensagem fornecida. Usando mensagem padrão");
           twiml = `
             <Response>
               <Say language="pt-BR">Olá, esta é uma chamada automatizada da Voxemy. Obrigado por atender.</Say>

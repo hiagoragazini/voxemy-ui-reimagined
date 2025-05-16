@@ -23,8 +23,10 @@ serve(async (req) => {
     console.log(`[DEBUG] TTS-Handler: Parâmetros recebidos:
       - text: ${text?.substring(0, 50)}${text?.length && text.length > 50 ? '...' : ''}
       - text completo: "${text}"
+      - text decodificado: "${text ? decodeURIComponent(text) : ''}"
       - voiceId: ${voiceId}
       - callSid: ${callSid}
+      - URL completa: ${req.url}
     `);
 
     // Verifica se é um teste ou solicitação real
@@ -35,7 +37,17 @@ serve(async (req) => {
     console.log(`[DEBUG] TTS-Handler: Headers da requisição: ${JSON.stringify(Object.fromEntries(req.headers))}`);
 
     if (!text) {
-      throw new Error("Parâmetro text é obrigatório");
+      const errorMessage = "Parâmetro text é obrigatório e está ausente na requisição";
+      console.error(`[ERROR] TTS-Handler: ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
+
+    // Decodificar o texto para garantir que acentos e caracteres especiais estão corretos
+    const decodedText = decodeURIComponent(text);
+    if (decodedText.trim().length === 0) {
+      const errorMessage = "O texto decodificado está vazio ou contém apenas espaços";
+      console.error(`[ERROR] TTS-Handler: ${errorMessage}`);
+      throw new Error(errorMessage);
     }
 
     // Obter API key do ElevenLabs
@@ -58,13 +70,15 @@ serve(async (req) => {
     // Usando hash do texto para garantir nome seguro de arquivo
     const textHash = await crypto.subtle.digest(
       "SHA-256",
-      new TextEncoder().encode(text)
+      new TextEncoder().encode(decodedText)
     ).then(hash => {
       return Array.from(new Uint8Array(hash))
         .map(b => b.toString(16).padStart(2, "0"))
         .join("")
         .substring(0, 40); // primeiros 40 caracteres do hash
     });
+    
+    console.log(`[DEBUG] TTS-Handler: Hash gerado para o texto: ${textHash}`);
     
     const fileName = `${voiceId}_${textHash}.mp3`;
     const filePath = `calls/${callSid}/${fileName}`;
@@ -142,7 +156,8 @@ serve(async (req) => {
     console.log(`[DEBUG] TTS-Handler: Gerando novo áudio com ElevenLabs:
       - voiceId: ${voiceId}
       - modelo: eleven_multilingual_v2
-      - texto completo: "${text}"
+      - texto decodificado: "${decodedText}"
+      - tamanho do texto: ${decodedText.length} caracteres
     `);
     
     // Converter texto para áudio usando ElevenLabs
@@ -156,7 +171,7 @@ serve(async (req) => {
           "xi-api-key": elevenlabsApiKey,
         },
         body: JSON.stringify({
-          text: text,
+          text: decodedText,
           model_id: "eleven_multilingual_v2", // Modelo multilíngue mais recente para melhor suporte ao português
           voice_settings: {
             stability: 0.7,
@@ -178,6 +193,9 @@ serve(async (req) => {
     const audioBuffer = await elevenlabsResponse.arrayBuffer();
     
     console.log(`[DEBUG] TTS-Handler: Áudio gerado com sucesso. Tamanho: ${audioBuffer.byteLength} bytes`);
+    if (audioBuffer.byteLength < 1000) {
+      console.error(`[ERROR] TTS-Handler: Áudio gerado é muito pequeno (${audioBuffer.byteLength} bytes), pode indicar erro`);
+    }
     
     // Criar diretório do call para manter organizado
     try {
@@ -317,6 +335,7 @@ serve(async (req) => {
 </Response>`;
 
     console.log(`[DEBUG] TTS-Handler: URL final do áudio no TwiML: ${audioUrl}`);
+    console.log(`[DEBUG] TTS-Handler: Texto original decodificado: "${decodedText}"`);
     console.log(`[DEBUG] TTS-Handler: Retornando TwiML:
 ${twimlResponse}
     `);
@@ -326,7 +345,10 @@ ${twimlResponse}
       ...corsHeaders, 
       "Content-Type": "application/xml",
       "Cache-Control": "no-cache, no-store, must-revalidate",
-      "X-Audio-URL": audioUrl
+      "X-Audio-URL": audioUrl,
+      "X-Audio-Size": audioBuffer.byteLength.toString(),
+      "X-Text-Hash": textHash,
+      "X-Text-Length": decodedText.length.toString(),
     };
 
     // Retornar TwiML que o Twilio pode processar
