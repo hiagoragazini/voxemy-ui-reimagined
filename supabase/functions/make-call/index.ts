@@ -66,7 +66,7 @@ serve(async (req) => {
     console.log(`ElevenLabs API key configured: ${Boolean(elevenLabsApiKey)}`);
 
     // Get request data
-    const { 
+    let { 
       phoneNumber, 
       callbackUrl,
       agentId,
@@ -82,6 +82,13 @@ serve(async (req) => {
       transcribeCall = true,
       message  // Parâmetro de mensagem para ser utilizado no tts-twillio-handler
     } = requestBody;
+
+    // TESTE: Forçar voz em português e mensagem de teste 
+    voiceId = "21m00Tcm4TlvDq8ikWAM"; // Voz Antônio (pt-BR)
+    message = "Olá, tudo bem? Esta é uma ligação de teste da Voxemy. Obrigado por atender.";
+    console.log("\n=== TESTE FORÇADO COM VOZ PT-BR (Antônio) ===");
+    console.log(`Voz forçada para: ${voiceId}`);
+    console.log(`Mensagem forçada para: "${message}"`);
 
     console.log("\n=== MAKE-CALL DEBUG DIAGNOSTICS ===");
     console.log(`Timestamp: ${new Date().toISOString()}`);

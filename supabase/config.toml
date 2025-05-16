@@ -9,4 +9,3 @@ verify_jwt = true
 
 [functions.tts-twillio-handler]
 verify_jwt = false
-

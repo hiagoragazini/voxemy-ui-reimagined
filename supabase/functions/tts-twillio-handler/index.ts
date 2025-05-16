@@ -17,7 +17,8 @@ serve(async (req) => {
     const url = new URL(req.url);
     // Obter parâmetros da URL
     const text = url.searchParams.get('text');
-    const voiceId = url.searchParams.get('voiceId') || "FGY2WhTYpPnrIDTdsKH5"; // Laura - voz default
+    // Usar voz Antônio (pt-BR) da ElevenLabs para garantir compatibilidade com português
+    const voiceId = url.searchParams.get('voiceId') || "21m00Tcm4TlvDq8ikWAM";
     const callSid = url.searchParams.get('callSid') || `manual-${Date.now()}`;
 
     console.log(`[DEBUG] TTS-Handler: Parâmetros recebidos:
@@ -154,7 +155,7 @@ serve(async (req) => {
     
     // Sempre gerar novo áudio para garantir que temos a versão mais recente
     console.log(`[DEBUG] TTS-Handler: Gerando novo áudio com ElevenLabs:
-      - voiceId: ${voiceId}
+      - voiceId: ${voiceId} (Antônio - pt-BR)
       - modelo: eleven_multilingual_v2
       - texto decodificado: "${decodedText}"
       - tamanho do texto: ${decodedText.length} caracteres
