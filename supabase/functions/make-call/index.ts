@@ -186,22 +186,18 @@ serve(async (req) => {
           console.log(`\n[DEBUG] URL de TTS gerada: ${ttsUrl}`);
           
           // Construir TwiML com uso do nosso handler TTS que agora retorna URL do Twilio Assets
+          // Simplificado para usar apenas a tag Play conforme requisitado
           twiml = `
             <Response>
               <Redirect method="GET">${ttsUrl}</Redirect>
-              <Say language="pt-BR">Se você está ouvindo esta mensagem, ocorreu um erro ao gerar o áudio personalizado.</Say>
-              ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
             </Response>
           `;
         } else {
-          // Mensagem padrão se nenhuma for fornecida - em português
+          // Mensagem padrão se nenhuma for fornecida - em português - simplificada para compatibilidade
           console.error("Erro crítico: nenhuma mensagem fornecida. Usando mensagem padrão");
           twiml = `
             <Response>
               <Say language="pt-BR">Olá, esta é uma chamada automatizada da Voxemy. Obrigado por atender.</Say>
-              <Pause length="1"/>
-              <Say language="pt-BR">Esta é uma demonstração do nosso sistema de voz.</Say>
-              ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
             </Response>
           `;
         }

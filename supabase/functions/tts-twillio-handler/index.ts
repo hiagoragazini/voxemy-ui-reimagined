@@ -152,7 +152,8 @@ serve(async (req) => {
     const uniqueId = Date.now();
     const uniqueFileName = `${voiceId}_${textHash}_${uniqueId}.mp3`;
     
-    // Fazer a requisição real para geração de áudio
+    // Fazer a requisição real para geração de áudio com parâmetros otimizados para telefonia
+    // Solicitamos formato otimizado para telefonia - similar ao que ffmpeg faria
     const elevenlabsResponse = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
@@ -165,10 +166,11 @@ serve(async (req) => {
         body: JSON.stringify({
           text: decodedText,
           model_id: "eleven_multilingual_v2", // Modelo multilíngue mais recente para melhor suporte ao português
+          output_format: "mp3_44100_128", // Formato específico que funciona melhor com Twilio
           voice_settings: {
             stability: 0.7,
             similarity_boost: 0.8,
-            style: 0.4,
+            style: 0.0, // Reduzido para minimizar distorção
             use_speaker_boost: true,
           },
         }),
@@ -244,18 +246,15 @@ serve(async (req) => {
       console.warn(`[WARN] TTS-Handler: Não foi possível fazer backup no Supabase: ${storageErr}`);
     }
 
-    // Configurar TwiML com tag Play para o áudio Twilio Assets
+    // Configurar TwiML simplificado apenas com tag Play para o áudio Twilio Assets
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${twilioAssetUrl}</Play>
-  <Say language="pt-BR">Se você está ouvindo esta mensagem em vez do áudio personalizado, significa que o áudio não pôde ser reproduzido.</Say>
-  <Pause length="1"/>
-  <Say language="pt-BR">Tamanho do áudio gerado: ${audioBuffer.byteLength} bytes. Hash do texto: ${textHash}</Say>
 </Response>`;
 
     console.log(`[DEBUG] TTS-Handler: URL final do áudio no TwiML (Twilio Asset): ${twilioAssetUrl}`);
     console.log(`[DEBUG] TTS-Handler: Texto original decodificado: "${decodedText}"`);
-    console.log(`[DEBUG] TTS-Handler: Retornando TwiML:
+    console.log(`[DEBUG] TTS-Handler: Retornando TwiML simplificado:
 ${twimlResponse}
     `);
     
