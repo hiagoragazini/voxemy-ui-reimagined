@@ -15,7 +15,7 @@ async function getTwilioClient(accountSid, authToken) {
   }
 }
 
-// NOVA FUNÇÃO: Validar URLs de áudio antes de usar no Twilio
+// Validar URLs de áudio antes de usar no Twilio
 async function validateAudioUrl(url) {
   try {
     console.log(`\n[DEBUG] Validando URL de áudio: ${url}`);
@@ -160,6 +160,8 @@ serve(async (req) => {
       
       // Base URL for functions and callbacks
       const baseUrl = Deno.env.get("SUPABASE_URL") || "";
+      const appUrl = Deno.env.get("APP_URL") || "https://voxemy.vercel.app";
+      
       if (!baseUrl) {
         console.warn("Supabase URL not configured, callback links may not work properly");
       }
@@ -174,6 +176,7 @@ serve(async (req) => {
         
         // Se temos uma mensagem, prepara um TwiML com ela
         if (message) {
+          // NOVO: Utilizar o proxy Vercel para servir o áudio com compatibilidade máxima para Twilio
           // Criar URL para o nosso endpoint de TTS com os parâmetros necessários
           const encodedMessage = encodeURIComponent(message);
           const encodedVoiceId = encodeURIComponent(voiceId || "21m00Tcm4TlvDq8ikWAM"); // Antônio - voz default para português
