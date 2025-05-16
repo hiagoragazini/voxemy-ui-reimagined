@@ -30,6 +30,8 @@ interface MakeCallParams {
 
 export function useVoiceCall() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [callDetails, setCallDetails] = useState<any>(null);
   const [audioContent, setAudioContent] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
@@ -99,6 +101,7 @@ export function useVoiceCall() {
     use_speaker_boost = true
   }: TextToSpeechParams) => {
     setIsLoading(true);
+    setError(null);
     
     try {
       // Log for debugging
@@ -121,11 +124,13 @@ export function useVoiceCall() {
 
       if (error) {
         console.error('Erro na função text-to-speech:', error);
+        setError(error.message);
         throw new Error(error.message);
       }
       
       if (!data.success) {
         console.error('Falha na resposta text-to-speech:', data.error);
+        setError(data.error || 'Falha ao gerar áudio');
         throw new Error(data.error || 'Falha ao gerar áudio');
       }
 
@@ -137,6 +142,7 @@ export function useVoiceCall() {
       return data.audioContent;
     } catch (err: any) {
       console.error('Erro na conversão de texto para voz:', err);
+      setError(err.message);
       toast.error('Erro ao converter texto para voz: ' + err.message);
       return null;
     } finally {
@@ -155,6 +161,7 @@ export function useVoiceCall() {
   }: MakeCallParams) => {
     try {
       setIsLoading(true);
+      setError(null);
       
       // Clean the phone number
       const cleanPhone = phoneNumber.replace(/\D/g, '');
@@ -192,6 +199,7 @@ export function useVoiceCall() {
 
       if (error) {
         console.error('Erro ao fazer chamada:', error);
+        setError(error.message);
         toast.error(`Erro na chamada: ${error.message || 'Falha ao conectar'}`);
         return null;
       }
@@ -203,6 +211,7 @@ export function useVoiceCall() {
 
     } catch (err: any) {
       console.error('Erro inesperado ao fazer chamada:', err);
+      setError(err.message);
       toast.error(`Erro: ${err.message || 'Falha inesperada'}`);
       return null;
     } finally {
@@ -227,20 +236,37 @@ export function useVoiceCall() {
       
       // Store the audio element for potential stopping later
       setAudioElement(audio);
+      setIsPlaying(true);
       
       // Play
       audio.play().catch(err => {
         console.error('Erro ao reproduzir áudio:', err);
+        setIsPlaying(false);
         toast.error('Erro ao reproduzir áudio');
         return false;
       });
       
+      // Setup onended event
+      audio.onended = () => {
+        setIsPlaying(false);
+      };
+      
       return true;
     } catch (err) {
       console.error('Erro ao criar elemento de áudio:', err);
+      setIsPlaying(false);
       toast.error('Erro ao reproduzir áudio');
       return false;
     }
+  };
+
+  // Play the last generated audio
+  const playLastAudio = () => {
+    if (audioContent) {
+      return playAudio(audioContent);
+    }
+    toast.error('Nenhum áudio disponível para reproduzir');
+    return false;
   };
 
   // Stop any currently playing audio
@@ -248,6 +274,7 @@ export function useVoiceCall() {
     if (audioElement) {
       audioElement.pause();
       audioElement.currentTime = 0;
+      setIsPlaying(false);
       return true;
     }
     return false;
@@ -258,8 +285,11 @@ export function useVoiceCall() {
     textToSpeech,
     makeCall,
     playAudio,
+    playLastAudio,
     stopAudio,
     isLoading,
+    isPlaying,
+    error,
     callDetails,
     audioContent
   };
