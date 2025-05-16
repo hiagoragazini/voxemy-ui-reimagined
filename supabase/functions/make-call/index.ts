@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -79,7 +80,7 @@ serve(async (req) => {
       twimlInstructions,
       recordCall = true,
       transcribeCall = true,
-      message  // Explicitly getting the message parameter 
+      message  // Parâmetro de mensagem para ser utilizado no tts-twillio-handler
     } = requestBody;
 
     console.log("\n=== MAKE-CALL DEBUG DIAGNOSTICS ===");
@@ -92,6 +93,11 @@ serve(async (req) => {
 
     if (!phoneNumber) {
       throw new Error("Phone number is required");
+    }
+
+    // Verificação explícita da mensagem
+    if (!message) {
+      console.warn("Warning: No message parameter provided for the call. This may result in a generic audio being played.");
     }
 
     console.log(`\nStarting call to ${phoneNumber}`);

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { useVoiceCall } from "@/hooks/use-voice-call";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CampaignCallTesterProps {
   campaignId?: string;
@@ -78,11 +80,11 @@ export function CampaignCallTester({
     validatePhone(testPhone);
   }, [testPhone]);
   
-  // Preparar a mensagem de teste
+  // Preparar a mensagem de teste padrão
   useEffect(() => {
-    const message = `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`;
-    setTestMessage(message);
-    console.log("Mensagem de teste atualizada:", message);
+    const defaultMessage = `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`;
+    setTestMessage(defaultMessage);
+    console.log("Mensagem de teste padrão definida:", defaultMessage);
   }, [testName, agentName]);
   
   // Get best available voice ID
@@ -149,6 +151,10 @@ export function CampaignCallTester({
       console.log("Testando voz com voice ID:", voiceId);
       console.log("Texto a ser falado:", testMessage);
       
+      if (!testMessage.trim()) {
+        throw new Error("Por favor, insira uma mensagem para testar");
+      }
+      
       // Generate the audio from text
       const audioData = await textToSpeech({
         text: testMessage,
@@ -175,6 +181,11 @@ export function CampaignCallTester({
     try {
       if (!validatePhone(testPhone)) {
         toast.warning("Por favor, insira um número de telefone válido (pelo menos 10 dígitos)");
+        return;
+      }
+      
+      if (!testMessage.trim()) {
+        toast.warning("Por favor, insira uma mensagem para a chamada");
         return;
       }
       
@@ -253,13 +264,25 @@ export function CampaignCallTester({
         </div>
         
         <div className="space-y-2">
+          <Label htmlFor="test-message">Mensagem do agente</Label>
+          <Textarea
+            id="test-message"
+            value={testMessage}
+            onChange={(e) => setTestMessage(e.target.value)}
+            placeholder="Digite a mensagem que o agente deve falar"
+            rows={3}
+            className="resize-none"
+          />
+        </div>
+        
+        <div className="space-y-2">
           <Label htmlFor="test-phone" className={!phoneValid ? "text-red-500" : ""}>
             Telefone para teste {!phoneValid && "(Formato inválido)"}
           </Label>
           <Input 
             id="test-phone"
             value={testPhone}
-            onChange={(e) => setTestPhone(e.target.value)}
+            onChange={handlePhoneChange}
             placeholder="DDD + número (ex: 11999887766)"
             type="tel"
             className={!phoneValid ? "border-red-500" : ""}
@@ -275,7 +298,7 @@ export function CampaignCallTester({
           <Button 
             onClick={handleTestVoice} 
             className="w-full"
-            disabled={isLoading}
+            disabled={isLoading || !testMessage.trim()}
             variant={isPlaying ? "secondary" : "default"}
           >
             {isPlaying ? (
@@ -300,7 +323,7 @@ export function CampaignCallTester({
           <Button 
             onClick={handleTestCall} 
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            disabled={isLoading || !testPhone || !phoneValid}
+            disabled={isLoading || !testPhone || !phoneValid || !testMessage.trim()}
           >
             <Phone className="mr-2 h-4 w-4" />
             Iniciar Chamada de Teste
