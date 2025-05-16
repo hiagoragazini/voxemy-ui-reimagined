@@ -31,6 +31,8 @@ serve(async (req) => {
     console.log(`[DEBUG] TTS-Handler: URL completo: ${req.url}`);
     console.log(`[DEBUG] TTS-Handler: Origem da requisição: ${req.headers.get("origin") || "desconhecida"}`);
     console.log(`[DEBUG] TTS-Handler: User-Agent: ${req.headers.get("user-agent") || "desconhecido"}`);
+    // Logar todos os cabeçalhos da requisição para debugging
+    console.log(`[DEBUG] TTS-Handler: Headers da requisição: ${JSON.stringify(Object.fromEntries(req.headers))}`);
 
     if (!text) {
       throw new Error("Parâmetro text é obrigatório");
@@ -279,10 +281,53 @@ serve(async (req) => {
       console.log(`[DEBUG] TTS-Handler: URL com protocolo adicionado: ${audioUrl}`);
     }
 
+    // Teste de ping para a URL do áudio
+    try {
+      console.log(`[DEBUG] TTS-Handler: Realizando teste de ping final para a URL do áudio: ${audioUrl}`);
+      const finalPingResponse = await fetch(audioUrl, { method: 'HEAD' });
+      console.log(`[DEBUG] TTS-Handler: Resultado do ping final: ${finalPingResponse.status} ${finalPingResponse.statusText}`);
+      
+      if (!finalPingResponse.ok) {
+        console.error(`[ERROR] TTS-Handler: A URL final do áudio NÃO é acessível publicamente!`);
+        
+        // Logar todos os cabeçalhos da resposta para debugging
+        console.log(`[DEBUG] TTS-Handler: Headers da resposta do ping: ${JSON.stringify(Object.fromEntries(finalPingResponse.headers))}`);
+      } else {
+        console.log(`[DEBUG] TTS-Handler: A URL final do áudio é acessível publicamente.`);
+        
+        // Verificar se o Content-Type da resposta é de áudio
+        const contentType = finalPingResponse.headers.get('content-type');
+        console.log(`[DEBUG] TTS-Handler: Content-Type do arquivo: ${contentType}`);
+        
+        if (!contentType || !contentType.includes('audio')) {
+          console.warn(`[WARNING] TTS-Handler: Content-Type do arquivo não é de áudio: ${contentType}`);
+        }
+      }
+    } catch (finalPingErr) {
+      console.error(`[ERROR] TTS-Handler: Erro no teste de ping final: ${finalPingErr}`);
+    }
+
+    // Tentar determinando o domínio correto para o Supabase Storage
+    let storageUrl = audioUrl;
+    // Se a URL parece ser um caminho relativo no armazenamento Supabase, tente reconstruí-la
+    if (audioUrl.includes('storage/v1/object/public/tts_audio')) {
+      // Extrai o caminho do objeto após "public/tts_audio/"
+      const match = audioUrl.match(/storage\/v1\/object\/public\/tts_audio\/(.+)/);
+      if (match && match[1]) {
+        const objectPath = match[1];
+        // Constrói a URL do armazenamento Supabase explicitamente
+        const region = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
+        storageUrl = `https://${region}.supabase.co/storage/v1/object/public/tts_audio/${objectPath}`;
+        console.log(`[DEBUG] TTS-Handler: URL reconstruída para armazenamento Supabase: ${storageUrl}`);
+      }
+    }
+
     // Configurar TwiML com tag Play para o áudio
+    // Adicionar URLs alternativas para o áudio em caso de falha
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${audioUrl}</Play>
+  <Play>${storageUrl}</Play>
+  <Say language="pt-BR">Se você está ouvindo esta mensagem em vez do áudio personalizado, significa que o Twilio não conseguiu acessar o áudio armazenado.</Say>
 </Response>`;
 
     console.log(`[DEBUG] TTS-Handler: Retornando TwiML:
@@ -290,7 +335,8 @@ ${twimlResponse}
     `);
     
     // Log adicional explícito da URL de áudio para depuração
-    console.log(`[DEBUG] URL DO ÁUDIO RETORNADO: ${audioUrl}`);
+    console.log(`[DEBUG] URL DO ÁUDIO RETORNADO: ${storageUrl}`);
+    console.log(`[DEBUG] URL original do áudio: ${audioUrl}`);
     
     // Verificar cabeçalhos da resposta
     const responseHeaders = { 
@@ -310,6 +356,7 @@ ${twimlResponse}
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say language="pt-BR">Ocorreu um erro ao processar esta chamada.</Say>
+  <Say language="pt-BR">${error.message || "Erro desconhecido"}</Say>
 </Response>`;
     
     console.log(`[DEBUG] TTS-Handler: Retornando TwiML de ERRO:
@@ -324,3 +371,4 @@ ${errorTwiml}
     });
   }
 });
+
