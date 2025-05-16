@@ -1,29 +1,42 @@
-
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import App from './App.tsx'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
 import './index.css'
-import { AuthProvider } from './contexts/AuthContext'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from './components/ui/toaster'
+import {
+  createBrowserRouter,
+  RouterProvider,
+} from "react-router-dom";
 
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
+import Dashboard from './pages/Dashboard';
+import Call from './pages/Call';
+import Settings from './pages/Settings';
+import AudioTester from './pages/AudioTester';
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <App />,
   },
-})
+  {
+    path: "dashboard",
+    element: <Dashboard />,
+  },
+  {
+    path: "call",
+    element: <Call />,
+  },
+  {
+    path: "settings",
+    element: <Settings />,
+  },
+  {
+    path: "audio-tester",
+    element: <AudioTester />
+  },
+]);
 
-createRoot(document.getElementById("root")!).render(
-  <BrowserRouter>
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
-        <App />
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
-  </BrowserRouter>
-);
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <RouterProvider router={router} />
+  </React.StrictMode>,
+)

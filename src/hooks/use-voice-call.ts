@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -423,6 +422,53 @@ export function useVoiceCall() {
     }
   };
 
+  // Nova função para testar chamadas com áudio simples
+  const testCallWithSimpleAudio = async (params: { 
+    phoneNumber: string; 
+    testAudioUrl: string;
+    description?: string;
+  }) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Iniciando chamada de teste com áudio simples');
+      console.log('Número de telefone:', params.phoneNumber);
+      console.log('URL do áudio de teste:', params.testAudioUrl);
+      
+      const { data, error } = await supabase.functions.invoke('test-audio-call', {
+        body: params
+      });
+
+      if (error) {
+        console.error('Erro na função test-audio-call:', error);
+        throw new Error(error.message);
+      }
+      
+      if (!data.success) {
+        console.error('Resposta da função test-audio-call:', data);
+        throw new Error(data.error || 'Falha ao iniciar chamada de teste');
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: "Chamada de teste iniciada com sucesso!",
+      });
+      return data;
+    } catch (err: any) {
+      console.error('Erro ao fazer chamada de teste:', err);
+      setError(err.message);
+      toast({
+        variant: "destructive",
+        title: "Erro ao fazer chamada de teste",
+        description: err.message
+      });
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     isLoading,
     isPlaying,
@@ -432,6 +478,7 @@ export function useVoiceCall() {
     playLastAudio,
     makeCall,
     testMakeCallFunction,
-    stopAudio
+    stopAudio,
+    testCallWithSimpleAudio  // Nova função exportada
   };
 }
