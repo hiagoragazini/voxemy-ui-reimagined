@@ -21,26 +21,30 @@ export default async function handler(req: NextRequest) {
       return new Response('Nome do arquivo não especificado', { status: 400 });
     }
     
+    console.log(`[VERCEL-AUDIO-PROXY] Requisição recebida: ${req.url}`);
+    console.log(`[VERCEL-AUDIO-PROXY] User-Agent: ${req.headers.get('user-agent') || 'desconhecido'}`);
+    console.log(`[VERCEL-AUDIO-PROXY] Origem: ${req.headers.get('origin') || 'desconhecida'}`);
     console.log(`[VERCEL-AUDIO-PROXY] Servindo arquivo: ${fileName}`);
     
     // Decodificar o filename (pode ter sido codificado)
     const decodedFileName = decodeURIComponent(fileName);
     
     // Extrair informações do nome do arquivo (assumindo formato específico)
-    // Exemplo: call_12345_voiceId_hash.mp3
+    // Formato esperado: voiceId_hash_timestamp.mp3
     const parts = decodedFileName.split('_');
     let filePath = '';
     
-    // Se tem o formato esperado com callId
-    if (parts[0] === 'call' && parts.length > 2) {
-      const callId = `${parts[0]}_${parts[1]}_${parts[2]}`;
-      filePath = `calls/${callId}/${decodedFileName}`;
+    // Se tem o formato de voiceId_hash_timestamp
+    if (parts.length >= 3) {
+      const voiceId = parts[0];
+      // Tentar encontrar na raiz ou em subdiretorios
+      filePath = `calls/${decodedFileName}`;
     } else {
       // Fallback: procurar em qualquer subdiretório de calls
       filePath = `calls/${decodedFileName}`;
     }
     
-    console.log(`[VERCEL-AUDIO-PROXY] Caminho completo: ${filePath}`);
+    console.log(`[VERCEL-AUDIO-PROXY] Tentando caminho: ${filePath}`);
     
     // Tentar várias localizações possíveis
     const possiblePaths = [
@@ -51,6 +55,7 @@ export default async function handler(req: NextRequest) {
     
     let fileData = null;
     let downloadPath = '';
+    let foundLocation = '';
     
     // Tentar cada caminho possível
     for (const path of possiblePaths) {
@@ -65,14 +70,36 @@ export default async function handler(req: NextRequest) {
         console.log(`[VERCEL-AUDIO-PROXY] Arquivo encontrado em: ${path}`);
         fileData = data;
         downloadPath = path;
+        foundLocation = path;
         break;
       }
     }
     
     if (!fileData) {
+      // Se não encontrou, tentar listar arquivos para depuração
+      const { data: listData } = await supabase
+        .storage
+        .from('tts_audio')
+        .list('calls', { 
+          limit: 10, 
+          sortBy: { column: 'created_at', order: 'desc' } 
+        });
+        
       console.error(`[VERCEL-AUDIO-PROXY] Arquivo não encontrado em nenhum caminho tentado`);
-      return new Response('Arquivo não encontrado', { status: 404 });
+      console.error(`[VERCEL-AUDIO-PROXY] Arquivos recentes: ${JSON.stringify(listData || [])}`);
+      
+      return new Response('Arquivo não encontrado', { 
+        status: 404,
+        headers: {
+          'Content-Type': 'text/plain',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Access-Control-Allow-Origin': '*',
+        }
+      });
     }
+    
+    console.log(`[VERCEL-AUDIO-PROXY] Tipo de arquivo: ${fileData.type}`);
+    console.log(`[VERCEL-AUDIO-PROXY] Tamanho do arquivo: ${fileData.size} bytes`);
     
     // Configurar cabeçalhos otimizados para o Twilio
     const headers = {
@@ -83,9 +110,12 @@ export default async function handler(req: NextRequest) {
       'Content-Disposition': `attachment; filename="${decodedFileName}"`,
       'X-Audio-Source': `supabase:tts_audio/${downloadPath}`,
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
     };
     
     console.log(`[VERCEL-AUDIO-PROXY] Servindo áudio com tamanho: ${fileData.size} bytes`);
+    console.log(`[VERCEL-AUDIO-PROXY] Headers: ${JSON.stringify(headers)}`);
     
     // Retornar o arquivo com os cabeçalhos corretos
     return new Response(fileData, { 
@@ -94,6 +124,14 @@ export default async function handler(req: NextRequest) {
     });
   } catch (error: any) {
     console.error(`[VERCEL-AUDIO-PROXY] Erro: ${error.message}`);
-    return new Response(`Erro ao servir áudio: ${error.message}`, { status: 500 });
+    console.error(`[VERCEL-AUDIO-PROXY] Stack: ${error.stack}`);
+    return new Response(`Erro ao servir áudio: ${error.message}`, { 
+      status: 500,
+      headers: {
+        'Content-Type': 'text/plain',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Access-Control-Allow-Origin': '*',
+      }
+    });
   }
 }
