@@ -2,9 +2,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "../components/dashboard/Layout";
-import { StatsOverview } from "../components/dashboard/StatsOverview";
-import { TopAgentsSection } from "../components/dashboard/TopAgentsSection";
-import { NextStepsSection } from "../components/dashboard/NextStepsSection";
+import { StatsOverview } from "components/dashboard/StatsOverview";
+import { TopAgentsSection } from "components/dashboard/TopAgentsSection";
+import { NextStepsSection } from "components/dashboard/NextStepsSection";
 import { useAgents } from "../hooks/use-agents";
 
 export default function Dashboard() {
