@@ -75,16 +75,15 @@ serve(async (req) => {
       - textHash: ${textHash}
     `);
     
-    // Verificar se o bucket existe e criar se necessário
+    // Verificar se o bucket existe e criar se necessário, garantindo que seja público
     try {
       const { data: bucketData, error: bucketError } = await supabase
         .storage
         .getBucket('tts_audio');
         
       if (bucketError) {
-        console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' não existe, tentando criar...`);
+        console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' não existe, criando...`);
         
-        // Tentar criar o bucket se não existir
         const { error: createBucketError } = await supabase
           .storage
           .createBucket('tts_audio', { 
@@ -94,15 +93,16 @@ serve(async (req) => {
           
         if (createBucketError) {
           console.error(`[ERROR] TTS-Handler: Erro ao criar bucket: ${createBucketError.message}`);
+          throw new Error(`Erro ao criar bucket de armazenamento: ${createBucketError.message}`);
         } else {
-          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' criado com sucesso`);
+          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' criado com sucesso e definido como público`);
         }
       } else {
         console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' já existe`);
         
-        // Verificar se o bucket é público
+        // Verificar se o bucket é público e atualizar se necessário
         if (bucketData && !bucketData.public) {
-          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' não é público, ajustando...`);
+          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' não é público, atualizando...`);
           
           const { error: updateBucketError } = await supabase
             .storage
@@ -116,234 +116,218 @@ serve(async (req) => {
           } else {
             console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' agora é público`);
           }
+        } else {
+          console.log(`[DEBUG] TTS-Handler: Bucket 'tts_audio' já é público`);
         }
       }
     } catch (bucketSetupErr) {
       console.error(`[ERROR] TTS-Handler: Erro ao configurar bucket: ${bucketSetupErr}`);
+      throw new Error(`Erro na configuração do bucket de armazenamento: ${bucketSetupErr.message}`);
     }
     
-    // Verificar se o arquivo já existe no bucket
-    const { data: existingFileData, error: getFileError } = await supabase
-      .storage
-      .from('tts_audio')
-      .list(`calls/${callSid}`, {
-        limit: 100,
-        search: fileName
-      });
-    
-    let audioUrl = null;
-    
-    if (getFileError) {
-      console.error(`[ERROR] TTS-Handler: Erro ao verificar arquivo existente: ${getFileError.message}`);
-    } else if (existingFileData && existingFileData.length > 0) {
-      // Arquivo existe, obter URL pública
-      const { data: publicUrlData } = await supabase
+    // Forçar remoção de qualquer arquivo existente que possa causar conflito
+    try {
+      console.log(`[DEBUG] TTS-Handler: Removendo qualquer versão anterior do arquivo para garantir atualização`);
+      await supabase
         .storage
         .from('tts_audio')
-        .getPublicUrl(filePath);
-      
-      audioUrl = publicUrlData?.publicUrl;
-      console.log(`[DEBUG] TTS-Handler: Arquivo encontrado no bucket: ${audioUrl}`);
-      console.log(`[DEBUG] TTS-Handler: REUTILIZANDO áudio existente.`);
-      
-      // Verificar acessibilidade do arquivo
-      try {
-        const testResponse = await fetch(audioUrl, { method: 'HEAD' });
-        console.log(`[DEBUG] TTS-Handler: Verificação de acessibilidade da URL: ${testResponse.status} ${testResponse.statusText}`);
-        
-        if (!testResponse.ok) {
-          console.log(`[WARNING] TTS-Handler: URL do áudio não está acessível publicamente. Gerando novo arquivo.`);
-          audioUrl = null; // Forçar regeneração do áudio
-        } else {
-          console.log(`[DEBUG] TTS-Handler: URL do áudio verificada e acessível publicamente.`);
-        }
-      } catch (urlTestErr) {
-        console.error(`[ERROR] TTS-Handler: Erro ao testar URL do áudio: ${urlTestErr}`);
-        audioUrl = null; // Forçar regeneração do áudio
-      }
+        .remove([filePath]);
+    } catch (removeErr) {
+      console.log(`[DEBUG] TTS-Handler: Sem arquivo anterior para remover ou erro não crítico: ${removeErr}`);
     }
+
+    let audioUrl = null;
     
-    // Se não temos o áudio, gerar com ElevenLabs e salvar no bucket
-    if (!audioUrl) {
-      console.log(`[DEBUG] TTS-Handler: Gerando NOVO áudio com ElevenLabs:
-        - voiceId: ${voiceId}
-        - modelo: eleven_multilingual_v2
-        - texto completo: "${text}"
-      `);
-      
-      // Forçar apagar qualquer arquivo existente que possa estar conflitando
-      try {
-        await supabase
-          .storage
-          .from('tts_audio')
-          .remove([filePath]);
-        console.log(`[DEBUG] TTS-Handler: Arquivo anterior removido por garantia`);
-      } catch (cleanupErr) {
-        console.log(`[DEBUG] TTS-Handler: Sem arquivo anterior para remover`);
-      }
-      
-      // Converter texto para áudio usando ElevenLabs
-      console.log("[DEBUG] TTS-Handler: Chamando API da ElevenLabs...");
-      const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "xi-api-key": elevenlabsApiKey,
+    // Sempre gerar novo áudio para garantir que temos a versão mais recente
+    console.log(`[DEBUG] TTS-Handler: Gerando novo áudio com ElevenLabs:
+      - voiceId: ${voiceId}
+      - modelo: eleven_multilingual_v2
+      - texto completo: "${text}"
+    `);
+    
+    // Converter texto para áudio usando ElevenLabs
+    console.log("[DEBUG] TTS-Handler: Chamando API da ElevenLabs...");
+    const elevenlabsResponse = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "xi-api-key": elevenlabsApiKey,
+        },
+        body: JSON.stringify({
+          text: text,
+          model_id: "eleven_multilingual_v2", // Modelo multilíngue mais recente para melhor suporte ao português
+          voice_settings: {
+            stability: 0.7,
+            similarity_boost: 0.8,
+            style: 0.4,
+            use_speaker_boost: true,
           },
-          body: JSON.stringify({
-            text: text,
-            model_id: "eleven_multilingual_v2", // Modelo multilíngue mais recente para melhor suporte ao português
-            voice_settings: {
-              stability: 0.7,
-              similarity_boost: 0.8,
-              style: 0.4,
-              use_speaker_boost: true,
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[ERROR] TTS-Handler: Falha na resposta do ElevenLabs: ${response.status} ${response.statusText} - ${errorText}`);
-        throw new Error(`Falha ao gerar áudio: ${response.status} ${response.statusText} - ${errorText}`);
+        }),
       }
+    );
 
-      // Obter o áudio como ArrayBuffer
-      const audioBuffer = await response.arrayBuffer();
-      
-      console.log(`[DEBUG] TTS-Handler: Áudio gerado com sucesso. Tamanho: ${audioBuffer.byteLength} bytes`);
-      
-      // Criar diretório do call para manter organizado
+    if (!elevenlabsResponse.ok) {
+      const errorText = await elevenlabsResponse.text();
+      console.error(`[ERROR] TTS-Handler: Falha na resposta do ElevenLabs: ${elevenlabsResponse.status} ${elevenlabsResponse.statusText} - ${errorText}`);
+      throw new Error(`Falha ao gerar áudio com ElevenLabs: ${elevenlabsResponse.status} ${elevenlabsResponse.statusText}`);
+    }
+
+    // Obter o áudio como ArrayBuffer
+    const audioBuffer = await elevenlabsResponse.arrayBuffer();
+    
+    console.log(`[DEBUG] TTS-Handler: Áudio gerado com sucesso. Tamanho: ${audioBuffer.byteLength} bytes`);
+    
+    // Criar diretório do call para manter organizado
+    try {
       const { error: dirError } = await supabase
         .storage
         .from('tts_audio')
         .upload(`calls/${callSid}/.keep`, new Uint8Array(0), {
-          upsert: true
+          upsert: true,
+          contentType: "text/plain"
         });
         
       if (dirError) {
         console.warn(`[WARN] TTS-Handler: Erro ao criar diretório: ${dirError.message}`);
       }
+    } catch (dirErr) {
+      console.log(`[DEBUG] TTS-Handler: Erro não crítico ao criar diretório: ${dirErr}`);
+    }
+    
+    // Salvar o áudio no bucket do Supabase com máxima compatibilidade
+    console.log(`[DEBUG] TTS-Handler: Salvando áudio no bucket 'tts_audio' em ${filePath}`);
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('tts_audio')
+      .upload(filePath, audioBuffer, {
+        contentType: 'audio/mpeg',
+        upsert: true,
+        cacheControl: "public, max-age=31536000" // 1 ano de cache
+      });
       
-      // Salvar o áudio no bucket do Supabase
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
-        .from('tts_audio')
-        .upload(filePath, audioBuffer, {
-          contentType: 'audio/mpeg',
-          upsert: true
-        });
-        
-      if (uploadError) {
-        console.error(`[ERROR] TTS-Handler: Erro ao salvar áudio no bucket: ${uploadError.message}`);
-        throw new Error(`Erro ao salvar áudio no bucket: ${uploadError.message}`);
-      }
+    if (uploadError) {
+      console.error(`[ERROR] TTS-Handler: Erro ao salvar áudio no bucket: ${uploadError.message}`);
+      throw new Error(`Erro ao salvar áudio no bucket: ${uploadError.message}`);
+    }
+    
+    console.log(`[DEBUG] TTS-Handler: Áudio salvo com sucesso no bucket. Dados de upload: ${JSON.stringify(uploadData)}`);
+    
+    // Obter URL pública do áudio e garantir que seja acessível
+    const { data: publicUrlData } = await supabase
+      .storage
+      .from('tts_audio')
+      .getPublicUrl(filePath);
       
-      // Obter URL pública do áudio
-      const { data: publicUrlData } = await supabase
-        .storage
-        .from('tts_audio')
-        .getPublicUrl(filePath);
-        
-      audioUrl = publicUrlData.publicUrl;
-      
-      // Verificar se a URL é acessível publicamente
-      try {
-        const testResponse = await fetch(audioUrl, { method: 'HEAD' });
-        console.log(`[DEBUG] TTS-Handler: Verificação de URL após upload: ${testResponse.status} ${testResponse.statusText}`);
-        
-        if (!testResponse.ok) {
-          console.warn(`[WARNING] TTS-Handler: URL do áudio recém-criado não está acessível publicamente`);
+    if (!publicUrlData || !publicUrlData.publicUrl) {
+      throw new Error("Falha ao gerar URL pública para o áudio");
+    }
+    
+    audioUrl = publicUrlData.publicUrl;
+    console.log(`[DEBUG] TTS-Handler: URL pública gerada: ${audioUrl}`);
+    
+    // Teste de ping para a URL do áudio - importante para garantir que está acessível
+    try {
+      console.log(`[DEBUG] TTS-Handler: Realizando teste de ping para a URL do áudio: ${audioUrl}`);
+      const testResponse = await fetch(audioUrl, { 
+        method: 'HEAD',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
-      } catch (urlCheckErr) {
-        console.warn(`[WARNING] TTS-Handler: Erro ao verificar URL do áudio recém-criado: ${urlCheckErr}`);
-      }
+      });
       
-      console.log(`[DEBUG] TTS-Handler: Áudio gerado e salvo com sucesso. URL: ${audioUrl}`);
+      console.log(`[DEBUG] TTS-Handler: Resultado do ping: ${testResponse.status} ${testResponse.statusText}`);
+      console.log(`[DEBUG] TTS-Handler: Headers da resposta: ${JSON.stringify(Object.fromEntries(testResponse.headers))}`);
+      
+      if (!testResponse.ok) {
+        console.error(`[ERROR] TTS-Handler: A URL do áudio não está acessível publicamente (${testResponse.status})`);
+        
+        // Testar com uma URL reconstruída
+        const projectId = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
+        if (projectId) {
+          const reconstructedUrl = `https://${projectId}.supabase.co/storage/v1/object/public/tts_audio/${filePath}`;
+          console.log(`[DEBUG] TTS-Handler: Tentando URL reconstruída: ${reconstructedUrl}`);
+          
+          const retryResponse = await fetch(reconstructedUrl, { method: 'HEAD' });
+          if (retryResponse.ok) {
+            console.log(`[DEBUG] TTS-Handler: URL reconstruída funciona! Status: ${retryResponse.status}`);
+            audioUrl = reconstructedUrl;
+          } else {
+            console.error(`[ERROR] TTS-Handler: URL reconstruída também falhou. Status: ${retryResponse.status}`);
+          }
+        }
+      } else {
+        // Verificar se o Content-Type da resposta é de áudio
+        const contentType = testResponse.headers.get('content-type');
+        console.log(`[DEBUG] TTS-Handler: Content-Type do arquivo: ${contentType}`);
+        
+        if (!contentType || !contentType.includes('audio')) {
+          console.warn(`[WARNING] TTS-Handler: Content-Type do arquivo não é de áudio: ${contentType}`);
+        } else {
+          console.log(`[DEBUG] TTS-Handler: Content-Type confirma que é um arquivo de áudio`);
+        }
+      }
+    } catch (pingErr) {
+      console.error(`[ERROR] TTS-Handler: Erro ao testar URL do áudio: ${pingErr}`);
     }
 
-    if (!audioUrl) {
-      throw new Error("Falha ao gerar URL para o áudio");
-    }
-
-    // Tornar URL absoluta se for relativa
-    if (audioUrl.startsWith('/')) {
-      audioUrl = `${supabaseUrl}${audioUrl}`;
-      console.log(`[DEBUG] TTS-Handler: URL convertida para absoluta: ${audioUrl}`);
-    }
-
-    // Verificar se a URL tem protocolo
+    // Garantir que a URL é absoluta
     if (!audioUrl.startsWith('http')) {
       audioUrl = `https:${audioUrl.startsWith('//') ? '' : '//'}${audioUrl}`;
       console.log(`[DEBUG] TTS-Handler: URL com protocolo adicionado: ${audioUrl}`);
     }
 
-    // Teste de ping para a URL do áudio
+    // Generate Direct CDN URL for Twilio
+    // Project ID should be available in the Supabase URL: https://{project-id}.supabase.co
+    const projectId = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
+    
+    if (!projectId) {
+      console.warn('[WARN] TTS-Handler: Não foi possível extrair o project ID do Supabase URL');
+    }
+    
+    // Construir uma URL CDN direta que o Twilio possa acessar
+    const cdnUrl = `https://${projectId}.supabase.co/storage/v1/object/public/tts_audio/${filePath}`;
+    console.log(`[DEBUG] TTS-Handler: URL CDN direta construída: ${cdnUrl}`);
+    
+    // Teste de ping para a URL CDN
     try {
-      console.log(`[DEBUG] TTS-Handler: Realizando teste de ping final para a URL do áudio: ${audioUrl}`);
-      const finalPingResponse = await fetch(audioUrl, { method: 'HEAD' });
-      console.log(`[DEBUG] TTS-Handler: Resultado do ping final: ${finalPingResponse.status} ${finalPingResponse.statusText}`);
+      console.log(`[DEBUG] TTS-Handler: Realizando teste de ping final para a URL CDN: ${cdnUrl}`);
+      const cdnPingResponse = await fetch(cdnUrl, { method: 'HEAD' });
+      console.log(`[DEBUG] TTS-Handler: Resultado do ping CDN: ${cdnPingResponse.status} ${cdnPingResponse.statusText}`);
       
-      if (!finalPingResponse.ok) {
-        console.error(`[ERROR] TTS-Handler: A URL final do áudio NÃO é acessível publicamente!`);
+      if (cdnPingResponse.ok) {
+        console.log('[DEBUG] TTS-Handler: URL CDN verificada e acessível!');
         
-        // Logar todos os cabeçalhos da resposta para debugging
-        console.log(`[DEBUG] TTS-Handler: Headers da resposta do ping: ${JSON.stringify(Object.fromEntries(finalPingResponse.headers))}`);
+        // Use esta URL para o Twilio
+        audioUrl = cdnUrl; 
       } else {
-        console.log(`[DEBUG] TTS-Handler: A URL final do áudio é acessível publicamente.`);
-        
-        // Verificar se o Content-Type da resposta é de áudio
-        const contentType = finalPingResponse.headers.get('content-type');
-        console.log(`[DEBUG] TTS-Handler: Content-Type do arquivo: ${contentType}`);
-        
-        if (!contentType || !contentType.includes('audio')) {
-          console.warn(`[WARNING] TTS-Handler: Content-Type do arquivo não é de áudio: ${contentType}`);
-        }
+        console.error(`[ERROR] TTS-Handler: URL CDN não está acessível: ${cdnPingResponse.status}`);
       }
-    } catch (finalPingErr) {
-      console.error(`[ERROR] TTS-Handler: Erro no teste de ping final: ${finalPingErr}`);
+    } catch (cdnPingErr) {
+      console.error(`[ERROR] TTS-Handler: Erro ao testar URL CDN: ${cdnPingErr}`);
     }
-
-    // Tentar determinando o domínio correto para o Supabase Storage
-    let storageUrl = audioUrl;
-    // Se a URL parece ser um caminho relativo no armazenamento Supabase, tente reconstruí-la
-    if (audioUrl.includes('storage/v1/object/public/tts_audio')) {
-      // Extrai o caminho do objeto após "public/tts_audio/"
-      const match = audioUrl.match(/storage\/v1\/object\/public\/tts_audio\/(.+)/);
-      if (match && match[1]) {
-        const objectPath = match[1];
-        // Constrói a URL do armazenamento Supabase explicitamente
-        const region = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
-        storageUrl = `https://${region}.supabase.co/storage/v1/object/public/tts_audio/${objectPath}`;
-        console.log(`[DEBUG] TTS-Handler: URL reconstruída para armazenamento Supabase: ${storageUrl}`);
-      }
-    }
-
-    // Configurar TwiML com tag Play para o áudio
-    // Adicionar URLs alternativas para o áudio em caso de falha
+    
+    // Configurar TwiML com tag Play para o áudio e fallbacks
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${storageUrl}</Play>
-  <Say language="pt-BR">Se você está ouvindo esta mensagem em vez do áudio personalizado, significa que o Twilio não conseguiu acessar o áudio armazenado.</Say>
+  <Play>${audioUrl}</Play>
+  <Say language="pt-BR">Se você está ouvindo esta mensagem em vez do áudio personalizado, significa que o Twilio não conseguiu acessar o URL do áudio: ${audioUrl.substring(0, 100)}</Say>
 </Response>`;
 
+    console.log(`[DEBUG] TTS-Handler: URL final do áudio no TwiML: ${audioUrl}`);
     console.log(`[DEBUG] TTS-Handler: Retornando TwiML:
 ${twimlResponse}
     `);
     
-    // Log adicional explícito da URL de áudio para depuração
-    console.log(`[DEBUG] URL DO ÁUDIO RETORNADO: ${storageUrl}`);
-    console.log(`[DEBUG] URL original do áudio: ${audioUrl}`);
-    
     // Verificar cabeçalhos da resposta
     const responseHeaders = { 
       ...corsHeaders, 
-      "Content-Type": "application/xml"
+      "Content-Type": "application/xml",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "X-Audio-URL": audioUrl
     };
-    console.log(`[DEBUG] Cabeçalhos de resposta: ${JSON.stringify(responseHeaders)}`);
 
     // Retornar TwiML que o Twilio pode processar
     return new Response(twimlResponse, {
@@ -371,4 +355,3 @@ ${errorTwiml}
     });
   }
 });
-
