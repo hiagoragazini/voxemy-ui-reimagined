@@ -22,6 +22,7 @@ serve(async (req) => {
 
     console.log(`[DEBUG] TTS-Handler: Parâmetros recebidos:
       - text: ${text?.substring(0, 50)}${text?.length && text.length > 50 ? '...' : ''}
+      - text completo: "${text}"
       - voiceId: ${voiceId}
       - callSid: ${callSid}
     `);
@@ -105,7 +106,19 @@ serve(async (req) => {
         - texto completo: "${text}"
       `);
       
+      // Forçar apagar qualquer arquivo existente que possa estar conflitando
+      try {
+        await supabase
+          .storage
+          .from('tts_audio')
+          .remove([filePath]);
+        console.log(`[DEBUG] TTS-Handler: Arquivo anterior removido por garantia`);
+      } catch (cleanupErr) {
+        console.log(`[DEBUG] TTS-Handler: Sem arquivo anterior para remover`);
+      }
+      
       // Converter texto para áudio usando ElevenLabs
+      console.log("[DEBUG] TTS-Handler: Chamando API da ElevenLabs...");
       const response = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
         {
@@ -188,15 +201,22 @@ serve(async (req) => {
 </Response>`;
 
     console.log(`[DEBUG] TTS-Handler: Retornando TwiML:
-    ${twimlResponse}
+${twimlResponse}
     `);
+    
+    // Log adicional explícito da URL de áudio para depuração
+    console.log(`[DEBUG] URL DO ÁUDIO RETORNADO: ${audioUrl}`);
+    
+    // Verificar cabeçalhos da resposta
+    const responseHeaders = { 
+      ...corsHeaders, 
+      "Content-Type": "application/xml"
+    };
+    console.log(`[DEBUG] Cabeçalhos de resposta: ${JSON.stringify(responseHeaders)}`);
 
     // Retornar TwiML que o Twilio pode processar
     return new Response(twimlResponse, {
-      headers: { 
-        ...corsHeaders, 
-        "Content-Type": "application/xml" 
-      },
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error(`[ERROR] TTS-Handler: Erro no handler TTS-Twilio: ${error}`);
@@ -206,6 +226,10 @@ serve(async (req) => {
 <Response>
   <Say language="pt-BR">Ocorreu um erro ao processar esta chamada.</Say>
 </Response>`;
+    
+    console.log(`[DEBUG] TTS-Handler: Retornando TwiML de ERRO:
+${errorTwiml}
+    `);
     
     return new Response(errorTwiml, {
       headers: { 
