@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import AudioTester from './pages/AudioTester';
 import Auth from './pages/Auth';
 import Index from './pages/Index';
+import TwilioManualTest from './pages/TwilioManualTest';
 
 const router = createBrowserRouter([
   {
@@ -35,6 +36,10 @@ const router = createBrowserRouter([
   {
     path: "audio-tester",
     element: <AudioTester />
+  },
+  {
+    path: "twilio-manual-test",
+    element: <TwilioManualTest />
   },
 ]);
 
