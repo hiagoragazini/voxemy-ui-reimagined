@@ -15,6 +15,43 @@ async function getTwilioClient(accountSid, authToken) {
   }
 }
 
+// NOVA FUNÇÃO: Validar URLs de áudio antes de usar no Twilio
+async function validateAudioUrl(url) {
+  try {
+    console.log(`\n[DEBUG] Validando URL de áudio: ${url}`);
+    const response = await fetch(url, { 
+      method: 'HEAD',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error(`[ERROR] URL de áudio inválida: ${response.status} ${response.statusText}`);
+      return { valid: false, status: response.status, message: response.statusText };
+    }
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('audio')) {
+      console.warn(`[WARN] Content-Type não é de áudio: ${contentType}`);
+      return { valid: false, status: 200, message: `Content-Type inválido: ${contentType}` };
+    }
+    
+    const contentLength = response.headers.get('content-length');
+    if (!contentLength || parseInt(contentLength, 10) < 1000) {
+      console.warn(`[WARN] Arquivo de áudio muito pequeno: ${contentLength} bytes`);
+      return { valid: false, status: 200, message: `Tamanho de arquivo suspeito: ${contentLength} bytes` };
+    }
+    
+    console.log(`[DEBUG] URL de áudio validada com sucesso! Content-Type: ${contentType}, Size: ${contentLength} bytes`);
+    return { valid: true, contentType, contentLength };
+  } catch (error) {
+    console.error(`[ERROR] Erro ao validar URL de áudio: ${error}`);
+    return { valid: false, status: 0, message: error.message };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -139,14 +176,16 @@ serve(async (req) => {
         if (message) {
           // Criar URL para o nosso endpoint de TTS com os parâmetros necessários
           const encodedMessage = encodeURIComponent(message);
-          const encodedVoiceId = encodeURIComponent(voiceId || "FGY2WhTYpPnrIDTdsKH5"); // Laura - voz default
+          const encodedVoiceId = encodeURIComponent(voiceId || "21m00Tcm4TlvDq8ikWAM"); // Antônio - voz default para português
           
           // Garantir que o texto está sendo passado corretamente
           if (encodedMessage.length === 0) {
             throw new Error("A mensagem de texto codificada está vazia. Verifique o parâmetro message");
           }
           
-          const ttsUrl = `${baseUrl}/functions/v1/tts-twillio-handler?text=${encodedMessage}&voiceId=${encodedVoiceId}&callSid=${callId}`;
+          // NOVO: Adicionar um timestamp para prevenir cache
+          const timestamp = Date.now();
+          const ttsUrl = `${baseUrl}/functions/v1/tts-twillio-handler?text=${encodedMessage}&voiceId=${encodedVoiceId}&callSid=${callId}&_t=${timestamp}`;
           
           console.log(`\n[DEBUG] URL de TTS gerada: ${ttsUrl}`);
           console.log(`\n[DEBUG] Mensagem codificada: "${encodedMessage}"`);
@@ -158,10 +197,25 @@ serve(async (req) => {
             console.warn(`[WARN] A URL gerada é muito longa (${ttsUrl.length} caracteres). Isto pode causar problemas.`);
           }
           
-          // Construir TwiML que usa <Play> com uma URL para o nosso serviço TTS
+          // NOVO: Validar URL antes de usar
+          const urlValidation = await validateAudioUrl(ttsUrl);
+          if (!urlValidation.valid) {
+            console.warn(`[WARN] Pré-validação da URL de áudio falhou: ${JSON.stringify(urlValidation)}`);
+            console.log("[DEBUG] Continuando mesmo assim, pois a URL será gerada dinamicamente pelo handler TTS");
+          }
+          
+          // NOVO: Usar URL direta do Supabase Storage como teste
+          const projectId = baseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || 'nklbbeavnbwvvatqimxw';
+          const directStorageUrl = `https://${projectId}.supabase.co/storage/v1/object/public/tts_audio/calls/${callId}`;
+          
+          console.log(`\n[DEBUG] URL alternativa de storage: ${directStorageUrl}`);
+          
+          // Construir TwiML com múltiplas opções para aumentar chances de sucesso
           twiml = `
             <Response>
               <Play>${ttsUrl}</Play>
+              <Pause length="1"/>
+              <Say language="pt-BR">Se você está ouvindo esta mensagem, ocorreu um problema ao reproduzir o áudio personalizado.</Say>
               ${recordCall ? '<Record action="' + baseUrl + '/functions/v1/call-record-callback" recordingStatusCallback="' + baseUrl + '/functions/v1/call-record-status" recordingStatusCallbackMethod="POST" />' : ''}
             </Response>
           `;
@@ -207,7 +261,9 @@ serve(async (req) => {
       // Make the call with improved error handling
       try {
         console.log("\nCreating call via Twilio API...");
-        const call = await client.calls.create({
+        
+        // NOVO: Adicionar parâmetros para melhorar compatibilidade
+        const callParams = {
           twiml: twiml,
           to: formattedPhoneNumber,
           from: twilioPhone,
@@ -215,7 +271,13 @@ serve(async (req) => {
           statusCallbackEvent: callbackUrl ? ['initiated', 'ringing', 'answered', 'completed'] : undefined,
           statusCallbackMethod: 'POST',
           record: recordCall,
-        });
+          timeout: 30,  // Timeout em segundos (padrão é 60)
+          machineDetection: 'DetectMessageEnd',  // Detectar se atendeu máquina
+        };
+        
+        console.log(`\n[DEBUG] Parâmetros completos para chamada Twilio: ${JSON.stringify(callParams, null, 2)}`);
+        
+        const call = await client.calls.create(callParams);
         
         console.log("\nCall created successfully:", call.sid);
         console.log("Initial call status:", call.status);

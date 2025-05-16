@@ -163,6 +163,18 @@ serve(async (req) => {
     
     // Converter texto para áudio usando ElevenLabs
     console.log("[DEBUG] TTS-Handler: Chamando API da ElevenLabs...");
+    
+    // NOVO: Testar a API com chamada de OPTIONS primeiro para verificar conectividade
+    try {
+      const testResponse = await fetch("https://api.elevenlabs.io/v1/text-to-speech/test", { 
+        method: 'OPTIONS'
+      });
+      console.log(`[DEBUG] TTS-Handler: Teste de conectividade com ElevenLabs: ${testResponse.status} ${testResponse.statusText}`);
+    } catch (testErr) {
+      console.warn(`[WARN] TTS-Handler: Teste de conectividade com ElevenLabs falhou: ${testErr}`);
+    }
+    
+    // Fazer a requisição real para geração de áudio
     const elevenlabsResponse = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
@@ -170,6 +182,7 @@ serve(async (req) => {
         headers: {
           "Content-Type": "application/json",
           "xi-api-key": elevenlabsApiKey,
+          "User-Agent": "Voxemy-TTS-Function/1.0",
         },
         body: JSON.stringify({
           text: decodedText,
@@ -190,12 +203,31 @@ serve(async (req) => {
       throw new Error(`Falha ao gerar áudio com ElevenLabs: ${elevenlabsResponse.status} ${elevenlabsResponse.statusText}`);
     }
 
+    // NOVO: Verificar headers da resposta para diagnosticar possíveis problemas
+    console.log(`[DEBUG] TTS-Handler: Headers da resposta ElevenLabs: ${JSON.stringify(Object.fromEntries(elevenlabsResponse.headers))}`);
+    
     // Obter o áudio como ArrayBuffer
     const audioBuffer = await elevenlabsResponse.arrayBuffer();
     
     console.log(`[DEBUG] TTS-Handler: Áudio gerado com sucesso. Tamanho: ${audioBuffer.byteLength} bytes`);
     if (audioBuffer.byteLength < 1000) {
       console.error(`[ERROR] TTS-Handler: Áudio gerado é muito pequeno (${audioBuffer.byteLength} bytes), pode indicar erro`);
+    }
+    
+    // NOVO: Validar se o conteúdo parece ser realmente um MP3
+    try {
+      // Verificar os primeiros bytes para confirmar que é um MP3 válido (header ID3 ou frame sync)
+      const firstBytes = new Uint8Array(audioBuffer.slice(0, 4));
+      const isID3 = firstBytes[0] === 73 && firstBytes[1] === 68 && firstBytes[2] === 51; // "ID3"
+      const isMP3FrameSync = (firstBytes[0] === 0xFF && (firstBytes[1] & 0xE0) === 0xE0);
+      
+      if (!isID3 && !isMP3FrameSync) {
+        console.warn(`[WARN] TTS-Handler: O conteúdo recebido não parece ser um arquivo MP3 válido. Primeiros bytes: ${Array.from(firstBytes).join(',')}`);
+      } else {
+        console.log(`[DEBUG] TTS-Handler: Conteúdo validado como MP3 válido (${isID3 ? 'ID3 header' : 'MP3 frame sync'})`);
+      }
+    } catch (validationErr) {
+      console.warn(`[WARN] TTS-Handler: Erro ao validar conteúdo MP3: ${validationErr}`);
     }
     
     // Criar diretório do call para manter organizado
@@ -215,12 +247,17 @@ serve(async (req) => {
       console.log(`[DEBUG] TTS-Handler: Erro não crítico ao criar diretório: ${dirErr}`);
     }
     
+    // NOVO: Gerar um ID único para essa versão do arquivo para evitar problemas de cache
+    const uniqueId = Date.now();
+    const uniqueFileName = `${voiceId}_${textHash}_${uniqueId}.mp3`;
+    const uniqueFilePath = `calls/${callSid}/${uniqueFileName}`;
+    
     // Salvar o áudio no bucket do Supabase com máxima compatibilidade
-    console.log(`[DEBUG] TTS-Handler: Salvando áudio no bucket 'tts_audio' em ${filePath}`);
+    console.log(`[DEBUG] TTS-Handler: Salvando áudio no bucket 'tts_audio' em ${uniqueFilePath}`);
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from('tts_audio')
-      .upload(filePath, audioBuffer, {
+      .upload(uniqueFilePath, audioBuffer, {
         contentType: 'audio/mpeg',
         upsert: true,
         cacheControl: "public, max-age=31536000" // 1 ano de cache
@@ -237,7 +274,7 @@ serve(async (req) => {
     const { data: publicUrlData } = await supabase
       .storage
       .from('tts_audio')
-      .getPublicUrl(filePath);
+      .getPublicUrl(uniqueFilePath);
       
     if (!publicUrlData || !publicUrlData.publicUrl) {
       throw new Error("Falha ao gerar URL pública para o áudio");
@@ -246,59 +283,7 @@ serve(async (req) => {
     audioUrl = publicUrlData.publicUrl;
     console.log(`[DEBUG] TTS-Handler: URL pública gerada: ${audioUrl}`);
     
-    // Teste de ping para a URL do áudio - importante para garantir que está acessível
-    try {
-      console.log(`[DEBUG] TTS-Handler: Realizando teste de ping para a URL do áudio: ${audioUrl}`);
-      const testResponse = await fetch(audioUrl, { 
-        method: 'HEAD',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      console.log(`[DEBUG] TTS-Handler: Resultado do ping: ${testResponse.status} ${testResponse.statusText}`);
-      console.log(`[DEBUG] TTS-Handler: Headers da resposta: ${JSON.stringify(Object.fromEntries(testResponse.headers))}`);
-      
-      if (!testResponse.ok) {
-        console.error(`[ERROR] TTS-Handler: A URL do áudio não está acessível publicamente (${testResponse.status})`);
-        
-        // Testar com uma URL reconstruída
-        const projectId = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
-        if (projectId) {
-          const reconstructedUrl = `https://${projectId}.supabase.co/storage/v1/object/public/tts_audio/${filePath}`;
-          console.log(`[DEBUG] TTS-Handler: Tentando URL reconstruída: ${reconstructedUrl}`);
-          
-          const retryResponse = await fetch(reconstructedUrl, { method: 'HEAD' });
-          if (retryResponse.ok) {
-            console.log(`[DEBUG] TTS-Handler: URL reconstruída funciona! Status: ${retryResponse.status}`);
-            audioUrl = reconstructedUrl;
-          } else {
-            console.error(`[ERROR] TTS-Handler: URL reconstruída também falhou. Status: ${retryResponse.status}`);
-          }
-        }
-      } else {
-        // Verificar se o Content-Type da resposta é de áudio
-        const contentType = testResponse.headers.get('content-type');
-        console.log(`[DEBUG] TTS-Handler: Content-Type do arquivo: ${contentType}`);
-        
-        if (!contentType || !contentType.includes('audio')) {
-          console.warn(`[WARNING] TTS-Handler: Content-Type do arquivo não é de áudio: ${contentType}`);
-        } else {
-          console.log(`[DEBUG] TTS-Handler: Content-Type confirma que é um arquivo de áudio`);
-        }
-      }
-    } catch (pingErr) {
-      console.error(`[ERROR] TTS-Handler: Erro ao testar URL do áudio: ${pingErr}`);
-    }
-
-    // Garantir que a URL é absoluta
-    if (!audioUrl.startsWith('http')) {
-      audioUrl = `https:${audioUrl.startsWith('//') ? '' : '//'}${audioUrl}`;
-      console.log(`[DEBUG] TTS-Handler: URL com protocolo adicionado: ${audioUrl}`);
-    }
-
-    // Generate Direct CDN URL for Twilio
+    // NOVA ABORDAGEM: Construir URL diretas para o Twilio
     // Project ID should be available in the Supabase URL: https://{project-id}.supabase.co
     const projectId = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || '';
     
@@ -306,36 +291,102 @@ serve(async (req) => {
       console.warn('[WARN] TTS-Handler: Não foi possível extrair o project ID do Supabase URL');
     }
     
-    // Construir uma URL CDN direta que o Twilio possa acessar
-    const cdnUrl = `https://${projectId}.supabase.co/storage/v1/object/public/tts_audio/${filePath}`;
-    console.log(`[DEBUG] TTS-Handler: URL CDN direta construída: ${cdnUrl}`);
+    // Construir todas as possíveis variantes de URLs para testing
+    const cdnUrl = `https://${projectId}.supabase.co/storage/v1/object/public/tts_audio/${uniqueFilePath}`;
+    const cdnUrl2 = `${supabaseUrl}/storage/v1/object/public/tts_audio/${uniqueFilePath}`;
+    const cdnUrl3 = `https://nklbbeavnbwvvatqimxw.supabase.co/storage/v1/object/public/tts_audio/${uniqueFilePath}`;
     
-    // Teste de ping para a URL CDN
-    try {
-      console.log(`[DEBUG] TTS-Handler: Realizando teste de ping final para a URL CDN: ${cdnUrl}`);
-      const cdnPingResponse = await fetch(cdnUrl, { method: 'HEAD' });
-      console.log(`[DEBUG] TTS-Handler: Resultado do ping CDN: ${cdnPingResponse.status} ${cdnPingResponse.statusText}`);
-      
-      if (cdnPingResponse.ok) {
-        console.log('[DEBUG] TTS-Handler: URL CDN verificada e acessível!');
+    // NOVO: Testar várias formas de URLs para verificar qual funciona melhor
+    const urlsToTest = [
+      { name: "URL padrão", url: audioUrl },
+      { name: "CDN URL 1", url: cdnUrl },
+      { name: "CDN URL 2", url: cdnUrl2 },
+      { name: "CDN URL 3", url: cdnUrl3 },
+    ];
+    
+    console.log("[DEBUG] TTS-Handler: Testando múltiplas variantes de URLs para encontrar a mais compatível");
+    
+    let bestUrl = null;
+    let bestUrlName = null;
+    
+    // TESTE INTENSIVO: Verificar qual URL tem melhor compatibilidade
+    for (const urlData of urlsToTest) {
+      try {
+        console.log(`[DEBUG] TTS-Handler: Testando ${urlData.name}: ${urlData.url}`);
+        const testResponse = await fetch(urlData.url, { 
+          method: 'HEAD',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
         
-        // Use esta URL para o Twilio
-        audioUrl = cdnUrl; 
-      } else {
-        console.error(`[ERROR] TTS-Handler: URL CDN não está acessível: ${cdnPingResponse.status}`);
+        const contentType = testResponse.headers.get('content-type');
+        const contentLength = testResponse.headers.get('content-length');
+        
+        console.log(`[DEBUG] TTS-Handler: ${urlData.name} - Status: ${testResponse.status}, Content-Type: ${contentType}, Size: ${contentLength} bytes`);
+        
+        if (testResponse.ok && contentType && contentType.includes('audio') && 
+            parseInt(contentLength || '0', 10) > 1000) {
+          console.log(`[DEBUG] TTS-Handler: ${urlData.name} VALIDADA com SUCESSO!`);
+          bestUrl = urlData.url;
+          bestUrlName = urlData.name;
+          break;
+        } else {
+          console.log(`[DEBUG] TTS-Handler: ${urlData.name} não atendeu aos critérios de validação`);
+        }
+      } catch (urlTestErr) {
+        console.error(`[ERROR] TTS-Handler: Erro testando ${urlData.name}: ${urlTestErr}`);
       }
-    } catch (cdnPingErr) {
-      console.error(`[ERROR] TTS-Handler: Erro ao testar URL CDN: ${cdnPingErr}`);
     }
     
-    // Configurar TwiML com tag Play para o áudio e fallbacks
+    // Se nenhuma URL passou nos testes, usar a URL CDN direta como último recurso
+    if (!bestUrl) {
+      console.warn(`[WARN] TTS-Handler: Nenhuma URL validada com sucesso. Usando CDN URL como fallback.`);
+      bestUrl = cdnUrl3;
+      bestUrlName = "CDN URL (fallback)";
+    }
+    
+    console.log(`[DEBUG] TTS-Handler: URL selecionada para Twilio: ${bestUrlName} - ${bestUrl}`);
+    audioUrl = bestUrl;
+    
+    // NOVO TESTE FINAL: Verificar se o áudio é realmente acessível via GET
+    try {
+      console.log(`[DEBUG] TTS-Handler: Verificando download completo do áudio via ${bestUrlName}`);
+      const finalTest = await fetch(audioUrl);
+      
+      if (finalTest.ok) {
+        const audioData = await finalTest.arrayBuffer();
+        console.log(`[DEBUG] TTS-Handler: Download completo bem-sucedido! Tamanho: ${audioData.byteLength} bytes`);
+        
+        if (audioData.byteLength < 1000) {
+          console.error(`[ERROR] TTS-Handler: Arquivo baixado é muito pequeno (${audioData.byteLength} bytes)`);
+        } else {
+          console.log(`[DEBUG] TTS-Handler: Arquivo de áudio validado e pronto para uso!`);
+        }
+        
+        // Verificar headers completos da resposta final
+        console.log(`[DEBUG] TTS-Handler: Headers da resposta final: ${JSON.stringify(Object.fromEntries(finalTest.headers))}`);
+      } else {
+        console.error(`[ERROR] TTS-Handler: Falha no teste final de download: ${finalTest.status} ${finalTest.statusText}`);
+      }
+    } catch (finalTestErr) {
+      console.error(`[ERROR] TTS-Handler: Erro no teste final de download: ${finalTestErr}`);
+    }
+    
+    // NOVO: Usar URL parametrizada para Twilio com timestamp para evitar cache
+    const twimlUrl = `${audioUrl}?t=${Date.now()}`;
+    
+    // Configurar TwiML com tag Play para o áudio e fallbacks detalhados
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${audioUrl}</Play>
+  <Play>${twimlUrl}</Play>
   <Say language="pt-BR">Se você está ouvindo esta mensagem em vez do áudio personalizado, significa que o Twilio não conseguiu acessar o URL do áudio: ${audioUrl.substring(0, 100)}</Say>
+  <Pause length="1"/>
+  <Say language="pt-BR">Tamanho do áudio gerado: ${audioBuffer.byteLength} bytes. Hash do texto: ${textHash}</Say>
 </Response>`;
 
-    console.log(`[DEBUG] TTS-Handler: URL final do áudio no TwiML: ${audioUrl}`);
+    console.log(`[DEBUG] TTS-Handler: URL final do áudio no TwiML: ${twimlUrl}`);
     console.log(`[DEBUG] TTS-Handler: Texto original decodificado: "${decodedText}"`);
     console.log(`[DEBUG] TTS-Handler: Retornando TwiML:
 ${twimlResponse}
@@ -359,11 +410,12 @@ ${twimlResponse}
   } catch (error) {
     console.error(`[ERROR] TTS-Handler: Erro no handler TTS-Twilio: ${error}`);
     
-    // Retornar TwiML de erro
+    // Retornar TwiML de erro mais detalhado
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say language="pt-BR">Ocorreu um erro ao processar esta chamada.</Say>
   <Say language="pt-BR">${error.message || "Erro desconhecido"}</Say>
+  <Say language="pt-BR">Por favor, verifique os logs para mais detalhes.</Say>
 </Response>`;
     
     console.log(`[DEBUG] TTS-Handler: Retornando TwiML de ERRO:
