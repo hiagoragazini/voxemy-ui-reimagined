@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Dashboard from "./pages/Dashboard";
 import AgentList from "./pages/Agents";
 import AgentNew from "./pages/AgentConfig";
-import AgentDetails from "./pages/Agents"; // Temporarily pointing to Agents page
+import AgentDetails from "./pages/Agents"; // This should later be updated with a dedicated details page
 import CampaignList from "./pages/Campaigns";
 import CampaignNew from "./pages/CampaignForm";
 import CampaignDetails from "./pages/CampaignDetails";
@@ -37,11 +37,13 @@ function App() {
         <Route path="/agents" element={<AgentList />} />
         <Route path="/agents/new" element={<AgentNew />} />
         <Route path="/agents/:id" element={<AgentDetails />} />
+        <Route path="/agents/:id/edit" element={<AgentNew />} />
         
         {/* Campaigns */}
         <Route path="/campaigns" element={<CampaignList />} />
         <Route path="/campaigns/new" element={<CampaignNew />} />
         <Route path="/campaigns/:id" element={<CampaignDetails />} />
+        <Route path="/campaigns/:id/edit" element={<CampaignNew />} />
         
         {/* Leads */}
         <Route path="/leads" element={<LeadList />} />
