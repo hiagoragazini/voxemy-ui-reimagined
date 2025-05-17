@@ -24,3 +24,9 @@ verify_jwt = false
 
 [functions.twilio-diagnostic]
 verify_jwt = false
+
+[functions.zenvia-call-handler]
+verify_jwt = false
+
+[functions.zenvia-process-dialog]
+verify_jwt = false
