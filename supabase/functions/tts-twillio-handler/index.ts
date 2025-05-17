@@ -74,21 +74,43 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    // Obter parâmetros da URL
-    const text = url.searchParams.get('text');
-    // Usar voz Antônio (pt-BR) da ElevenLabs para garantir compatibilidade com português
-    const voiceId = url.searchParams.get('voiceId') || "21m00Tcm4TlvDq8ikWAM";
-    const callSid = url.searchParams.get('callSid') || `manual-${Date.now()}`;
-
-    console.log(`[DEBUG] TTS-Handler: Parâmetros recebidos:
-      - text: ${text?.substring(0, 50)}${text?.length && text.length > 50 ? '...' : ''}
-      - text completo: "${text}"
-      - text decodificado: "${text ? decodeURIComponent(text) : ''}"
-      - voiceId: ${voiceId}
-      - callSid: ${callSid}
-      - URL completa: ${req.url}
-    `);
+    // Verificar se a request é POST ou GET
+    const isPostRequest = req.method === "POST";
+    
+    // Vamos tratar dados de POST e GET de forma diferente
+    let text, voiceId, callSid;
+    
+    if (isPostRequest) {
+      // Para requisições POST, extrair dados do corpo JSON
+      const requestData = await req.json();
+      
+      // MODIFICAÇÃO IMPORTANTE: Suportar tanto 'text' quanto 'message'
+      text = requestData.text || requestData.message; // Aceita text OU message
+      voiceId = requestData.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Voz padrão
+      callSid = requestData.callSid || `manual-${Date.now()}`;
+      
+      console.log("[DEBUG] TTS-Handler: Dados recebidos via POST:", {
+        text: text?.substring(0, 50) + (text?.length > 50 ? '...' : ''),
+        textoCompleto: text,
+        voiceId,
+        callSid
+      });
+    } else {
+      // Para requisições GET, extrair dados da URL
+      const url = new URL(req.url);
+      text = url.searchParams.get('text');
+      voiceId = url.searchParams.get('voiceId') || "21m00Tcm4TlvDq8ikWAM";
+      callSid = url.searchParams.get('callSid') || `manual-${Date.now()}`;
+      
+      console.log(`[DEBUG] TTS-Handler: Parâmetros recebidos via GET:
+        - text: ${text?.substring(0, 50)}${text?.length && text.length > 50 ? '...' : ''}
+        - text completo: "${text}"
+        - text decodificado: "${text ? decodeURIComponent(text) : ''}"
+        - voiceId: ${voiceId}
+        - callSid: ${callSid}
+        - URL completa: ${req.url}
+      `);
+    }
 
     // Verifica se é um teste ou solicitação real
     console.log(`[DEBUG] TTS-Handler: URL completo: ${req.url}`);
@@ -98,7 +120,7 @@ serve(async (req) => {
     console.log(`[DEBUG] TTS-Handler: Headers da requisição: ${JSON.stringify(Object.fromEntries(req.headers))}`);
 
     if (!text) {
-      const errorMessage = "Parâmetro text é obrigatório e está ausente na requisição";
+      const errorMessage = "Parâmetro text/message é obrigatório e está ausente na requisição";
       console.error(`[ERROR] TTS-Handler: ${errorMessage}`);
       throw new Error(errorMessage);
     }

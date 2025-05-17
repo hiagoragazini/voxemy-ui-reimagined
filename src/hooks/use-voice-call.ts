@@ -191,7 +191,7 @@ export function useVoiceCall() {
           agentId,
           campaignId,
           phoneNumber: cleanPhone,
-          message,
+          message, // Enviando como 'message' para compatibilidade com o código atual
           leadId,
           voiceId
         }
