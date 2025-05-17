@@ -18,3 +18,9 @@ verify_jwt = false
 
 [functions.call-handler]
 verify_jwt = false
+
+[functions.twilio-echo]
+verify_jwt = false
+
+[functions.twilio-diagnostic]
+verify_jwt = false
