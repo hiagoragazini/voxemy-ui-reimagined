@@ -1,26 +1,84 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Token de acesso da API Zenvia
+const ZENVIA_API_TOKEN = Deno.env.get("ZENVIA_API_TOKEN") || "59db3a357f71882854f0bb309aa36c2b";
 
-// Função para inicializar o cliente Zenvia (será implementada quando tivermos as credenciais)
-async function initZenviaClient(apiToken: string) {
-  // Este é um placeholder que será substituído pela implementação real
-  // quando tivermos acesso à documentação da API Zenvia
-  console.log("Inicializando cliente Zenvia com token:", apiToken.substring(0, 5) + '...');
-  return {
-    // Métodos do cliente Zenvia serão implementados aqui
-    makeCall: async (params: any) => {
-      console.log("Simulando chamada Zenvia com parâmetros:", params);
-      return {
-        id: `zenvia-call-${Date.now()}`,
-        status: "initiated"
-      };
+// Inicialização do cliente Zenvia
+async function makeZenviaCall(params: any) {
+  try {
+    const { phoneNumber, message, voiceId } = params;
+    
+    console.log(`Fazendo chamada Zenvia para ${phoneNumber}`);
+    
+    // Endpoint da API Zenvia para chamadas de voz
+    const zenviaApiUrl = "https://api.zenvia.com/v2/channels/voice/messages";
+    
+    // Formatar número de telefone para padrão E.164 conforme exigido pela Zenvia
+    let formattedPhone = phoneNumber.replace(/\D/g, '');
+    if (!formattedPhone.startsWith('55') && (formattedPhone.length === 10 || formattedPhone.length === 11)) {
+      formattedPhone = `55${formattedPhone}`;
     }
-  };
+    
+    // Preparar payload para a API da Zenvia
+    const payload = {
+      from: Deno.env.get("ZENVIA_FROM_NUMBER") || "zenvia-voice",
+      to: formattedPhone,
+      contents: [
+        {
+          type: "text",
+          text: message
+        }
+      ],
+      // Adicionar metadados para tracking
+      id: `call-${Date.now()}`,
+      direction: "outbound"
+    };
+    
+    if (voiceId) {
+      // Se tiver voiceId, adicionar informações de voz
+      payload.contents[0].voiceId = voiceId;
+    }
+    
+    // Adicionar referência ao webhook para resposta
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    if (supabaseUrl) {
+      const callbackUrl = `${supabaseUrl.replace(/\/$/g, "")}/functions/v1/zenvia-process-dialog`;
+      payload.contents[0].callbackUrl = callbackUrl;
+    }
+    
+    // Configurar cabeçalhos com autenticação
+    const headers = {
+      "Content-Type": "application/json",
+      "X-API-Token": ZENVIA_API_TOKEN
+    };
+    
+    // Fazer a requisição para a API da Zenvia
+    const response = await fetch(zenviaApiUrl, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error(`Erro na API Zenvia: ${response.status} - ${errorData}`);
+      throw new Error(`Falha na API Zenvia: ${response.status} - ${errorData}`);
+    }
+    
+    const data = await response.json();
+    console.log("Resposta da API Zenvia:", data);
+    
+    return {
+      id: data.id || `zenvia-call-${Date.now()}`,
+      status: "initiated",
+      responseData: data
+    };
+  } catch (error) {
+    console.error("Erro ao fazer chamada Zenvia:", error);
+    throw error;
+  }
 }
 
 serve(async (req) => {
@@ -40,19 +98,8 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log("Request data:", JSON.stringify(requestData, null, 2));
     
-    // Obter credenciais Zenvia
-    const zenviaApiToken = Deno.env.get("ZENVIA_API_TOKEN");
-    const zenviaFromNumber = Deno.env.get("ZENVIA_FROM_NUMBER");
-    
-    if (!zenviaApiToken || !zenviaFromNumber) {
-      console.error("Credenciais Zenvia ausentes:");
-      console.error(`- ZENVIA_API_TOKEN: ${zenviaApiToken ? "configurado" : "não configurado"}`);
-      console.error(`- ZENVIA_FROM_NUMBER: ${zenviaFromNumber ? "configurado" : "não configurado"}`);
-      throw new Error("Credenciais Zenvia não configuradas completamente");
-    }
-
-    // Extrair campos da requisição
-    const { phoneNumber, message, voiceId, agentId, campaignId, leadId } = requestData;
+    // Validar dados mínimos necessários
+    const { phoneNumber, message } = requestData;
     
     if (!phoneNumber) {
       throw new Error("Número de telefone não fornecido");
@@ -62,58 +109,16 @@ serve(async (req) => {
       throw new Error("Mensagem não fornecida");
     }
     
-    // Formatar número de telefone para padrão brasileiro
-    let formattedPhone = phoneNumber.replace(/\D/g, '');
-    if (formattedPhone.length === 10 || formattedPhone.length === 11) {
-      if (!formattedPhone.startsWith('55')) {
-        formattedPhone = `55${formattedPhone}`;
-      }
-    }
-    
-    console.log(`Número formatado: ${formattedPhone}`);
-    
-    // Obter URL base para webhooks do Supabase
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    if (!supabaseUrl) {
-      throw new Error("SUPABASE_URL não configurado");
-    }
-    
-    // Construir a URL absoluta para o webhook de processamento
-    const processWebhookUrl = `${supabaseUrl.replace(/\/$/g, "")}/functions/v1/zenvia-process-dialog`;
-    console.log(`URL do webhook de processamento: ${processWebhookUrl}`);
-    
-    // Inicializar cliente Zenvia
-    console.log("Inicializando cliente Zenvia...");
-    const client = await initZenviaClient(zenviaApiToken);
-    
-    // Esta é uma implementação de placeholder que será substituída pela implementação real
-    // quando tivermos acesso à documentação da API Zenvia
-    console.log(`Iniciando chamada de ${zenviaFromNumber} para ${formattedPhone}`);
-    console.log(`Mensagem: "${message}"`);
-    
-    // Simulação de chamada (será substituído pela implementação real)
-    const call = await client.makeCall({
-      from: zenviaFromNumber,
-      to: formattedPhone,
-      message: message,
-      voice: voiceId,
-      webhookUrl: processWebhookUrl,
-      agentId: agentId,
-      campaignId: campaignId,
-      leadId: leadId
-    });
-    
-    console.log(`Chamada iniciada: ID ${call.id}, status inicial: ${call.status}`);
-    
-    // Registro em base de dados (a ser implementado quando tivermos as credenciais)
-    // Esta parte seria similar à implementação atual com o Twilio
+    // Fazer a chamada usando a API Zenvia
+    const callResult = await makeZenviaCall(requestData);
     
     return new Response(
       JSON.stringify({
         success: true,
         message: "Chamada via Zenvia iniciada com sucesso",
-        call_id: call.id,
-        status: call.status
+        call_id: callResult.id,
+        status: callResult.status,
+        details: callResult.responseData
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" }

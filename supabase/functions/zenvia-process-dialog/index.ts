@@ -1,11 +1,96 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Token de acesso da API Zenvia
+const ZENVIA_API_TOKEN = Deno.env.get("ZENVIA_API_TOKEN") || "59db3a357f71882854f0bb309aa36c2b";
+
+// Função para processar texto com OpenAI
+async function processWithAI(text) {
+  try {
+    // Inicializar o módulo OpenAI
+    const { default: OpenAI } = await import("npm:openai@4.20.0");
+    
+    const openai = new OpenAI({
+      apiKey: Deno.env.get("OPENAI_API_KEY"),
+    });
+    
+    console.log(`Processando texto com OpenAI: "${text}"`);
+    
+    // Preparar mensagens para o modelo
+    const systemPrompt = {
+      role: "system",
+      content: `Você é um assistente virtual de atendimento telefônico.
+      Seja cordial, profissional e objetivo nas suas respostas.
+      Suas respostas devem ser naturais para conversação por voz, evitando textos muito longos.
+      Limite suas respostas a no máximo 3 frases curtas.
+      Fale em português brasileiro de forma natural.
+      Se o cliente quiser encerrar a conversa, agradeça e se despeça educadamente.`,
+    };
+    
+    // Fazer a chamada para a API com timeout adequado
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // Modelo mais rápido e econômico
+      messages: [
+        systemPrompt,
+        { role: "user", content: text }
+      ],
+      max_tokens: 150,
+      temperature: 0.7,
+    });
+    
+    const aiResponse = response.choices[0].message.content.trim();
+    console.log(`AI Response: "${aiResponse}"`);
+    return aiResponse;
+  } catch (error) {
+    console.error("Erro ao processar texto com AI:", error);
+    return "Desculpe, estou tendo dificuldades para processar sua mensagem. Poderia repetir de outra forma?";
+  }
+}
+
+// Função para responder via API da Zenvia
+async function sendZenviaReply(sessionId, messageText) {
+  try {
+    // Endpoint para responder a uma mensagem na Zenvia
+    const zenviaApiUrl = "https://api.zenvia.com/v2/channels/voice/messages";
+    
+    // Payload para resposta
+    const payload = {
+      from: Deno.env.get("ZENVIA_FROM_NUMBER") || "zenvia-voice",
+      to: sessionId, // O ID da sessão como identificador
+      contents: [
+        {
+          type: "text",
+          text: messageText
+        }
+      ]
+    };
+    
+    // Configurar cabeçalhos com autenticação
+    const headers = {
+      "Content-Type": "application/json",
+      "X-API-Token": ZENVIA_API_TOKEN
+    };
+    
+    // Enviar resposta para a Zenvia
+    const response = await fetch(zenviaApiUrl, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Erro ao enviar resposta: ${response.status} - ${errorText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Erro ao enviar resposta Zenvia:", error);
+    throw error;
+  }
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -23,31 +108,6 @@ serve(async (req) => {
     const requestData = await req.json().catch(() => ({}));
     console.log("Request data:", JSON.stringify(requestData, null, 2));
     
-    // Esta é uma implementação de placeholder - a estrutura real do requestData
-    // dependeria do formato dos webhooks da Zenvia
-    // Exemplo hipotético baseado em webhooks de telefonia comuns:
-    // const { callId, from, to, speechResult } = requestData;
-
-    // Obter parâmetros da URL
-    const url = new URL(req.url);
-    const agentId = url.searchParams.get("agentId");
-    const campaignId = url.searchParams.get("campaignId");
-    const leadId = url.searchParams.get("leadId");
-
-    console.log(`Processando diálogo para agente: ${agentId || 'não especificado'}`);
-    
-    // Obter chaves de API
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    const elevenLabsApiKey = Deno.env.get("ELEVENLABS_API_KEY");
-    
-    if (!openaiApiKey) {
-      throw new Error("OPENAI_API_KEY não configurado");
-    }
-    
-    if (!elevenLabsApiKey) {
-      throw new Error("ELEVENLABS_API_KEY não configurado");
-    }
-    
     // Inicializar cliente do Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -58,33 +118,59 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Este é um placeholder para o processamento real de diálogo
-    // A implementação completa seria feita quando tivermos as informações da API Zenvia
+    // Extrair mensagem do usuário baseado na estrutura da Zenvia
+    // A estrutura exata pode variar conforme a documentação da Zenvia
+    const userMessage = extractUserMessage(requestData);
+    const sessionId = extractSessionId(requestData);
     
-    // 1. Obter o texto reconhecido do webhook da Zenvia
-    // const recognizedText = speechResult || "Não foi possível reconhecer a fala";
-    const recognizedText = "Placeholder para texto reconhecido da fala";
+    console.log(`Mensagem do usuário: "${userMessage}"`);
+    console.log(`ID da sessão: ${sessionId}`);
     
-    // 2. Processar com OpenAI (similar à implementação atual)
-    console.log("Processando texto com OpenAI:", recognizedText);
+    if (!userMessage) {
+      throw new Error("Não foi possível extrair a mensagem do usuário");
+    }
     
-    // Esta é uma simulação da chamada OpenAI que seria substituída pela implementação real
-    const aiResponse = "Esta é uma resposta simulada do assistente de IA. A implementação real utilizará o OpenAI API.";
+    // Processar a mensagem com IA
+    const aiResponse = await processWithAI(userMessage);
     
-    // 3. Gerar áudio com ElevenLabs (similar à implementação atual)
-    console.log("Gerando áudio com ElevenLabs");
+    // Armazenar a conversa no Supabase (opcional)
+    if (sessionId) {
+      try {
+        await supabase.from('call_logs').insert({
+          call_sid: sessionId,
+          status: 'active',
+          transcription: [
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: aiResponse }
+          ]
+        });
+      } catch (dbError) {
+        console.error("Erro ao salvar conversa:", dbError);
+        // Continuar mesmo em caso de erro no banco de dados
+      }
+    }
     
-    // A resposta Zenvia seria formatada de acordo com sua documentação
-    // Este é apenas um placeholder
-    const zenviaResponse = {
-      success: true,
-      message: "Processamento de diálogo concluído",
-      text: aiResponse,
-      audioUrl: "https://placeholder-para-url-de-audio.mp3"
-    };
+    // Se tivermos ID de sessão, enviar resposta via API
+    let apiResponse = null;
+    if (sessionId) {
+      try {
+        apiResponse = await sendZenviaReply(sessionId, aiResponse);
+      } catch (replyError) {
+        console.error("Erro ao enviar resposta:", replyError);
+        // Continuar e retornar resposta via webhook de volta
+      }
+    }
     
+    // Retornar resposta em formato JSON para o webhook da Zenvia
     return new Response(
-      JSON.stringify(zenviaResponse),
+      JSON.stringify({
+        success: true,
+        sessionId: sessionId,
+        userMessage: userMessage,
+        aiResponse: aiResponse,
+        apiResponse: apiResponse,
+        timestamp: new Date().toISOString()
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       }
@@ -105,3 +191,25 @@ serve(async (req) => {
     );
   }
 });
+
+// Helpers para extrair dados do webhook da Zenvia (ajustar conforme documentação)
+function extractUserMessage(data) {
+  // Tentar vários caminhos possíveis para extrair a mensagem do usuário
+  return data.message?.contents?.[0]?.text ||
+         data.contents?.[0]?.text ||
+         data.text ||
+         data.input ||
+         data.userMessage ||
+         data.speechResult ||
+         '';
+}
+
+function extractSessionId(data) {
+  // Tentar vários caminhos possíveis para extrair o ID da sessão
+  return data.message?.id ||
+         data.id ||
+         data.sessionId ||
+         data.callId ||
+         data.messageId ||
+         `session-${Date.now()}`;
+}
