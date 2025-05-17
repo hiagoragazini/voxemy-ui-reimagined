@@ -19,54 +19,6 @@ async function getTwilioClient(accountSid, authToken) {
   }
 }
 
-// Função para upload do áudio para Twilio Assets
-async function uploadToTwilioAssets(audioBuffer, fileName, twilioClient) {
-  try {
-    console.log(`[DEBUG] TTS-Handler: Iniciando upload para Twilio Assets: ${fileName}`);
-    
-    // Converte o ArrayBuffer para Base64
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
-    
-    // Cria um serviço Twilio Serverless para hospedar o asset
-    const service = await twilioClient.serverless.v1.services
-      .create({
-        friendlyName: 'Voxemy Audio Service',
-        includeCredentials: true,
-        uniqueName: `voxemy-audio-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-      });
-      
-    console.log(`[DEBUG] TTS-Handler: Serviço Twilio criado com SID: ${service.sid}`);
-    
-    // Faz upload do asset para o serviço
-    const asset = await twilioClient.serverless.v1.services(service.sid)
-      .assets
-      .create({
-        friendlyName: fileName,
-        contentType: 'audio/mpeg',
-        content: base64Audio
-      });
-      
-    console.log(`[DEBUG] TTS-Handler: Asset criado com SID: ${asset.sid}`);
-    
-    // Define o asset como público
-    await twilioClient.serverless.v1.services(service.sid)
-      .assets(asset.sid)
-      .assetVersions(asset.latestVersion)
-      .update({ visibility: 'public' });
-      
-    console.log(`[DEBUG] TTS-Handler: Asset definido como público`);
-    
-    // Constrói a URL pública do asset
-    const publicUrl = `https://serverless-${service.sid.toLowerCase()}.twil.io/${fileName}`;
-    
-    console.log(`[DEBUG] TTS-Handler: URL pública do asset: ${publicUrl}`);
-    return publicUrl;
-  } catch (error) {
-    console.error(`[ERROR] TTS-Handler: Erro ao fazer upload para Twilio Assets: ${error}`);
-    throw new Error(`Falha ao fazer upload para Twilio Assets: ${error.message}`);
-  }
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -78,7 +30,7 @@ serve(async (req) => {
     const isPostRequest = req.method === "POST";
     
     // Vamos tratar dados de POST e GET de forma diferente
-    let text, voiceId, callSid;
+    let text, voiceId, phoneNumber, callSid;
     
     if (isPostRequest) {
       // Para requisições POST, extrair dados do corpo JSON
@@ -87,12 +39,14 @@ serve(async (req) => {
       // MODIFICAÇÃO IMPORTANTE: Suportar tanto 'text' quanto 'message'
       text = requestData.text || requestData.message; // Aceita text OU message
       voiceId = requestData.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Voz padrão
+      phoneNumber = requestData.phoneNumber;
       callSid = requestData.callSid || `manual-${Date.now()}`;
       
       console.log("[DEBUG] TTS-Handler: Dados recebidos via POST:", {
         text: text?.substring(0, 50) + (text?.length > 50 ? '...' : ''),
         textoCompleto: text,
         voiceId,
+        phoneNumber,
         callSid
       });
     } else {
@@ -100,6 +54,7 @@ serve(async (req) => {
       const url = new URL(req.url);
       text = url.searchParams.get('text');
       voiceId = url.searchParams.get('voiceId') || "21m00Tcm4TlvDq8ikWAM";
+      phoneNumber = url.searchParams.get('phoneNumber');
       callSid = url.searchParams.get('callSid') || `manual-${Date.now()}`;
       
       console.log(`[DEBUG] TTS-Handler: Parâmetros recebidos via GET:
@@ -107,6 +62,7 @@ serve(async (req) => {
         - text completo: "${text}"
         - text decodificado: "${text ? decodeURIComponent(text) : ''}"
         - voiceId: ${voiceId}
+        - phoneNumber: ${phoneNumber}
         - callSid: ${callSid}
         - URL completa: ${req.url}
       `);
@@ -125,6 +81,12 @@ serve(async (req) => {
       throw new Error(errorMessage);
     }
 
+    if (!phoneNumber) {
+      const errorMessage = "Parâmetro phoneNumber é obrigatório";
+      console.error(`[ERROR] TTS-Handler: ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
+
     // Decodificar o texto para garantir que acentos e caracteres especiais estão corretos
     const decodedText = decodeURIComponent(text);
     if (decodedText.trim().length === 0) {
@@ -137,13 +99,14 @@ serve(async (req) => {
     const elevenlabsApiKey = Deno.env.get("ELEVENLABS_API_KEY");
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
     
     if (!elevenlabsApiKey) {
       throw new Error("ElevenLabs API key não configurada");
     }
     
-    if (!twilioAccountSid || !twilioAuthToken) {
-      throw new Error("Credenciais Twilio não configuradas");
+    if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+      throw new Error("Credenciais Twilio não configuradas completamente");
     }
 
     // Inicializar cliente Supabase
@@ -235,87 +198,76 @@ serve(async (req) => {
     // Inicializar cliente Twilio
     console.log(`[DEBUG] TTS-Handler: Inicializando cliente Twilio`);
     const twilioClient = await getTwilioClient(twilioAccountSid, twilioAuthToken);
-    
-    // Upload do áudio para Twilio Assets
-    console.log(`[DEBUG] TTS-Handler: Fazendo upload do áudio para Twilio Assets`);
-    const twilioAssetUrl = await uploadToTwilioAssets(audioBuffer, uniqueFileName, twilioClient);
-    
-    // Também salvar no Supabase Storage como backup
+
+    // Método mais direto: fazer um TwiML com Url direto para o ElevenLabs API
     try {
-      // Verificar se o bucket existe
-      const { data: bucketData, error: bucketError } = await supabase
-        .storage
-        .getBucket('tts_audio');
-        
-      if (bucketError) {
-        console.log(`[DEBUG] TTS-Handler: Criando bucket 'tts_audio'`);
-        await supabase.storage.createBucket('tts_audio', { public: true });
+      console.log(`[DEBUG] TTS-Handler: Fazendo chamada Twilio para número ${phoneNumber}`);
+      
+      // Usar TwiML simples que usa o texto diretamente
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+      <Response>
+        <Say voice="woman" language="pt-BR">${decodedText}</Say>
+      </Response>`;
+
+      // Criar chamada usando o cliente Twilio
+      const call = await twilioClient.calls.create({
+        twiml: twiml,
+        to: phoneNumber,
+        from: twilioPhoneNumber,
+        timeout: 30
+      });
+      
+      console.log(`[DEBUG] TTS-Handler: Chamada iniciada com sucesso. SID: ${call.sid}`);
+      
+      // Salvar informações da chamada para rastreamento
+      try {
+        await supabase
+          .from("call_logs")
+          .insert({
+            call_sid: call.sid,
+            phone_number: phoneNumber,
+            message: decodedText,
+            voice_id: voiceId,
+            status: "initiated"
+          });
+          
+        console.log("[DEBUG] TTS-Handler: Log da chamada salvo no banco de dados");
+      } catch (dbError) {
+        console.warn(`[WARN] TTS-Handler: Não foi possível registrar a chamada no banco: ${dbError}`);
       }
       
-      // Salvar o áudio
-      const filePath = `calls/${callSid}/${uniqueFileName}`;
-      await supabase
-        .storage
-        .from('tts_audio')
-        .upload(filePath, audioBuffer, {
-          contentType: 'audio/mpeg',
-          upsert: true
-        });
-        
-      console.log(`[DEBUG] TTS-Handler: Áudio também salvo no Supabase Storage em: ${filePath}`);
-    } catch (storageErr) {
-      // Não falhar se o backup no Supabase falhar
-      console.warn(`[WARN] TTS-Handler: Não foi possível fazer backup no Supabase: ${storageErr}`);
+      // Retornar resposta com informações da chamada
+      return new Response(
+        JSON.stringify({
+          success: true,
+          call_sid: call.sid,
+          phone_number: phoneNumber,
+          status: "initiated"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+      
+    } catch (twilioCallError) {
+      console.error(`[ERROR] TTS-Handler: Erro ao iniciar chamada com Twilio: ${twilioCallError}`);
+      throw new Error(`Falha ao iniciar chamada Twilio: ${twilioCallError.message}`);
     }
-
-    // Configurar TwiML simplificado apenas com tag Play para o áudio Twilio Assets
-    const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Play>${twilioAssetUrl}</Play>
-</Response>`;
-
-    console.log(`[DEBUG] TTS-Handler: URL final do áudio no TwiML (Twilio Asset): ${twilioAssetUrl}`);
-    console.log(`[DEBUG] TTS-Handler: Texto original decodificado: "${decodedText}"`);
-    console.log(`[DEBUG] TTS-Handler: Retornando TwiML simplificado:
-${twimlResponse}
-    `);
     
-    // Verificar cabeçalhos da resposta
-    const responseHeaders = { 
-      ...corsHeaders, 
-      "Content-Type": "application/xml",
-      "Cache-Control": "no-cache, no-store, must-revalidate",
-      "X-Audio-URL": twilioAssetUrl,
-      "X-Audio-Size": audioBuffer.byteLength.toString(),
-      "X-Text-Hash": textHash,
-      "X-Text-Length": decodedText.length.toString(),
-      "X-Asset-Host": "twilio-serverless",
-    };
-
-    // Retornar TwiML que o Twilio pode processar
-    return new Response(twimlResponse, {
-      headers: responseHeaders,
-    });
   } catch (error) {
     console.error(`[ERROR] TTS-Handler: Erro no handler TTS-Twilio: ${error}`);
     
-    // Retornar TwiML de erro mais detalhado
-    const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say language="pt-BR">Ocorreu um erro ao processar esta chamada.</Say>
-  <Say language="pt-BR">${error.message || "Erro desconhecido"}</Say>
-  <Say language="pt-BR">Por favor, verifique os logs para mais detalhes.</Say>
-</Response>`;
-    
-    console.log(`[DEBUG] TTS-Handler: Retornando TwiML de ERRO:
-${errorTwiml}
-    `);
-    
-    return new Response(errorTwiml, {
-      headers: { 
-        ...corsHeaders, 
-        "Content-Type": "application/xml" 
+    // Retornar detalhes do erro como JSON
+    return new Response(
+      JSON.stringify({
+        error: true,
+        message: error.message || "Erro desconhecido",
+        timestamp: new Date().toISOString()
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500
       },
-    });
+    );
   }
 });

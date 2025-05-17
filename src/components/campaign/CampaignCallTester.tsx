@@ -117,25 +117,6 @@ export function CampaignCallTester({
     return isValid;
   };
 
-  // Format phone number for display
-  const formatPhoneForDisplay = (phone: string) => {
-    // Remove tudo que não for número
-    const cleaned = phone.replace(/\D/g, '');
-    
-    // Se tiver menos de 10 dígitos, não formata
-    if (cleaned.length < 10) return phone;
-    
-    // Formata como (XX) XXXXX-XXXX ou equivalente internacional
-    if (cleaned.length === 11) {
-      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 7)}-${cleaned.substring(7)}`;
-    } else if (cleaned.length === 10) {
-      return `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 6)}-${cleaned.substring(6)}`;
-    } 
-    
-    // Se for número internacional ou outro formato, apenas retorna como está
-    return phone;
-  };
-
   const handleTestVoice = async () => {
     try {
       if (isPlaying) {

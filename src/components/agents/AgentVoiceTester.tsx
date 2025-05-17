@@ -7,7 +7,6 @@ import { Loader2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
-import { VOICES } from "@/constants/voices";
 
 interface AgentVoiceTesterProps {
   agentName?: string;
