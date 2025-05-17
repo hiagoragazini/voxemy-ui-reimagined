@@ -23,6 +23,11 @@ async function processWithAI(text, conversationHistory = []) {
       apiKey: Deno.env.get("OPENAI_API_KEY"),
     });
     
+    // Detalhado logging para diagnóstico
+    console.log(`=== PROCESS WITH AI ===`);
+    console.log(`Input text: "${text}"`);
+    console.log(`History entries: ${conversationHistory.length}`);
+    
     // Preparar mensagens para o modelo
     const systemPrompt = {
       role: "system",
@@ -41,7 +46,7 @@ async function processWithAI(text, conversationHistory = []) {
       { role: "user", content: text }
     ];
     
-    // Fazer a chamada para a API
+    // Fazer a chamada para a API com timeout adequado
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini", // Modelo mais rápido e econômico
       messages,
@@ -49,7 +54,9 @@ async function processWithAI(text, conversationHistory = []) {
       temperature: 0.7,
     });
     
-    return response.choices[0].message.content.trim();
+    const aiResponse = response.choices[0].message.content.trim();
+    console.log(`AI Response: "${aiResponse}"`);
+    return aiResponse;
   } catch (error) {
     console.error("Erro ao processar texto com AI:", error);
     return "Desculpe, estou tendo dificuldades para processar sua mensagem. Poderia repetir de outra forma?";
@@ -59,6 +66,9 @@ async function processWithAI(text, conversationHistory = []) {
 // Função para salvar histórico de conversa
 async function saveConversationHistory(supabase, callSid, messages, status = "active") {
   try {
+    console.log(`Saving conversation history for call ${callSid}, status: ${status}`);
+    console.log(`Message count: ${messages.length}`);
+    
     // Verificar se já existe um registro para essa chamada
     const { data, error } = await supabase
       .from("call_logs")
@@ -66,10 +76,14 @@ async function saveConversationHistory(supabase, callSid, messages, status = "ac
       .eq("call_sid", callSid)
       .maybeSingle();
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error querying call_logs:", error);
+      throw error;
+    }
     
     // Se não existir, criar um novo registro
     if (!data) {
+      console.log("No existing record, creating new one");
       await supabase.from("call_logs").insert({
         call_sid: callSid,
         status: status,
@@ -77,6 +91,7 @@ async function saveConversationHistory(supabase, callSid, messages, status = "ac
       });
     } else {
       // Se existir, atualizar o registro
+      console.log(`Updating existing record: ${data.id}`);
       await supabase.from("call_logs").update({
         status: status,
         transcription: messages,
@@ -91,56 +106,6 @@ async function saveConversationHistory(supabase, callSid, messages, status = "ac
   }
 }
 
-// Função para gerar áudio com ElevenLabs
-async function generateSpeech(text, voiceId = "21m00Tcm4TlvDq8ikWAM") { // Antônio (pt-BR)
-  try {
-    const elevenlabsApiKey = Deno.env.get("ELEVENLABS_API_KEY");
-    
-    if (!elevenlabsApiKey) {
-      throw new Error("ElevenLabs API Key não configurada");
-    }
-    
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "xi-api-key": elevenlabsApiKey,
-        },
-        body: JSON.stringify({
-          text: text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5,
-            style: 0.0,
-            use_speaker_boost: true
-          }
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`ElevenLabs API error: ${errorText}`);
-    }
-
-    // Obter o buffer de áudio
-    const audioBuffer = await response.arrayBuffer();
-    
-    // Converter para base64
-    const base64Audio = btoa(
-      String.fromCharCode(...new Uint8Array(audioBuffer))
-    );
-    
-    return base64Audio;
-  } catch (error) {
-    console.error("Erro ao gerar áudio com ElevenLabs:", error);
-    throw error;
-  }
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -148,163 +113,139 @@ serve(async (req) => {
   }
 
   try {
+    console.log("\n=== PROCESS-DIALOG HANDLER ===");
+    console.log(`Timestamp: ${new Date().toISOString()}`);
+    console.log(`Method: ${req.method}`);
+    console.log(`URL: ${req.url}`);
+    
+    // Parse content type to handle different request formats
+    const contentType = req.headers.get("Content-Type") || "";
+    console.log(`Content-Type: ${contentType}`);
+    
+    let requestData;
+    if (contentType.includes("application/json")) {
+      requestData = await req.json();
+    } else if (contentType.includes("application/x-www-form-urlencoded") || 
+               contentType.includes("multipart/form-data")) {
+      // Handle form data from Twilio
+      const formData = await req.formData();
+      requestData = Object.fromEntries(formData.entries());
+    } else {
+      // Default to JSON parsing with fallback
+      requestData = await req.json().catch(() => ({}));
+    }
+    
+    console.log("Request data:", JSON.stringify(requestData).substring(0, 200) + "...");
+    
     // Inicializar cliente Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Supabase credentials not configured");
       throw new Error("Credenciais Supabase não configuradas");
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Obter dados da requisição
-    const requestData = await req.json();
+    // Extract core data - handle both Twilio webhook format and our custom format
+    const callSid = requestData.CallSid || requestData.callSid;
+    const speechResult = requestData.SpeechResult || requestData.speechResult || "";
+    const messages = requestData.messages || [];
+    const endCall = requestData.endCall || false;
     
-    // Verificar dados essenciais
-    const { 
-      callSid, 
-      speechResult, 
-      phoneNumber,
-      messages = [], 
-      endCall = false 
-    } = requestData;
+    // Log relevant data
+    console.log(`Call SID: ${callSid}`);
+    console.log(`Speech Result: "${speechResult}"`);
+    console.log(`Message Count: ${messages.length}`);
+    console.log(`End Call Flag: ${endCall}`);
     
-    // Validar os dados
+    // Validate the data
     if (!callSid) {
+      console.error("Missing CallSid");
       throw new Error("ID da chamada (callSid) não fornecido");
     }
 
+    // Prepare TwiML response
     let twimlResponse;
     
-    // Se mensagem final ou flag de encerramento
-    if (endCall) {
+    // If end call flag is set or if we received an end call message
+    if (endCall || (speechResult && isEndingConversation(speechResult))) {
+      console.log("Processing end call scenario");
       // Mensagem de despedida
       const goodbyeMessage = "Obrigado pelo contato! Espero ter ajudado. Tenha um ótimo dia!";
       
-      // Adicionar mensagem de despedida ao histórico
+      // Add farewell message to history
       const updatedMessages = [...messages, {
         role: "assistant",
         content: goodbyeMessage,
         timestamp: new Date().toISOString()
       }];
       
-      // Salvar no Supabase
+      // Save to Supabase
       await saveConversationHistory(supabase, callSid, updatedMessages, "completed");
       
-      // Gerar TwiML de despedida
+      // Generate TwiML with simple Say element - more reliable than audio
       twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
         <Say voice="woman" language="pt-BR">${goodbyeMessage}</Say>
         <Hangup/>
       </Response>`;
     } 
-    // Processamento normal de diálogo
+    // Normal dialog processing
     else if (speechResult) {
-      console.log(`Processando transcrição: "${speechResult}" para chamada ${callSid}`);
+      console.log("Processing normal dialog");
       
-      // Adicionar fala do usuário ao histórico
+      // Add user message to history
       const updatedMessages = [...messages, {
         role: "user",
         content: speechResult,
         timestamp: new Date().toISOString()
       }];
       
-      // Verificar se é pedido de encerramento
-      const lowerMessage = speechResult.toLowerCase();
-      const endPhrases = ["tchau", "adeus", "até logo", "encerrar", "desligar", "finalizar"];
-      const isEndingConversation = endPhrases.some(phrase => lowerMessage.includes(phrase));
+      // Process with AI
+      const aiResponse = await processWithAI(
+        speechResult, 
+        updatedMessages.map(m => ({ role: m.role, content: m.content }))
+      );
       
-      if (isEndingConversation) {
-        // Mensagem de despedida
-        const goodbyeMessage = "Obrigado pelo contato! Espero ter ajudado. Tenha um ótimo dia!";
-        
-        // Adicionar resposta de despedida ao histórico
-        updatedMessages.push({
-          role: "assistant",
-          content: goodbyeMessage,
-          timestamp: new Date().toISOString()
-        });
-        
-        // Salvar no Supabase
-        await saveConversationHistory(supabase, callSid, updatedMessages, "completed");
-        
-        // Gerar TwiML de despedida
-        twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-        <Response>
-          <Say voice="woman" language="pt-BR">${goodbyeMessage}</Say>
-          <Hangup/>
-        </Response>`;
-      } else {
-        // Processar com AI
-        const aiResponse = await processWithAI(
-          speechResult, 
-          updatedMessages.map(m => ({ role: m.role, content: m.content }))
-        );
-        
-        // Adicionar resposta da AI ao histórico
-        updatedMessages.push({
-          role: "assistant",
-          content: aiResponse,
-          timestamp: new Date().toISOString()
-        });
-        
-        // Salvar no Supabase
-        await saveConversationHistory(supabase, callSid, updatedMessages);
-        
-        // Tentar usar ElevenLabs para síntese de voz
-        let useElevenLabs = true;
-        let audioContent = null;
-        
-        try {
-          if (Deno.env.get("ELEVENLABS_API_KEY")) {
-            audioContent = await generateSpeech(aiResponse);
-          } else {
-            useElevenLabs = false;
-          }
-        } catch (audioError) {
-          console.error("Erro ao gerar áudio com ElevenLabs:", audioError);
-          useElevenLabs = false;
-        }
-        
-        // Gerar TwiML com áudio ou texto
-        if (useElevenLabs && audioContent) {
-          // Usar ElevenLabs (implementação: enviar URL do áudio gerado)
-          twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-          <Response>
-            <Say voice="woman" language="pt-BR">${aiResponse}</Say>
-            <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="https://${Deno.env.get("SUPABASE_URL").split("https://")[1]}/functions/v1/process-dialog" method="POST">
-            </Gather>
-            <Say voice="woman" language="pt-BR">Não ouvi nada. Vou encerrar a chamada.</Say>
-            <Hangup/>
-          </Response>`;
-        } else {
-          // Fallback para TTS nativo do Twilio
-          twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-          <Response>
-            <Say voice="woman" language="pt-BR">${aiResponse}</Say>
-            <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="https://${Deno.env.get("SUPABASE_URL").split("https://")[1]}/functions/v1/process-dialog" method="POST">
-            </Gather>
-            <Say voice="woman" language="pt-BR">Não ouvi nada. Vou encerrar a chamada.</Say>
-            <Hangup/>
-          </Response>`;
-        }
-      }
-    } else {
-      // Mensagem inicial se não houver transcrição
+      // Add AI response to history
+      updatedMessages.push({
+        role: "assistant",
+        content: aiResponse,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Save to Supabase
+      await saveConversationHistory(supabase, callSid, updatedMessages);
+      
+      // Simple TwiML with Say element - most reliable approach
+      twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+      <Response>
+        <Say voice="woman" language="pt-BR">${aiResponse}</Say>
+        <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="https://${Deno.env.get("SUPABASE_URL").split("https://")[1]}/functions/v1/process-dialog" method="POST">
+        </Gather>
+        <Say voice="woman" language="pt-BR">Não ouvi nada. Vou encerrar a chamada.</Say>
+        <Hangup/>
+      </Response>`;
+    }
+    // Initial welcome message
+    else {
+      console.log("Processing initial welcome");
+      // Default welcome message
       const welcomeMessage = "Olá, aqui é da Voxemy. Como posso ajudar você hoje?";
       
-      // Iniciar histórico de conversa
+      // Initialize conversation history
       const initialMessages = [{
         role: "assistant",
         content: welcomeMessage,
         timestamp: new Date().toISOString()
       }];
       
-      // Salvar no Supabase
+      // Save to Supabase
       await saveConversationHistory(supabase, callSid, initialMessages);
       
-      // Gerar TwiML inicial
+      // Simple TwiML
       twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
         <Say voice="woman" language="pt-BR">${welcomeMessage}</Say>
@@ -315,7 +256,8 @@ serve(async (req) => {
       </Response>`;
     }
     
-    // Retornar resposta TwiML
+    // Return TwiML response with proper content type
+    console.log("Sending TwiML response");
     return new Response(twimlResponse, {
       headers: { ...corsHeaders, "Content-Type": "application/xml" },
     });
@@ -323,7 +265,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Erro na função process-dialog:", error);
     
-    // TwiML de erro
+    // TwiML de erro simplificado
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
     <Response>
       <Say voice="woman" language="pt-BR">Desculpe, ocorreu um erro no sistema. Vou encerrar a chamada.</Say>
@@ -332,7 +274,14 @@ serve(async (req) => {
     
     return new Response(errorTwiml, {
       headers: { ...corsHeaders, "Content-Type": "application/xml" },
-      status: 500
+      status: 200 // Always return 200 to Twilio
     });
   }
 });
+
+// Helper function to check if the message indicates an end to the conversation
+function isEndingConversation(message) {
+  const lowerMessage = message.toLowerCase();
+  const endPhrases = ["tchau", "adeus", "até logo", "encerrar", "desligar", "finalizar"];
+  return endPhrases.some(phrase => lowerMessage.includes(phrase));
+}

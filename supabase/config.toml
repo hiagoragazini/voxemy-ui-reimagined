@@ -1,5 +1,5 @@
 
-project_id = "your-project-id"
+project_id = "nklbbeavnbwvvatqimxw"
 
 [functions.text-to-speech]
 verify_jwt = true
@@ -14,4 +14,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.call-status]
+verify_jwt = false
+
+[functions.call-handler]
 verify_jwt = false

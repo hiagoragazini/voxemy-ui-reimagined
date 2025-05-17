@@ -45,14 +45,14 @@ export function AgentVoiceTester({
       console.log("Usando voiceId:", voiceId || defaultVoiceId);
       console.log("Texto para falar:", text);
       
-      // Usar configurações otimizadas para português com modelo fixo
+      // Usar sempre o modelo multilingual para português com configurações otimizadas
       const audioData = await textToSpeech({ 
         text, 
         voiceId: voiceId || defaultVoiceId,
-        model: "eleven_multilingual_v1", // Forçando modelo específico para português
-        stability: 0.7,         // Valor mais baixo para mais naturalidade
-        similarity_boost: 0.8,  // Equilibrado para manter identidade da voz
-        style: 0.4              // Valor menor para reduzir robótica
+        model: "eleven_multilingual_v2", // Modelo atualizado para melhor qualidade
+        stability: 0.5,         // Configurações ajustadas
+        similarity_boost: 0.5,  // para melhor performance em chamadas
+        style: 0.0
       });
       
       if (audioData) {
@@ -62,9 +62,9 @@ export function AgentVoiceTester({
       } else {
         throw new Error("Não foi possível gerar áudio");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao testar voz:", err);
-      toast.error("Erro ao testar a voz do agente");
+      toast.error("Erro ao testar a voz do agente: " + err.message);
     }
   };
   
@@ -91,17 +91,37 @@ export function AgentVoiceTester({
     try {
       toast.info(`Iniciando chamada para ${phoneNumber}...`);
       
-      const result = await makeCall({
+      // Log detalhado para diagnóstico
+      console.log("Usando voice ID do state:", voiceId);
+      console.log("Iniciando chamada com voice ID:", voiceId || defaultVoiceId);
+      console.log("Mensagem a ser enviada:", text);
+      console.log("Número de telefone:", phoneNumber);
+      console.log("Tipo de voiceId:", typeof voiceId);
+      if (voiceId) console.log("Comprimento do voiceId:", voiceId.length);
+      
+      // Incluir todos os parâmetros para diagnóstico completo
+      console.log("Parâmetros completos para makeCall:", {
         agentId,
+        campaignId: "",
         phoneNumber,
         message: text,
+        leadId: "",
+        voiceId: voiceId || defaultVoiceId
+      });
+      
+      const result = await makeCall({
+        agentId,
+        campaignId: "",
+        phoneNumber,
+        message: text,
+        leadId: "",
         voiceId: voiceId || defaultVoiceId
       });
       
       if (result) {
-        toast.success(`Chamada iniciada com sucesso! ID da chamada: ${result.call_sid}`);
+        toast.success(`Chamada iniciada com sucesso! ID da chamada: ${result.callSid || result.call_sid}`);
       } else {
-        toast.error("Erro ao iniciar chamada");
+        toast.error("Erro ao iniciar chamada: Nenhuma resposta recebida");
       }
     } catch (err: any) {
       console.error("Erro ao iniciar chamada:", err);
