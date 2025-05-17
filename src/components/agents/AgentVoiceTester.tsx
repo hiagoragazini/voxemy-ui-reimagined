@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Loader2, Volume2 } from "lucide-react";
+import { Loader2, Volume2, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import { AudioPlayer } from "@/components/ui/AudioPlayer";
@@ -23,7 +23,7 @@ export function AgentVoiceTester({
 }: AgentVoiceTesterProps) {
   const [text, setText] = useState(`Olá, eu sou ${agentName}, um assistente de voz. Como posso ajudar você hoje?`);
   const [audioContent, setAudioContent] = useState<string | null>(null);
-  const { isLoading, textToSpeech, playAudio, stopAudio, isPlaying } = useVoiceCall();
+  const { isLoading, textToSpeech, makeCall, playAudio, stopAudio, isPlaying } = useVoiceCall();
   
   // Use a voz Laura que tem boa qualidade para português
   const defaultVoiceId = "FGY2WhTYpPnrIDTdsKH5"; // Laura - melhor para português
@@ -73,12 +73,39 @@ export function AgentVoiceTester({
       toast.error("ID do agente não disponível");
       return;
     }
+
+    const phoneNumber = prompt("Digite o número de telefone para ligar (apenas números com DDD):");
+    
+    if (!phoneNumber) {
+      toast.error("Número de telefone não fornecido");
+      return;
+    }
+    
+    // Validar formato do telefone
+    const phoneRegex = /^\d{10,11}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      toast.error("Número de telefone inválido. Use apenas números, incluindo DDD (ex: 11999887766)");
+      return;
+    }
     
     try {
-      toast.info("Para fazer uma chamada, use o testador de chamadas na página de campanhas");
-    } catch (err) {
+      toast.info(`Iniciando chamada para ${phoneNumber}...`);
+      
+      const result = await makeCall({
+        agentId,
+        phoneNumber,
+        message: text,
+        voiceId: voiceId || defaultVoiceId
+      });
+      
+      if (result) {
+        toast.success(`Chamada iniciada com sucesso! ID da chamada: ${result.call_sid}`);
+      } else {
+        toast.error("Erro ao iniciar chamada");
+      }
+    } catch (err: any) {
       console.error("Erro ao iniciar chamada:", err);
-      toast.error("Erro ao iniciar chamada de teste");
+      toast.error(`Erro ao iniciar chamada: ${err.message || "Falha inesperada"}`);
     }
   };
   
@@ -125,9 +152,10 @@ export function AgentVoiceTester({
           onClick={handleMakeCall}
           variant="outline"
           className="flex items-center gap-2"
+          disabled={isLoading || !text}
         >
-          <Volume2 className="h-4 w-4" />
-          <span>Testar ligação</span>
+          <Phone className="h-4 w-4" />
+          <span>Fazer ligação teste</span>
         </Button>
       </div>
 
@@ -140,6 +168,15 @@ export function AgentVoiceTester({
           Fechar
         </Button>
       )}
+      
+      <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
+        <p>O sistema de chamadas Voxemy usa:</p>
+        <ul className="list-disc pl-5 mt-1">
+          <li>Twilio para telefonia</li>
+          <li>ElevenLabs para síntese de voz natural em português</li>
+          <li>IA para processamento de linguagem natural</li>
+        </ul>
+      </div>
     </Card>
   );
 }

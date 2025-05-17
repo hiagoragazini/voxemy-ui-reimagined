@@ -30,7 +30,7 @@ serve(async (req) => {
     const isPostRequest = req.method === "POST";
     
     // Vamos tratar dados de POST e GET de forma diferente
-    let text, voiceId, phoneNumber, callSid;
+    let text, voiceId, phoneNumber, callSid, agentId, campaignId, leadId;
     
     if (isPostRequest) {
       // Para requisições POST, extrair dados do corpo JSON
@@ -41,13 +41,19 @@ serve(async (req) => {
       voiceId = requestData.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Voz padrão (Antônio)
       phoneNumber = requestData.phoneNumber;
       callSid = requestData.callSid || `manual-${Date.now()}`;
+      agentId = requestData.agentId;
+      campaignId = requestData.campaignId;
+      leadId = requestData.leadId;
       
       console.log("[DEBUG] TTS-Handler: Dados recebidos via POST:", {
         text: text?.substring(0, 50) + (text?.length > 50 ? '...' : ''),
         textoCompleto: text,
         voiceId,
         phoneNumber,
-        callSid
+        callSid,
+        agentId,
+        campaignId,
+        leadId
       });
     } else {
       // Para requisições GET, extrair dados da URL
@@ -56,6 +62,9 @@ serve(async (req) => {
       voiceId = url.searchParams.get('voiceId') || "21m00Tcm4TlvDq8ikWAM";
       phoneNumber = url.searchParams.get('phoneNumber');
       callSid = url.searchParams.get('callSid') || `manual-${Date.now()}`;
+      agentId = url.searchParams.get('agentId');
+      campaignId = url.searchParams.get('campaignId');
+      leadId = url.searchParams.get('leadId');
       
       console.log(`[DEBUG] TTS-Handler: Parâmetros recebidos via GET:
         - text: ${text?.substring(0, 50)}${text?.length && text.length > 50 ? '...' : ''}
@@ -64,6 +73,9 @@ serve(async (req) => {
         - voiceId: ${voiceId}
         - phoneNumber: ${phoneNumber}
         - callSid: ${callSid}
+        - agentId: ${agentId}
+        - campaignId: ${campaignId}
+        - leadId: ${leadId}
         - URL completa: ${req.url}
       `);
     }
@@ -72,7 +84,6 @@ serve(async (req) => {
     console.log(`[DEBUG] TTS-Handler: URL completo: ${req.url}`);
     console.log(`[DEBUG] TTS-Handler: Origem da requisição: ${req.headers.get("origin") || "desconhecida"}`);
     console.log(`[DEBUG] TTS-Handler: User-Agent: ${req.headers.get("user-agent") || "desconhecido"}`);
-    // Logar todos os cabeçalhos da requisição para debugging
     console.log(`[DEBUG] TTS-Handler: Headers da requisição: ${JSON.stringify(Object.fromEntries(req.headers))}`);
 
     if (!text) {
@@ -96,7 +107,6 @@ serve(async (req) => {
     }
 
     // Obter API key do ElevenLabs e Twilio
-    const elevenlabsApiKey = Deno.env.get("ELEVENLABS_API_KEY");
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
@@ -115,7 +125,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Supabase credentials não configuradas");
+      throw new Error("Credenciais Supabase não configuradas");
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -138,10 +148,29 @@ serve(async (req) => {
       console.log(`[DEBUG] TTS-Handler: Inicializando cliente Twilio`);
       const twilioClient = await getTwilioClient(twilioAccountSid, twilioAuthToken);
 
-      // Usar TwiML simples que usa o texto diretamente
+      // URL para a função de processamento de diálogo do Supabase
+      const processDialogUrl = `https://${supabaseUrl.split("//")[1]}/functions/v1/process-dialog`;
+      
+      // Adicionar os parâmetros da chamada na URL como query string
+      const callbackParams = new URLSearchParams({
+        agentId: agentId || '',
+        campaignId: campaignId || '',
+        leadId: leadId || ''
+      }).toString();
+
+      // URL completa para o callback do Twilio
+      const callbackUrl = `${processDialogUrl}?${callbackParams}`;
+      
+      console.log(`[DEBUG] TTS-Handler: URL de callback: ${callbackUrl}`);
+      
+      // TwiML para iniciar a conversa com a mensagem inicial
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
         <Say voice="woman" language="pt-BR">${decodedText}</Say>
+        <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="${callbackUrl}" method="POST">
+        </Gather>
+        <Say voice="woman" language="pt-BR">Não ouvi nada. Vou encerrar a chamada.</Say>
+        <Hangup/>
       </Response>`;
 
       console.log(`[DEBUG] TTS-Handler: TwiML preparado: ${twiml}`);
@@ -152,7 +181,10 @@ serve(async (req) => {
       const call = await twilioClient.calls.create({
         twiml: twiml,
         to: formattedPhone,
-        from: twilioPhoneNumber
+        from: twilioPhoneNumber,
+        statusCallback: `${supabaseUrl}/functions/v1/call-status`,
+        statusCallbackMethod: 'POST',
+        statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed']
       });
       
       console.log(`[DEBUG] TTS-Handler: Chamada iniciada com sucesso. SID: ${call.sid}`);
@@ -166,7 +198,10 @@ serve(async (req) => {
             phone_number: phoneNumber,
             message: decodedText,
             voice_id: voiceId,
-            status: "initiated"
+            status: "initiated",
+            agent_id: agentId || null,
+            campaign_id: campaignId || null,
+            lead_id: leadId || null
           });
           
         console.log("[DEBUG] TTS-Handler: Log da chamada salvo no banco de dados");
@@ -180,7 +215,8 @@ serve(async (req) => {
           success: true,
           call_sid: call.sid,
           phone_number: phoneNumber,
-          status: "initiated"
+          status: "initiated",
+          message: "Chamada iniciada com sucesso, usando sistema de diálogo interativo"
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

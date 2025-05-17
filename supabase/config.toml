@@ -9,3 +9,9 @@ verify_jwt = false
 
 [functions.test-audio-call]
 verify_jwt = false
+
+[functions.process-dialog]
+verify_jwt = false
+
+[functions.call-status]
+verify_jwt = false

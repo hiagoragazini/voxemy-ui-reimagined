@@ -1,12 +1,14 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import OpenAI from "https://esm.sh/openai@4.20.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Sleep function para debugging
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -15,216 +17,147 @@ serve(async (req) => {
   }
 
   try {
-    // Inicializar cliente Supabase para armazenar os registros de chamadas
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
+    // Processar apenas chamadas POST
+    if (req.method !== "POST") {
+      return new Response(
+        JSON.stringify({ error: "Método não permitido" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 405 }
+      );
+    }
+
+    // Carregar dados do formulário
+    const formData = await req.formData();
+    
+    // Extrair os valores dos campos
+    const callSid = formData.get("CallSid");
+    const callStatus = formData.get("CallStatus");
+    const direction = formData.get("Direction");
+    const from = formData.get("From");
+    const to = formData.get("To");
+    const callDuration = formData.get("CallDuration");
+    
+    console.log(`[DEBUG] call-status: Callback recebido para chamada ${callSid}:`);
+    console.log(`- Status: ${callStatus}`);
+    console.log(`- De: ${from} Para: ${to}`);
+    console.log(`- Direção: ${direction}`);
+    console.log(`- Duração: ${callDuration || 'N/A'}`);
+
+    // Verificar se temos o SID da chamada
+    if (!callSid) {
+      console.error("[ERROR] call-status: CallSid não fornecido no callback");
+      return new Response(
+        JSON.stringify({ error: "CallSid não fornecido" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
+    // Inicializar cliente do Supabase
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Credenciais do Supabase não estão configuradas");
+      console.error("[ERROR] call-status: Credenciais do Supabase não estão configuradas");
+      return new Response(
+        JSON.stringify({ error: "Erro de configuração do servidor" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    let openai = null;
+
+    // Verificar se já existe um registro para esta chamada
+    const { data: existingCall, error: fetchError } = await supabase
+      .from("call_logs")
+      .select("id, status")
+      .eq("call_sid", callSid)
+      .maybeSingle();
     
-    // Check if OpenAI API key is available for transcription analysis
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (openaiApiKey) {
-      openai = new OpenAI({
-        apiKey: openaiApiKey
-      });
+    if (fetchError) {
+      console.error(`[ERROR] call-status: Erro ao buscar chamada: ${fetchError.message}`);
     }
-
-    // Processar a requisição
-    const formData = await req.formData();
-    const callSid = formData.get("CallSid")?.toString();
-    const callStatus = formData.get("CallStatus")?.toString();
-    const from = formData.get("From")?.toString();
-    const to = formData.get("To")?.toString();
-    const duration = formData.get("CallDuration")?.toString();
-    const transcriptionStatus = formData.get("TranscriptionStatus")?.toString();
-    const transcriptionText = formData.get("TranscriptionText")?.toString();
     
-    // Obter parâmetros adicionais
-    const agentId = formData.get("agentId")?.toString();
-    const campaignId = formData.get("campaignId")?.toString();
-    const leadId = formData.get("leadId")?.toString();
-    const recordCall = formData.get("recordCall")?.toString() === "true";
-    const transcribeCall = formData.get("transcribeCall")?.toString() === "true";
-
-    console.log(`Status da chamada recebido: ${callSid}, status: ${callStatus}`);
-    
-    // Analyze call transcription if available
-    let callAnalysis = null;
-    if (transcriptionText && transcriptionStatus === "completed" && openai) {
-      try {
-        console.log("Analyzing call transcription with OpenAI");
-        
-        const response = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: "You are an AI assistant that analyzes call transcriptions. Analyze the following call transcription and categorize it as one of these: [INTERESTED, CALLBACK_REQUESTED, NOT_INTERESTED, WRONG_NUMBER, NO_ANSWER, TECHNICAL_ISSUE]. Also extract key information and provide a 1-2 sentence summary. Format your response as JSON with fields: category, summary, key_points (array), sentiment (positive/neutral/negative)."
-            },
-            {
-              role: "user",
-              content: transcriptionText
-            }
-          ],
-          temperature: 0.2,
-          response_format: { type: "json_object" }
+    // Se a chamada não existir e o status for "initiated", criamos um novo registro
+    if (!existingCall && callStatus === "initiated") {
+      const { error: insertError } = await supabase
+        .from("call_logs")
+        .insert({
+          call_sid: callSid,
+          status: callStatus,
+          from_number: from ? from.toString() : null,
+          to_number: to ? to.toString() : null
         });
-        
-        callAnalysis = JSON.parse(response.choices[0].message.content);
-        console.log("Call analysis completed:", callAnalysis);
-      } catch (error) {
-        console.error("Error analyzing call transcription:", error);
+      
+      if (insertError) {
+        console.error(`[ERROR] call-status: Erro ao inserir registro de chamada: ${insertError.message}`);
+      } else {
+        console.log(`[DEBUG] call-status: Novo registro de chamada criado para SID ${callSid}`);
+      }
+    } 
+    // Se a chamada existir, atualizamos o status
+    else if (existingCall) {
+      const updateData: Record<string, any> = { status: callStatus };
+      
+      // Se a chamada foi completada, registramos a duração
+      if (callStatus === "completed" && callDuration) {
+        updateData.duration = parseInt(callDuration.toString(), 10);
+      }
+      
+      const { error: updateError } = await supabase
+        .from("call_logs")
+        .update(updateData)
+        .eq("call_sid", callSid);
+      
+      if (updateError) {
+        console.error(`[ERROR] call-status: Erro ao atualizar status da chamada: ${updateError.message}`);
+      } else {
+        console.log(`[DEBUG] call-status: Status da chamada atualizado para "${callStatus}"`);
+      }
+    }
+    // Se não existir e não for "initiated", registramos mesmo assim
+    else {
+      const { error: insertError } = await supabase
+        .from("call_logs")
+        .insert({
+          call_sid: callSid,
+          status: callStatus,
+          from_number: from ? from.toString() : null,
+          to_number: to ? to.toString() : null,
+          duration: callDuration ? parseInt(callDuration.toString(), 10) : null
+        });
+      
+      if (insertError) {
+        console.error(`[ERROR] call-status: Erro ao inserir registro de chamada tardia: ${insertError.message}`);
+      } else {
+        console.log(`[DEBUG] call-status: Registro de chamada tardio criado para SID ${callSid}`);
       }
     }
     
-    // Registrar o status da chamada no Supabase
-    const { error } = await supabase
-      .from('call_logs')
-      .upsert({
-        call_sid: callSid,
-        status: callStatus,
-        from_number: from,
-        to_number: to,
-        duration: duration ? parseInt(duration) : null,
-        agent_id: agentId,
-        campaign_id: campaignId,
-        transcription: transcriptionText,
-        transcription_status: transcriptionStatus,
-        call_analysis: callAnalysis,
-        recorded_at: new Date().toISOString(),
-      });
-
-    if (error) {
-      console.error("Erro ao registrar log de chamada:", error);
+    // Verificar se é uma chamada que foi atendida
+    if (callStatus === "in-progress") {
+      console.log(`[DEBUG] call-status: Chamada ${callSid} foi atendida!`);
+      
+      // Aqui poderíamos iniciar outras ações ou registros adicionais quando a chamada é atendida
     }
 
-    // Update lead status if leadId is provided
-    if (leadId && callStatus) {
-      try {
-        // Process based on call status
-        let leadStatus = "called";
-        let callResult = `Chamada ${callStatus}`;
-        let callDuration = null;
-        
-        if (callStatus === "completed") {
-          leadStatus = "completed";
-          callResult = "Chamada completada com sucesso";
-          callDuration = duration ? `${Math.floor(parseInt(duration) / 60)}:${(parseInt(duration) % 60).toString().padStart(2, '0')}` : null;
-          
-          // If we have call analysis, use that for additional context
-          if (callAnalysis) {
-            callResult = callAnalysis.summary || callResult;
-            
-            // Set a more specific lead status based on the call analysis
-            switch(callAnalysis.category) {
-              case "INTERESTED":
-                leadStatus = "interested";
-                break;
-              case "CALLBACK_REQUESTED":
-                leadStatus = "callback";
-                break;
-              case "NOT_INTERESTED":
-                leadStatus = "not_interested";
-                break;
-              case "WRONG_NUMBER":
-                leadStatus = "wrong_number";
-                break;
-              case "NO_ANSWER":
-                leadStatus = "no_answer";
-                break;
-              default:
-                leadStatus = "completed";
-                break;
-            }
-          }
-        } else if (callStatus === "failed" || callStatus === "busy" || callStatus === "no-answer") {
-          leadStatus = "failed";
-          callResult = `Chamada falhou: ${callStatus}`;
-        }
-        
-        const updateData: any = { 
-          status: leadStatus,
-          call_result: callResult,
-          call_duration: callDuration
-        };
-        
-        // Add transcription if available
-        if (transcriptionText) {
-          updateData.transcription = transcriptionText;
-          
-          // Add simplified sentiment analysis if available
-          if (callAnalysis && callAnalysis.sentiment) {
-            updateData.sentiment = callAnalysis.sentiment;
-          }
-        }
-        
-        await supabase
-          .from("leads")
-          .update(updateData)
-          .eq("id", leadId);
-        
-        // If this is part of a campaign, update campaign statistics
-        if (campaignId && callStatus === "completed") {
-          // Get current campaign data
-          const { data: campaign } = await supabase
-            .from("campaigns")
-            .select("completed_leads, total_leads, avg_call_duration")
-            .eq("id", campaignId)
-            .single();
-            
-          if (campaign) {
-            const newCompletedLeads = (campaign.completed_leads || 0) + 1;
-            const successRate = Math.round((newCompletedLeads / (campaign.total_leads || 1)) * 100);
-            
-            // Calculate new average duration
-            let newAvgDuration = campaign.avg_call_duration || "0:00";
-            if (duration) {
-              // Parse current avg duration
-              const [avgMins, avgSecs] = (campaign.avg_call_duration || "0:00").split(":").map(Number);
-              const currentAvgSeconds = avgMins * 60 + avgSecs;
-              
-              // Calculate new avg duration
-              const totalDurationSeconds = currentAvgSeconds * (newCompletedLeads - 1) + parseInt(duration);
-              const newAvgSeconds = Math.floor(totalDurationSeconds / newCompletedLeads);
-              newAvgDuration = `${Math.floor(newAvgSeconds / 60)}:${(newAvgSeconds % 60).toString().padStart(2, '0')}`;
-            }
-            
-            // Update campaign stats
-            await supabase
-              .from("campaigns")
-              .update({
-                completed_leads: newCompletedLeads,
-                success_rate: successRate,
-                avg_call_duration: newAvgDuration
-              })
-              .eq("id", campaignId);
-          }
-        }
-      } catch (err) {
-        console.error("Error updating lead/campaign status:", err);
-      }
-    }
-
-    // Retornar uma resposta vazia, apenas para confirmar recebimento
     return new Response(
-      null,
-      {
-        status: 200,
-        headers: { ...corsHeaders },
-      }
+      JSON.stringify({ 
+        success: true, 
+        message: `Status da chamada ${callSid} atualizado para ${callStatus}` 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+    
   } catch (error) {
-    console.error("Erro ao processar status de chamada:", error);
+    console.error(`[ERROR] call-status: Erro no processamento do status: ${error}`);
+    
     return new Response(
-      null,
-      {
-        status: 200, // Sempre retornar 200 para o Twilio, mesmo em caso de erro
-        headers: { ...corsHeaders },
+      JSON.stringify({ 
+        error: true, 
+        message: error.message || "Erro desconhecido no processamento" 
+      }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+        status: 500 
       }
     );
   }
