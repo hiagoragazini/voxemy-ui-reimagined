@@ -11,7 +11,7 @@ import {
   ChevronLeft, 
   PhoneCall
 } from "lucide-react";
-import { Logo } from "../shared/Logo";
+import Logo from "../shared/Logo";
 
 export function Sidebar() {
   const location = useLocation();
