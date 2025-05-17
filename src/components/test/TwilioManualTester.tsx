@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,9 +29,10 @@ export function TwilioManualTester() {
       const cleanedPhone = phoneNumber.replace(/\D/g, '');
       
       console.log('Iniciando chamada com número limpo:', cleanedPhone);
+      console.log('Mensagem a ser enviada:', message);
       
       const result = await makeCall({
-        agentId: 'test-agent-id', // ID fictício para teste
+        agentId: 'test-agent-id',
         phoneNumber: cleanedPhone,
         message: message,
         voiceId: '21m00Tcm4TlvDq8ikWAM' // Antônio (pt-BR)
@@ -50,6 +50,12 @@ export function TwilioManualTester() {
     }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Keep only numbers
+    const value = e.target.value.replace(/\D/g, '');
+    setPhoneNumber(value);
+  };
+
   return (
     <div className="space-y-6 bg-white p-6 rounded-lg shadow">
       <div>
@@ -61,10 +67,13 @@ export function TwilioManualTester() {
             <Input
               id="phone-number"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={handlePhoneChange}
               placeholder="Ex: 11999887766 (apenas números)"
               type="tel"
             />
+            <p className="text-xs text-muted-foreground">
+              Digite apenas números, incluindo DDD (ex: 11999887766)
+            </p>
           </div>
           
           <div className="space-y-2">
@@ -80,7 +89,7 @@ export function TwilioManualTester() {
 
           <Button 
             onClick={handleMakeCall} 
-            disabled={isLoading}
+            disabled={isLoading || !phoneNumber}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isLoading ? (

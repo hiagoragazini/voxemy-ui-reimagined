@@ -11,13 +11,16 @@ import { Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AgentVoiceTester } from "@/components/agents/AgentVoiceTester";
 
 export default function Agents() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
-  const [hasRun, setHasRun] = useState(false); // Estado para controlar se já executamos a inicialização
+  const [hasRun, setHasRun] = useState(false);
+  const [selectedAgentForVoice, setSelectedAgentForVoice] = useState<{id: string, name: string, voiceId?: string} | null>(null);
   
   // Safe access to useAgents hook with default values
   const { 
@@ -101,14 +104,21 @@ export default function Agents() {
   const handleTestVoice = (id: string) => {
     const agent = agents.find(a => a.id === id);
     if (agent) {
-      toast.success(`Testando voz do agente ${agent.name}`);
+      setSelectedAgentForVoice({
+        id: agent.id,
+        name: agent.name,
+        voiceId: agent.voiceId
+      });
+      console.log(`Testando voz do agente ${agent.name} (ID: ${agent.id}, Voice ID: ${agent.voiceId})`);
     }
   };
 
   const handleTestCall = (id: string) => {
     const agent = agents.find(a => a.id === id);
     if (agent) {
-      toast.info(`Iniciando chamada de teste com ${agent.name}`);
+      toast.info(`Para fazer uma chamada, vá para a página de Campanhas`);
+      // Alternatively, navigate to campaigns page:
+      // navigate("/campaigns");
     }
   };
 
@@ -220,6 +230,23 @@ export default function Agents() {
           onRefresh={handleManualRefresh}
         />
       </div>
+      
+      {/* Dialog for voice testing */}
+      <Dialog
+        open={!!selectedAgentForVoice}
+        onOpenChange={(open) => !open && setSelectedAgentForVoice(null)}
+      >
+        <DialogContent className="sm:max-w-[450px]">
+          {selectedAgentForVoice && (
+            <AgentVoiceTester
+              agentId={selectedAgentForVoice.id}
+              agentName={selectedAgentForVoice.name}
+              voiceId={selectedAgentForVoice.voiceId}
+              onClose={() => setSelectedAgentForVoice(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

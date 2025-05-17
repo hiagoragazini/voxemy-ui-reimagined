@@ -36,9 +36,9 @@ serve(async (req) => {
       // Para requisições POST, extrair dados do corpo JSON
       const requestData = await req.json();
       
-      // MODIFICAÇÃO IMPORTANTE: Suportar tanto 'text' quanto 'message'
+      // Suportar tanto 'text' quanto 'message'
       text = requestData.text || requestData.message; // Aceita text OU message
-      voiceId = requestData.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Voz padrão
+      voiceId = requestData.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Voz padrão (Antônio)
       phoneNumber = requestData.phoneNumber;
       callSid = requestData.callSid || `manual-${Date.now()}`;
       
@@ -101,11 +101,12 @@ serve(async (req) => {
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
     
-    if (!elevenlabsApiKey) {
-      throw new Error("ElevenLabs API key não configurada");
-    }
-    
+    // Verificar credenciais configuradas
     if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+      console.error("[ERROR] TTS-Handler: Credenciais do Twilio não configuradas corretamente:");
+      console.error(`- TWILIO_ACCOUNT_SID: ${twilioAccountSid ? "configurado" : "não configurado"}`);
+      console.error(`- TWILIO_AUTH_TOKEN: ${twilioAuthToken ? "configurado" : "não configurado"}`);
+      console.error(`- TWILIO_PHONE_NUMBER: ${twilioPhoneNumber ? "configurado" : "não configurado"}`);
       throw new Error("Credenciais Twilio não configuradas completamente");
     }
 
@@ -119,102 +120,39 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verificar se já temos o áudio gerado para este texto e voz (cache)
-    // Usando hash do texto para garantir nome seguro de arquivo
-    const textHash = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(decodedText)
-    ).then(hash => {
-      return Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, "0"))
-        .join("")
-        .substring(0, 40); // primeiros 40 caracteres do hash
-    });
-    
-    console.log(`[DEBUG] TTS-Handler: Hash gerado para o texto: ${textHash}`);
-    
-    // NOVO: Gerar um ID único para essa versão do arquivo para evitar problemas de cache
-    const uniqueId = Date.now();
-    const uniqueFileName = `${voiceId}_${textHash}_${uniqueId}.mp3`;
-    
-    // Fazer a requisição real para geração de áudio com parâmetros otimizados para telefonia
-    // Solicitamos formato otimizado para telefonia - similar ao que ffmpeg faria
-    const elevenlabsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "xi-api-key": elevenlabsApiKey,
-          "User-Agent": "Voxemy-TTS-Function/1.0",
-        },
-        body: JSON.stringify({
-          text: decodedText,
-          model_id: "eleven_multilingual_v2", // Modelo multilíngue mais recente para melhor suporte ao português
-          output_format: "mp3_44100_128", // Formato específico que funciona melhor com Twilio
-          voice_settings: {
-            stability: 0.7,
-            similarity_boost: 0.8,
-            style: 0.0, // Reduzido para minimizar distorção
-            use_speaker_boost: true,
-          },
-        }),
+    // Formatar número de telefone para formato internacional
+    let formattedPhone = phoneNumber.replace(/\D/g, '');
+    // Se o número não começar com +, adicionar +55 (Brasil)
+    if (!formattedPhone.startsWith('+')) {
+      if (!formattedPhone.startsWith('55')) {
+        formattedPhone = `55${formattedPhone}`;
       }
-    );
-
-    if (!elevenlabsResponse.ok) {
-      const errorText = await elevenlabsResponse.text();
-      console.error(`[ERROR] TTS-Handler: Falha na resposta do ElevenLabs: ${elevenlabsResponse.status} ${elevenlabsResponse.statusText} - ${errorText}`);
-      throw new Error(`Falha ao gerar áudio com ElevenLabs: ${elevenlabsResponse.status} ${elevenlabsResponse.statusText}`);
-    }
-
-    // NOVO: Verificar headers da resposta para diagnosticar possíveis problemas
-    console.log(`[DEBUG] TTS-Handler: Headers da resposta ElevenLabs: ${JSON.stringify(Object.fromEntries(elevenlabsResponse.headers))}`);
-    
-    // Obter o áudio como ArrayBuffer
-    const audioBuffer = await elevenlabsResponse.arrayBuffer();
-    
-    console.log(`[DEBUG] TTS-Handler: Áudio gerado com sucesso. Tamanho: ${audioBuffer.byteLength} bytes`);
-    if (audioBuffer.byteLength < 1000) {
-      console.error(`[ERROR] TTS-Handler: Áudio gerado é muito pequeno (${audioBuffer.byteLength} bytes), pode indicar erro`);
+      formattedPhone = `+${formattedPhone}`;
     }
     
-    // Verificar se o conteúdo parece ser realmente um MP3 válido
+    console.log(`[DEBUG] TTS-Handler: Número de telefone formatado: ${formattedPhone}`);
+    console.log(`[DEBUG] TTS-Handler: Texto a ser falado: ${decodedText}`);
+    
     try {
-      // Verificar os primeiros bytes para confirmar que é um MP3 válido (header ID3 ou frame sync)
-      const firstBytes = new Uint8Array(audioBuffer.slice(0, 4));
-      const isID3 = firstBytes[0] === 73 && firstBytes[1] === 68 && firstBytes[2] === 51; // "ID3"
-      const isMP3FrameSync = (firstBytes[0] === 0xFF && (firstBytes[1] & 0xE0) === 0xE0);
-      
-      if (!isID3 && !isMP3FrameSync) {
-        console.warn(`[WARN] TTS-Handler: O conteúdo recebido não parece ser um arquivo MP3 válido. Primeiros bytes: ${Array.from(firstBytes).join(',')}`);
-      } else {
-        console.log(`[DEBUG] TTS-Handler: Conteúdo validado como MP3 válido (${isID3 ? 'ID3 header' : 'MP3 frame sync'})`);
-      }
-    } catch (validationErr) {
-      console.warn(`[WARN] TTS-Handler: Erro ao validar conteúdo MP3: ${validationErr}`);
-    }
-    
-    // Inicializar cliente Twilio
-    console.log(`[DEBUG] TTS-Handler: Inicializando cliente Twilio`);
-    const twilioClient = await getTwilioClient(twilioAccountSid, twilioAuthToken);
+      // Inicializar cliente Twilio
+      console.log(`[DEBUG] TTS-Handler: Inicializando cliente Twilio`);
+      const twilioClient = await getTwilioClient(twilioAccountSid, twilioAuthToken);
 
-    // Método mais direto: fazer um TwiML com Url direto para o ElevenLabs API
-    try {
-      console.log(`[DEBUG] TTS-Handler: Fazendo chamada Twilio para número ${phoneNumber}`);
-      
       // Usar TwiML simples que usa o texto diretamente
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
         <Say voice="woman" language="pt-BR">${decodedText}</Say>
       </Response>`;
 
+      console.log(`[DEBUG] TTS-Handler: TwiML preparado: ${twiml}`);
+      
+      console.log(`[DEBUG] TTS-Handler: Fazendo chamada Twilio para número ${formattedPhone} do número ${twilioPhoneNumber}`);
+      
       // Criar chamada usando o cliente Twilio
       const call = await twilioClient.calls.create({
         twiml: twiml,
-        to: phoneNumber,
-        from: twilioPhoneNumber,
-        timeout: 30
+        to: formattedPhone,
+        from: twilioPhoneNumber
       });
       
       console.log(`[DEBUG] TTS-Handler: Chamada iniciada com sucesso. SID: ${call.sid}`);
@@ -248,12 +186,10 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
-      
     } catch (twilioCallError) {
       console.error(`[ERROR] TTS-Handler: Erro ao iniciar chamada com Twilio: ${twilioCallError}`);
       throw new Error(`Falha ao iniciar chamada Twilio: ${twilioCallError.message}`);
     }
-    
   } catch (error) {
     console.error(`[ERROR] TTS-Handler: Erro no handler TTS-Twilio: ${error}`);
     

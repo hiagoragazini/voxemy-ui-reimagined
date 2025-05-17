@@ -23,7 +23,7 @@ export function AgentVoiceTester({
 }: AgentVoiceTesterProps) {
   const [text, setText] = useState(`Olá, eu sou ${agentName}, um assistente de voz. Como posso ajudar você hoje?`);
   const [audioContent, setAudioContent] = useState<string | null>(null);
-  const { isLoading, textToSpeech, playAudio } = useVoiceCall();
+  const { isLoading, textToSpeech, playAudio, stopAudio, isPlaying } = useVoiceCall();
   
   // Use a voz Laura que tem boa qualidade para português
   const defaultVoiceId = "FGY2WhTYpPnrIDTdsKH5"; // Laura - melhor para português
@@ -33,8 +33,18 @@ export function AgentVoiceTester({
       toast.error("Por favor, insira um texto para testar");
       return;
     }
-    
+
     try {
+      if (isPlaying) {
+        // If already playing, stop playback
+        stopAudio();
+        return;
+      }
+      
+      console.log("Iniciando teste de voz para:", agentName);
+      console.log("Usando voiceId:", voiceId || defaultVoiceId);
+      console.log("Texto para falar:", text);
+      
       // Usar configurações otimizadas para português com modelo fixo
       const audioData = await textToSpeech({ 
         text, 
@@ -48,12 +58,27 @@ export function AgentVoiceTester({
       if (audioData) {
         setAudioContent(audioData);
         playAudio(audioData);
+        toast.success("Áudio gerado com sucesso!");
       } else {
-        toast.error("Não foi possível gerar áudio");
+        throw new Error("Não foi possível gerar áudio");
       }
     } catch (err) {
       console.error("Erro ao testar voz:", err);
       toast.error("Erro ao testar a voz do agente");
+    }
+  };
+  
+  const handleMakeCall = async () => {
+    if (!agentId) {
+      toast.error("ID do agente não disponível");
+      return;
+    }
+    
+    try {
+      toast.info("Para fazer uma chamada, use o testador de chamadas na página de campanhas");
+    } catch (err) {
+      console.error("Erro ao iniciar chamada:", err);
+      toast.error("Erro ao iniciar chamada de teste");
     }
   };
   
@@ -74,20 +99,18 @@ export function AgentVoiceTester({
       />
 
       <div className="flex flex-col space-y-3">
-        {!audioContent && (
-          <Button 
-            onClick={handleTestVoice}
-            disabled={isLoading || !text}
-            className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Volume2 className="h-4 w-4" />
-            )}
-            <span>Testar Voz</span>
-          </Button>
-        )}
+        <Button 
+          onClick={handleTestVoice}
+          disabled={isLoading || !text}
+          className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700"
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Volume2 className="h-4 w-4" />
+          )}
+          <span>{isPlaying ? "Parar Áudio" : "Testar Voz"}</span>
+        </Button>
         
         {audioContent && (
           <div className="flex items-center justify-center p-2 bg-slate-50 rounded-md">
@@ -98,17 +121,14 @@ export function AgentVoiceTester({
           </div>
         )}
 
-        {audioContent && (
-          <Button 
-            onClick={handleTestVoice}
-            disabled={isLoading}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <Volume2 className="h-4 w-4" />
-            <span>Testar com outro texto</span>
-          </Button>
-        )}
+        <Button 
+          onClick={handleMakeCall}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          <Volume2 className="h-4 w-4" />
+          <span>Testar ligação</span>
+        </Button>
       </div>
 
       {onClose && (
