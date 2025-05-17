@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Phone, ExternalLink, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
+import { Loader2, Phone, ExternalLink, CheckCircle2, AlertCircle, Copy, Volume2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -39,6 +39,10 @@ export function TwilioManualTester() {
   const [testResult, setTestResult] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("setup");
   const [phoneValid, setPhoneValid] = useState(true);
+  const [audioConverting, setAudioConverting] = useState(false);
+  const [conversionResult, setConversionResult] = useState<any>(null);
+  const [audioTestPlaying, setAudioTestPlaying] = useState(false);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   
   // Validar formato do número de telefone
   const validatePhone = (phone: string) => {
@@ -71,6 +75,82 @@ export function TwilioManualTester() {
 
   const updateTwimlWithUrl = () => {
     setTwimlSnippet(`<Response>\n  <Play>${audioUrl}</Play>\n</Response>`);
+  };
+
+  const playAudioTest = () => {
+    if (!audioUrl) return;
+    
+    // Parar qualquer áudio em reprodução
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+    }
+    
+    try {
+      const audio = new Audio(audioUrl);
+      setAudioElement(audio);
+      setAudioTestPlaying(true);
+      
+      audio.play().catch(err => {
+        console.error('Erro ao reproduzir áudio:', err);
+        toast.error(`Erro ao reproduzir: ${err.message}`);
+        setAudioTestPlaying(false);
+      });
+      
+      audio.onended = () => {
+        setAudioTestPlaying(false);
+      };
+    } catch (err: any) {
+      toast.error(`Erro ao criar player: ${err.message}`);
+    }
+  };
+
+  const stopAudioTest = () => {
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      setAudioTestPlaying(false);
+    }
+  };
+
+  const convertAudioForTwilio = async () => {
+    if (!audioUrl) {
+      toast.error("URL do áudio é obrigatória");
+      return;
+    }
+    
+    setAudioConverting(true);
+    setConversionResult(null);
+    
+    try {
+      // Simular a conversão - em um ambiente real, chamaríamos uma API para converter
+      // o áudio para o formato compatível com telefonia (8kHz, mono, WAV)
+      toast.info("Simulando conversão de áudio para formato telefônico");
+      
+      // Aguardar alguns segundos para simular o processo
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Simular resultado de conversão
+      const twilioCompatibleUrl = audioUrl; // Em um caso real, esta seria a URL do áudio convertido
+      
+      setConversionResult({
+        success: true,
+        originalUrl: audioUrl,
+        convertedUrl: twilioCompatibleUrl,
+        message: "Simulação de conversão concluída. Em um ambiente real, o áudio seria convertido para 8kHz, mono, WAV.",
+        twiml: `<Response>\n  <Play>${twilioCompatibleUrl}</Play>\n</Response>`
+      });
+      
+      // Atualizar o TwiML snippet
+      setTwimlSnippet(`<Response>\n  <Play>${twilioCompatibleUrl}</Play>\n</Response>`);
+      
+      toast.success("Simulação de conversão concluída");
+    } catch (err: any) {
+      console.error('Erro na conversão:', err);
+      toast.error(`Erro: ${err.message}`);
+    } finally {
+      setAudioConverting(false);
+    }
   };
 
   const makeTestCall = async () => {
@@ -123,10 +203,11 @@ export function TwilioManualTester() {
       onValueChange={setActiveTab}
       className="w-full max-w-3xl mx-auto"
     >
-      <TabsList className="grid grid-cols-3 mb-6">
-        <TabsTrigger value="setup">1. Configuração</TabsTrigger>
-        <TabsTrigger value="twiml">2. TwiML</TabsTrigger>
-        <TabsTrigger value="result">3. Teste de Chamada</TabsTrigger>
+      <TabsList className="grid grid-cols-4 mb-6">
+        <TabsTrigger value="setup">1. Escolha do Áudio</TabsTrigger>
+        <TabsTrigger value="convert">2. Compatibilidade</TabsTrigger>
+        <TabsTrigger value="twiml">3. TwiML</TabsTrigger>
+        <TabsTrigger value="result">4. Teste de Chamada</TabsTrigger>
       </TabsList>
       
       <TabsContent value="setup">
@@ -177,40 +258,141 @@ export function TwilioManualTester() {
                   size="icon"
                   onClick={() => copyToClipboard(audioUrl)}
                   title="Copiar URL"
+                  disabled={!audioUrl}
                 >
                   <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={audioTestPlaying ? stopAudioTest : playAudioTest}
+                  title={audioTestPlaying ? "Parar" : "Reproduzir"}
+                  disabled={!audioUrl}
+                >
+                  {audioTestPlaying ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-xs text-gray-500">
                 Esta URL deve ser acessível publicamente para o Twilio conseguir acessá-la
               </p>
             </div>
-          
-            <Alert className="mt-4 bg-amber-50">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Passos para teste manual</AlertTitle>
-              <AlertDescription>
-                <ol className="list-decimal pl-5 mt-2 text-sm space-y-1.5">
-                  <li>Copie a URL do áudio acima</li>
-                  <li>Acesse o <a href="https://www.twilio.com/console/twiml-bins" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline flex items-center gap-1">Twilio TwiML Bins <ExternalLink className="h-3 w-3" /></a></li>
-                  <li>Clique em "+" para criar um novo TwiML Bin</li>
-                  <li>Dê um nome descritivo como "Teste MP3 Simples"</li>
-                  <li>Cole o TwiML que será gerado na próxima aba</li>
-                  <li>Salve o TwiML Bin e copie seu ID para uso na etapa de teste</li>
-                </ol>
-              </AlertDescription>
-            </Alert>
           </CardContent>
           <CardFooter>
             <Button 
               onClick={() => {
                 updateTwimlWithUrl();
+                setActiveTab("convert");
+              }} 
+              className="w-full"
+              disabled={!audioUrl}
+            >
+              Próximo: Verificar Compatibilidade
+            </Button>
+          </CardFooter>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="convert">
+        <Card>
+          <CardHeader>
+            <CardTitle>Compatibilidade com Telefonia</CardTitle>
+            <CardDescription>
+              Verifique se o áudio é compatível com sistemas telefônicos
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert className="bg-amber-50">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Formato de áudio para telefonia</AlertTitle>
+              <AlertDescription>
+                <p className="text-sm mt-1">
+                  O Twilio e outros sistemas telefônicos funcionam melhor com áudio no formato:
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li>Taxa de amostragem: 8kHz</li>
+                    <li>Canais: Mono (1 canal)</li>
+                    <li>Formato: PCM 16-bit WAV ou MP3 de baixa bitrate</li>
+                  </ul>
+                </p>
+              </AlertDescription>
+            </Alert>
+            
+            <div className="space-y-2 mt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium">Áudio selecionado:</h3>
+                  <p className="text-xs text-gray-500 mt-1 break-all">{audioUrl}</p>
+                </div>
+                
+                {audioUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={audioTestPlaying ? stopAudioTest : playAudioTest}
+                    className="flex items-center gap-1 h-8"
+                  >
+                    {audioTestPlaying ? "Parar" : "Testar"} Áudio
+                    {audioTestPlaying ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Volume2 className="h-3 w-3" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <h3 className="text-sm font-medium mb-2">Converter áudio para formato telefônico:</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Esta função simularia a conversão do áudio para um formato otimizado para telefonia.
+                Em uma implementação real, o áudio seria convertido para WAV mono 8kHz.
+              </p>
+              
+              <Button
+                onClick={convertAudioForTwilio}
+                disabled={audioConverting || !audioUrl}
+                className="w-full"
+              >
+                {audioConverting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Convertendo áudio...
+                  </>
+                ) : (
+                  "Simular Conversão para Formato Telefônico"
+                )}
+              </Button>
+              
+              {conversionResult && (
+                <div className="mt-4 p-3 bg-green-50 rounded-md border border-green-100">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <p className="text-sm font-medium text-green-800">Conversão simulada com sucesso</p>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    {conversionResult.message}
+                  </p>
+                  <div className="mt-3 text-xs text-gray-500">
+                    <p><strong>URL original:</strong> {conversionResult.originalUrl}</p>
+                    <p className="mt-1"><strong>URL convertida (simulação):</strong> {conversionResult.convertedUrl}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button 
+              onClick={() => {
                 setActiveTab("twiml");
               }} 
               className="w-full"
               disabled={!audioUrl}
             >
-              Próximo: Gerar TwiML
+              Próximo: Configurar TwiML
             </Button>
           </CardFooter>
         </Card>
@@ -320,6 +502,12 @@ export function TwilioManualTester() {
               <div className="text-sm bg-gray-50 p-3 rounded-md border border-gray-200">
                 <p><strong>TwiML Bin ID:</strong> {twimlBinId || "Não definido"}</p>
                 <p><strong>Áudio URL:</strong> {audioUrl || "Não definido"}</p>
+                {conversionResult && (
+                  <p className="text-xs text-green-600 mt-1">
+                    <CheckCircle2 className="h-3 w-3 inline mr-1" />
+                    Áudio simulado com conversão para formato telefônico
+                  </p>
+                )}
               </div>
             </div>
             
