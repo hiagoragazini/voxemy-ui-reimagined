@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import AudioTester from "./pages/AudioTester";
 import TwilioManualTest from "./pages/TwilioManualTest";
+import ZenviaTest from "./pages/ZenviaTest"; // Adicionar importação da página Zenvia
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/audio-tester" element={<AudioTester />} />
         <Route path="/twilio-manual-test" element={<TwilioManualTest />} />
+        <Route path="/zenvia-test" element={<ZenviaTest />} /> {/* Adicionar nova rota */}
         
         {/* Agents */}
         <Route path="/agents" element={<AgentList />} />

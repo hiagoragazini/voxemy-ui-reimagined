@@ -1,202 +1,137 @@
 
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import Logo from "@/components/shared/Logo";
+import { Link, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Users, 
-  Phone,
-  PieChart,
-  MenuIcon, 
-  Settings,
-  MessageSquare,
-  PhoneCall,
-  BarChart2,
-  Activity
+  Phone, 
+  BarChart3, 
+  Settings, 
+  Menu,
+  ChevronLeft, 
+  PhoneCall
 } from "lucide-react";
+import { Logo } from "../shared/Logo";
 
-const mainMenuItems = [
-  {
-    title: "Dashboard",
-    icon: <LayoutDashboard className="h-5 w-5" />,
-    href: "/dashboard",
-  },
-  {
-    title: "Agentes",
-    icon: <Users className="h-5 w-5" />,
-    href: "/agents",
-  },
-  {
-    title: "Campanhas",
-    icon: <MessageSquare className="h-5 w-5" />,
-    href: "/campaigns",
-  },
-  {
-    title: "Leads",
-    icon: <Phone className="h-5 w-5" />,
-    href: "/leads",
-  },
-  {
-    title: "Chamadas",
-    icon: <PhoneCall className="h-5 w-5" />,
-    href: "/calls",
-  },
-  {
-    title: "Relatórios",
-    icon: <BarChart2 className="h-5 w-5" />,
-    href: "/reports",
-  },
-];
-
-const otherMenuItems = [
-  {
-    title: "Configurações",
-    icon: <Settings className="h-5 w-5" />,
-    href: "/settings",
-  },
-];
-
-interface SidebarProps {
-  open?: boolean;
-  onClose?: () => void;
-}
-
-export function Sidebar({ open = false, onClose }: SidebarProps) {
+export function Sidebar() {
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+  
+  // Links do menu
+  const menuItems = [
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+    { name: "Agentes", path: "/agents", icon: Users },
+    { name: "Campanhas", path: "/campaigns", icon: Phone },
+    { name: "Leads", path: "/leads", icon: Users },
+    { name: "Chamadas", path: "/calls", icon: PhoneCall },
+    { name: "Analytics", path: "/analytics", icon: BarChart3 },
+    { name: "Configurações", path: "/settings", icon: Settings },
+  ];
+  
+  // Links para ferramentas de teste
+  const testTools = [
+    { name: "Teste de Áudio", path: "/audio-tester", icon: Phone },
+    { name: "Teste Twilio", path: "/twilio-manual-test", icon: PhoneCall },
+    { name: "Teste Zenvia", path: "/zenvia-test", icon: PhoneCall },
+  ];
+  
+  const toggleSidebar = () => {
+    setCollapsed(!collapsed);
+  };
+  
   return (
-    <>
-      {/* Mobile Sidebar */}
-      <Sheet open={open} onOpenChange={onClose}>
-        <SheetContent side="left" className="p-0">
-          <div className="p-6 border-b">
+    <aside
+      className={`fixed top-0 left-0 z-40 h-screen bg-white dark:bg-gray-800 shadow transition-width duration-300 ease-in-out border-r border-gray-200 dark:border-gray-700 ${
+        collapsed ? "w-16" : "w-64"
+      }`}
+    >
+      <div className="flex flex-col h-full">
+        <div className="flex items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          {!collapsed && <Logo />}
+          <button
+            onClick={toggleSidebar}
+            className="ml-auto p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            {collapsed ? (
+              <Menu className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            ) : (
+              <ChevronLeft className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            )}
+          </button>
+        </div>
+        
+        <div className="flex-grow overflow-y-auto py-5">
+          <ul className="space-y-2 px-3">
+            {menuItems.map((item) => (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={`flex items-center p-2 rounded-lg transition-colors ${
+                    location.pathname === item.path
+                      ? "bg-blue-50 text-blue-600 dark:bg-gray-700 dark:text-white"
+                      : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <item.icon
+                    className={`${collapsed ? "mx-auto" : "mr-3"} h-5 w-5`}
+                  />
+                  {!collapsed && <span>{item.name}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          
+          {/* Seção Ferramentas de Teste */}
+          <div className="mt-8">
+            {!collapsed && (
+              <h3 className="px-4 mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                Ferramentas de Teste
+              </h3>
+            )}
+            <ul className="space-y-2 px-3">
+              {testTools.map((tool) => (
+                <li key={tool.path}>
+                  <Link
+                    to={tool.path}
+                    className={`flex items-center p-2 rounded-lg transition-colors ${
+                      location.pathname === tool.path
+                        ? "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+                        : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    <tool.icon
+                      className={`${collapsed ? "mx-auto" : "mr-3"} h-5 w-5`}
+                    />
+                    {!collapsed && <span>{tool.name}</span>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          {!collapsed ? (
             <div className="flex items-center">
-              <Logo variant="dashboard" size="md" />
-            </div>
-          </div>
-
-          <div className="p-4">
-            <nav className="grid gap-2">
-              {mainMenuItems.map((item, index) => (
-                <NavLink
-                  key={index}
-                  to={item.href}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-lg px-3 py-2 text-gray-700 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50 ${
-                      isActive
-                        ? "bg-blue-100 text-blue-900 dark:bg-blue-800/30 dark:text-blue-400"
-                        : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                    }`
-                  }
-                >
-                  {item.icon}
-                  <span>{item.title}</span>
-                </NavLink>
-              ))}
-
-              <div className="my-2 border-t" />
-
-              {otherMenuItems.map((item, index) => (
-                <NavLink
-                  key={index}
-                  to={item.href}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-lg px-3 py-2 text-gray-700 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50 ${
-                      isActive
-                        ? "bg-blue-100 text-blue-900 dark:bg-blue-800/30 dark:text-blue-400"
-                        : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                    }`
-                  }
-                >
-                  {item.icon}
-                  <span>{item.title}</span>
-                </NavLink>
-              ))}
-            </nav>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Desktop Sidebar */}
-      <aside className="fixed left-0 top-0 z-20 hidden h-full w-64 border-r bg-white dark:bg-gray-900 dark:border-gray-800 lg:block">
-        <div className="p-6 border-b">
-          <div className="flex items-center">
-            <Logo variant="dashboard" size="md" />
-          </div>
-        </div>
-
-        <div className="p-4">
-          <nav className="grid gap-2">
-            {mainMenuItems.map((item, index) => (
-              <NavLink
-                key={index}
-                to={item.href}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg px-3 py-2 text-gray-700 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50 ${
-                    isActive
-                      ? "bg-blue-100 text-blue-900 dark:bg-blue-800/30 dark:text-blue-400"
-                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
-                }
-              >
-                {item.icon}
-                <span>{item.title}</span>
-              </NavLink>
-            ))}
-
-            <div className="my-2 border-t dark:border-gray-800" />
-
-            {otherMenuItems.map((item, index) => (
-              <NavLink
-                key={index}
-                to={item.href}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50 ${
-                    isActive
-                      ? "bg-blue-100 text-blue-900 dark:bg-blue-800/30 dark:text-blue-400"
-                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`
-                }
-              >
-                {item.icon}
-                <span>{item.title}</span>
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-
-        <div className="absolute bottom-4 left-0 right-0 px-4">
-          <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/30">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-400">
-                  Sistema em Tempo Real
+              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                U
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Usuário
                 </p>
-                <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-                  Monitoramento ativo
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  usuario@exemplo.com
                 </p>
               </div>
-              <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-pulse" />
             </div>
-          </div>
+          ) : (
+            <div className="h-8 w-8 mx-auto rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+              U
+            </div>
+          )}
         </div>
-      </aside>
-    </>
-  );
-}
-
-export function MobileSidebarTrigger({ onClick }: { onClick: () => void }) {
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={onClick}
-      className="lg:hidden"
-      aria-label="Menu"
-    >
-      <MenuIcon className="h-5 w-5" />
-    </Button>
+      </div>
+    </aside>
   );
 }

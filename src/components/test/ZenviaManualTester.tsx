@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -164,7 +165,7 @@ export function ZenviaManualTester() {
       <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-md">
         <h3 className="text-sm font-medium text-amber-700">Informações técnicas:</h3>
         <ul className="mt-2 text-sm text-amber-600 space-y-1 list-disc pl-5">
-          <li>Token API Zenvia: {(Deno.env?.get?.("ZENVIA_API_TOKEN") || "59db3a357f71882854f0bb309aa36c2b").substring(0, 5)}...</li>
+          <li>Token API Zenvia: {"59db3a357f71882854f0bb309aa36c2b".substring(0, 5)}...</li>
           <li>Formato de comunicação: JSON (diferente do TwiML/XML do Twilio)</li>
           <li>Os webhooks processam as respostas em tempo real</li>
           <li>Certifique-se que as variáveis ELEVENLABS_API_KEY e OPENAI_API_KEY estão configuradas para o diálogo interativo completo.</li>
