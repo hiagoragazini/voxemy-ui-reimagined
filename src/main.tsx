@@ -10,47 +10,16 @@ import {
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import Dashboard from './pages/Dashboard';
-import Settings from './pages/Settings';
-import AudioTester from './pages/AudioTester';
-import Auth from './pages/Auth';
-import Index from './pages/Index';
-import TwilioManualTest from './pages/TwilioManualTest';
-import NotFound from './pages/NotFound';
-
 // Create a client
 const queryClient = new QueryClient();
 
+// Note: We're using a simpler router setup that just renders the App component
+// which handles all routing internally
 const router = createBrowserRouter([
   {
-    path: "/",
+    path: "/*", // This wildcard path ensures all routes are handled by App.tsx
     element: <App />,
-    errorElement: <NotFound />,
-  },
-  {
-    path: "/auth",
-    element: <Auth />,
-  },
-  {
-    path: "/dashboard",
-    element: <Dashboard />,
-  },
-  {
-    path: "/settings",
-    element: <Settings />,
-  },
-  {
-    path: "/audio-tester",
-    element: <AudioTester />
-  },
-  {
-    path: "/twilio-manual-test",
-    element: <TwilioManualTest />
-  },
-  {
-    path: "*",
-    element: <NotFound />
-  },
+  }
 ]);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
