@@ -16,6 +16,7 @@ import AudioTester from './pages/AudioTester';
 import Auth from './pages/Auth';
 import Index from './pages/Index';
 import TwilioManualTest from './pages/TwilioManualTest';
+import NotFound from './pages/NotFound';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -23,27 +24,32 @@ const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Index />,
+    element: <App />,
+    errorElement: <NotFound />,
   },
   {
     path: "/auth",
     element: <Auth />,
   },
   {
-    path: "dashboard",
+    path: "/dashboard",
     element: <Dashboard />,
   },
   {
-    path: "settings",
+    path: "/settings",
     element: <Settings />,
   },
   {
-    path: "audio-tester",
+    path: "/audio-tester",
     element: <AudioTester />
   },
   {
-    path: "twilio-manual-test",
+    path: "/twilio-manual-test",
     element: <TwilioManualTest />
+  },
+  {
+    path: "*",
+    element: <NotFound />
   },
 ]);
 
