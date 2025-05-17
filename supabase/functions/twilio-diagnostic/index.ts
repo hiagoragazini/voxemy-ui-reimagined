@@ -1,11 +1,21 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
 
-// Async function to import Twilio in a Deno-compatible way
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Função para importar o cliente Twilio
 async function getTwilioClient(accountSid: string, authToken: string) {
-  const twilio = await import("npm:twilio@4.20.0");
-  return new twilio.default(accountSid, authToken);
+  try {
+    // Import Twilio usando importação ESM compatível com Deno
+    const twilio = await import("npm:twilio@4.20.0");
+    return new twilio.default(accountSid, authToken);
+  } catch (error) {
+    console.error("Erro ao inicializar cliente Twilio:", error);
+    throw new Error(`Falha ao inicializar cliente Twilio: ${error.message}`);
+  }
 }
 
 serve(async (req) => {
@@ -15,32 +25,36 @@ serve(async (req) => {
   }
 
   try {
-    const requestData = await req.json();
-    const { phoneNumber, mode, twiml: customTwiml } = requestData;
-
-    if (!phoneNumber) {
-      return new Response(
-        JSON.stringify({ error: "Phone number is required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
+    console.log("\n=== TWILIO-DIAGNOSTIC HANDLER ===");
+    console.log(`Timestamp: ${new Date().toISOString()}`);
+    console.log(`Method: ${req.method}`);
+    console.log(`URL: ${req.url}`);
     
-    console.log(`Starting diagnostic call to ${phoneNumber} (mode: ${mode})`);
-
-    // Get Twilio credentials from environment variables
+    // Extrair dados da requisição
+    const requestData = await req.json().catch(() => ({}));
+    console.log("Request data:", JSON.stringify(requestData, null, 2));
+    
+    // Obter credenciais Twilio
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
     
     if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
-      console.error("Missing Twilio credentials");
-      return new Response(
-        JSON.stringify({ error: "Twilio credentials not configured" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
+      console.error("Credenciais Twilio ausentes:");
+      console.error(`- TWILIO_ACCOUNT_SID: ${twilioAccountSid ? "configurado" : "não configurado"}`);
+      console.error(`- TWILIO_AUTH_TOKEN: ${twilioAuthToken ? "configurado" : "não configurado"}`);
+      console.error(`- TWILIO_PHONE_NUMBER: ${twilioPhoneNumber ? "configurado" : "não configurado"}`);
+      throw new Error("Credenciais Twilio não configuradas completamente");
     }
 
-    // Format the phone number to international format
+    // Extrair o número de telefone e o modo de teste da requisição
+    const { phoneNumber, mode = "basic", twiml: customTwiml } = requestData;
+    
+    if (!phoneNumber) {
+      throw new Error("Número de telefone não fornecido");
+    }
+    
+    // Formatar número de telefone
     let formattedPhone = phoneNumber.replace(/\D/g, '');
     if (!formattedPhone.startsWith('+')) {
       if (!formattedPhone.startsWith('55')) {
@@ -49,23 +63,35 @@ serve(async (req) => {
       formattedPhone = `+${formattedPhone}`;
     }
     
-    console.log(`Formatted phone number: ${formattedPhone}`);
-
-    // Initialize the Twilio client
-    const twilioClient = await getTwilioClient(twilioAccountSid, twilioAuthToken);
+    console.log(`Número formatado: ${formattedPhone}`);
     
-    // Determine the TwiML based on the mode
-    let twiml;
+    // Obter URL base para webhooks do Supabase
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    if (!supabaseUrl) {
+      throw new Error("SUPABASE_URL não configurado");
+    }
     
-    if (mode === 'custom' && customTwiml) {
-      // Use custom TwiML provided by the user
+    // Construir a URL absoluta para o webhook de eco
+    const echoWebhookUrl = `${supabaseUrl.replace(/\/$/g, "")}/functions/v1/twilio-echo`;
+    console.log(`URL do webhook de eco: ${echoWebhookUrl}`);
+    
+    // Inicializar cliente Twilio
+    console.log("Inicializando cliente Twilio...");
+    const client = await getTwilioClient(twilioAccountSid, twilioAuthToken);
+    
+    // Criar TwiML baseado no modo selecionado
+    let twiml: string;
+    
+    if (mode === "custom" && customTwiml) {
+      console.log("Modo: TwiML personalizado");
       twiml = customTwiml;
     } else {
-      // Use basic diagnostic TwiML
+      console.log("Modo: Teste básico");
+      // TwiML simplificado com voice="Polly.Camila" em vez de "woman"
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Camila" language="pt-BR">Esta é uma mensagem de teste do diagnosticador Voxemy. Por favor, diga algo após o bipe.</Say>
-  <Gather input="speech" language="pt-BR" action="https://${req.headers.get('host')}/functions/v1/twilio-echo" method="POST" timeout="5">
+  <Say voice="Polly.Camila" language="pt-BR">Esta é uma mensagem de teste do diagnóstico Twilio. Por favor, diga algo após o bipe.</Say>
+  <Gather input="speech" language="pt-BR" action="${echoWebhookUrl}" method="POST" timeout="5">
     <Say voice="Polly.Camila" language="pt-BR">Por favor, fale agora.</Say>
   </Gather>
   <Say voice="Polly.Camila" language="pt-BR">Não ouvi nada. Vou encerrar a chamada.</Say>
@@ -73,43 +99,48 @@ serve(async (req) => {
 </Response>`;
     }
     
-    console.log("Using TwiML:", twiml);
+    // Log do TwiML para diagnóstico
+    console.log("TwiML que será enviado:");
+    console.log(twiml);
     
-    // Make the call using Twilio
-    const call = await twilioClient.calls.create({
+    // Fazer a chamada
+    console.log(`Iniciando chamada de ${twilioPhoneNumber} para ${formattedPhone}`);
+    const call = await client.calls.create({
       twiml: twiml,
       to: formattedPhone,
       from: twilioPhoneNumber,
-      statusCallback: `https://${req.headers.get('host')}/functions/v1/call-status`,
+      statusCallback: `${supabaseUrl}/functions/v1/call-status`,
       statusCallbackMethod: 'POST',
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed']
     });
     
-    console.log(`Call initiated, SID: ${call.sid}`);
+    console.log(`Chamada iniciada: SID ${call.sid}, status inicial: ${call.status}`);
     
-    // Return success response
     return new Response(
       JSON.stringify({
         success: true,
+        message: "Chamada de diagnóstico iniciada com sucesso",
         call_sid: call.sid,
         status: call.status,
-        phone_number: formattedPhone,
-        mode: mode,
-        message: "Diagnostic call initiated"
+        twiml_summary: mode === "custom" ? "TwiML personalizado" : "TwiML de diagnóstico básico"
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
     );
   } catch (error) {
-    console.error("Error in Twilio diagnostic function:", error);
+    console.error("Erro na função de diagnóstico Twilio:", error);
     
-    // Return error response
     return new Response(
-      JSON.stringify({
-        error: true,
-        message: error.message || "Unknown error",
-        stack: error.stack
+      JSON.stringify({ 
+        success: false, 
+        error: error.message || "Erro desconhecido",
+        timestamp: new Date().toISOString()
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
     );
   }
 });
