@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -11,6 +12,7 @@ import Settings from './pages/Settings.tsx';
 import ZenviaTest from './pages/ZenviaTest.tsx';
 import TwilioTest from './pages/TwilioTest.tsx';
 import VoicebotTest from './pages/VoicebotTest.tsx';
+import { AuthProvider } from './contexts/AuthContext.tsx';
 
 const router = createBrowserRouter([
   {
@@ -53,6 +55,8 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </React.StrictMode>,
 )
