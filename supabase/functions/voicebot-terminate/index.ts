@@ -3,26 +3,43 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-// Media server connection settings
-const MEDIA_SERVER_URL = Deno.env.get("MEDIA_SERVER_URL") || "http://localhost:8021";
-const MEDIA_SERVER_PASSWORD = Deno.env.get("MEDIA_SERVER_PASSWORD") || "";
+// Vapi API Settings
+const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY") || "";
+const VAPI_API_URL = "https://api.vapi.ai/call";
 
-// Helper function to terminate a call on the media server
-async function terminateMediaServerCall(callId: string) {
+// Helper function to terminate a call on Vapi
+async function terminateVapiCall(callId: string) {
   try {
-    console.log(`Encerrando chamada ${callId} no servidor de mídia`);
+    console.log(`Encerrando chamada ${callId} na Vapi`);
     
-    // In a real implementation, this would make an API call to FreeSWITCH/Asterisk
-    // to terminate an active call
+    if (!VAPI_API_KEY) {
+      throw new Error("VAPI_API_KEY não está configurada");
+    }
     
-    // Simulate a successful call termination
+    // Call Vapi API to terminate the call
+    const response = await fetch(`${VAPI_API_URL}/${callId}/hangup`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${VAPI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Erro na API Vapi: ${JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json();
+    
     return {
       callId,
       status: "terminated",
       timestamp: new Date().toISOString(),
+      details: result
     };
   } catch (error) {
-    console.error(`Erro ao encerrar chamada ${callId} no servidor de mídia:`, error);
+    console.error(`Erro ao encerrar chamada ${callId} na Vapi:`, error);
     throw error;
   }
 }
@@ -58,8 +75,8 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Terminate the call on the media server
-    const terminationResult = await terminateMediaServerCall(callId);
+    // Terminate the call on the Vapi
+    const terminationResult = await terminateVapiCall(callId);
     
     // Update the call status in the database
     const { data: updatedCall, error: updateError } = await supabase
