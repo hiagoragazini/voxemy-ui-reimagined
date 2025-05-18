@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Phone } from 'lucide-react';
+import { Loader2, Phone, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useZenviaCall } from '@/hooks/use-zenvia-call';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function ZenviaManualTester() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -15,7 +16,7 @@ export function ZenviaManualTester() {
   const [response, setResponse] = useState<string | null>(null);
   const [selectedVoice, setSelectedVoice] = useState<string>("21m00Tcm4TlvDq8ikWAM"); // Antônio (pt-BR)
   
-  const { makeCall, isLoading, callDetails } = useZenviaCall();
+  const { makeCall, isLoading, error, callDetails } = useZenviaCall();
   
   const voices = [
     { id: "21m00Tcm4TlvDq8ikWAM", name: "Antônio (pt-BR, masculina)" },
@@ -57,6 +58,12 @@ export function ZenviaManualTester() {
       if (result) {
         console.log('Resposta da chamada Zenvia:', result);
         setResponse(JSON.stringify(result, null, 2));
+        
+        if (result.success) {
+          toast.success("Chamada iniciada com sucesso!");
+        } else {
+          toast.error(`Erro: ${result.error || 'Falha ao iniciar chamada'}`);
+        }
       }
     } catch (err: any) {
       console.error('Erro inesperado:', err);
@@ -75,6 +82,14 @@ export function ZenviaManualTester() {
     <div className="space-y-6 bg-white p-6 rounded-lg shadow">
       <div>
         <h2 className="text-lg font-medium mb-4">Teste de Chamada Zenvia com Diálogo Interativo</h2>
+        
+        <Alert variant="warning" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Configuração necessária</AlertTitle>
+          <AlertDescription>
+            Para utilizar esta funcionalidade, configure a variável de ambiente <strong>ZENVIA_API_KEY</strong> no Supabase.
+          </AlertDescription>
+        </Alert>
         
         <div className="space-y-4">
           <div className="space-y-2">
@@ -165,7 +180,7 @@ export function ZenviaManualTester() {
       <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-md">
         <h3 className="text-sm font-medium text-amber-700">Informações técnicas:</h3>
         <ul className="mt-2 text-sm text-amber-600 space-y-1 list-disc pl-5">
-          <li>Token API Zenvia: {"59db3a357f71882854f0bb309aa36c2b".substring(0, 5)}...</li>
+          <li>Configure a variável de ambiente <strong>ZENVIA_API_KEY</strong> no Supabase</li>
           <li>Formato de comunicação: JSON (diferente do TwiML/XML do Twilio)</li>
           <li>Os webhooks processam as respostas em tempo real</li>
           <li>Certifique-se que as variáveis ELEVENLABS_API_KEY e OPENAI_API_KEY estão configuradas para o diálogo interativo completo.</li>

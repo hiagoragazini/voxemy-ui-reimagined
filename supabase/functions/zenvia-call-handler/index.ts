@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // Token de acesso da API Zenvia
-const ZENVIA_API_TOKEN = Deno.env.get("ZENVIA_API_TOKEN") || "59db3a357f71882854f0bb309aa36c2b";
+const ZENVIA_API_TOKEN = Deno.env.get("ZENVIA_API_KEY") || "";
 
 // Inicialização do cliente Zenvia
 async function makeZenviaCall(params: any) {
@@ -47,6 +47,9 @@ async function makeZenviaCall(params: any) {
       const callbackUrl = `${supabaseUrl.replace(/\/$/g, "")}/functions/v1/zenvia-process-dialog`;
       payload.contents[0].callbackUrl = callbackUrl;
     }
+    
+    console.log("Enviando requisição para Zenvia com payload:", JSON.stringify(payload, null, 2));
+    console.log("Usando token:", ZENVIA_API_TOKEN ? "Token configurado" : "Token não configurado");
     
     // Configurar cabeçalhos com autenticação
     const headers = {
@@ -97,6 +100,22 @@ serve(async (req) => {
     // Extrair dados da requisição
     const requestData = await req.json();
     console.log("Request data:", JSON.stringify(requestData, null, 2));
+    
+    // Validar API Token
+    if (!ZENVIA_API_TOKEN) {
+      console.error("ZENVIA_API_KEY não está configurada nas variáveis de ambiente");
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "API Token da Zenvia não configurado. Configure a variável ZENVIA_API_KEY.",
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
     
     // Validar dados mínimos necessários
     const { phoneNumber, message } = requestData;
