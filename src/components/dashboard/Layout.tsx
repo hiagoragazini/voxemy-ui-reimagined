@@ -7,7 +7,7 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-export default function Layout({ children }: LayoutProps) {
+const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="flex h-screen">
       {/* Sidebar fixo na esquerda */}
@@ -25,3 +25,6 @@ export default function Layout({ children }: LayoutProps) {
     </div>
   );
 }
+
+export { Layout };
+export default Layout;
