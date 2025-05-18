@@ -52,7 +52,7 @@ export function CampaignCard({
             <Badge className="bg-green-100 text-green-800 border-0 font-normal">
               <div className="flex items-center gap-1">
                 <Phone className="h-3 w-3" />
-                <span>Active</span>
+                <span>Ativa</span>
               </div>
             </Badge>
           )}
@@ -60,7 +60,7 @@ export function CampaignCard({
             <Badge className="bg-amber-100 text-amber-800 border-0 font-normal">
               <div className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                <span>Paused</span>
+                <span>Pausada</span>
               </div>
             </Badge>
           )}
@@ -68,7 +68,7 @@ export function CampaignCard({
             <Badge className="bg-blue-100 text-blue-800 border-0 font-normal">
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                <span>Scheduled</span>
+                <span>Agendada</span>
               </div>
             </Badge>
           )}
@@ -76,7 +76,7 @@ export function CampaignCard({
             <Badge className="bg-gray-100 text-gray-800 border-0 font-normal">
               <div className="flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
-                <span>Completed</span>
+                <span>Concluída</span>
               </div>
             </Badge>
           )}
@@ -84,14 +84,14 @@ export function CampaignCard({
         
         {/* Agent info */}
         <div className="mb-4">
-          <p className="text-sm text-muted-foreground">Agent: <span className="font-medium text-foreground">{agent}</span></p>
+          <p className="text-sm text-muted-foreground">Agente: <span className="font-medium text-foreground">{agent}</span></p>
         </div>
         
         {/* Progress bar */}
         <div className="mb-4">
           <div className="flex justify-between items-center mb-1.5">
-            <span className="text-xs text-muted-foreground">Progress</span>
-            <span className="text-xs font-medium">{completedLeads} of {totalLeads} leads ({completionPercentage}%)</span>
+            <span className="text-xs text-muted-foreground">Progresso</span>
+            <span className="text-xs font-medium">{completedLeads} de {totalLeads} leads ({completionPercentage}%)</span>
           </div>
           <Progress value={completionPercentage} className="h-1.5 bg-gray-100" />
         </div>
@@ -101,24 +101,24 @@ export function CampaignCard({
           <div className="border rounded-md p-2 flex flex-col items-center justify-center">
             <BarChart3 className="h-4 w-4 text-violet-600 mb-1" />
             <p className="text-sm font-medium">{successRate}%</p>
-            <p className="text-xs text-muted-foreground">Success</p>
+            <p className="text-xs text-muted-foreground">Sucesso</p>
           </div>
           <div className="border rounded-md p-2 flex flex-col items-center justify-center">
             <Clock className="h-4 w-4 text-violet-600 mb-1" />
             <p className="text-sm font-medium">{avgCallDuration}</p>
-            <p className="text-xs text-muted-foreground">Avg Time</p>
+            <p className="text-xs text-muted-foreground">Tempo Méd.</p>
           </div>
           <div className="border rounded-md p-2 flex flex-col items-center justify-center">
             <Calendar className="h-4 w-4 text-violet-600 mb-1" />
             <p className="text-sm font-medium">{startDate}</p>
-            <p className="text-xs text-muted-foreground">Start Date</p>
+            <p className="text-xs text-muted-foreground">Início</p>
           </div>
         </div>
         
         {/* Last activity and action buttons */}
         <div className="flex justify-between items-center">
           <div className="text-xs text-muted-foreground">
-            <span>Last activity: {lastActivity}</span>
+            <span>Última atividade: {lastActivity}</span>
           </div>
           
           <CampaignActions
@@ -126,8 +126,8 @@ export function CampaignCard({
             campaignName={name}
             agentId={agentId}
             agentName={agent}
-            onEditClick={onEditClick}
-            onViewDetails={onViewDetails}
+            onEditClick={() => onEditClick && onEditClick(id)}
+            onViewDetails={() => onViewDetails && onViewDetails(id)}
           />
         </div>
       </div>

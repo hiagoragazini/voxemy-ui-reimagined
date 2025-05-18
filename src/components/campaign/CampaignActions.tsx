@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RunCampaignButton } from "@/components/campaign/RunCampaignButton";
-import { PencilLine, MoreVertical, Trash2, Phone, Copy, SquarePen, FileSpreadsheet } from "lucide-react";
+import { PencilLine, MoreVertical, Trash2, Copy, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Papa from "papaparse";
@@ -15,6 +15,7 @@ interface CampaignActionsProps {
   agentId?: string;
   agentName?: string;
   onEditClick: () => void;
+  onViewDetails?: () => void;
 }
 
 export function CampaignActions({ 
@@ -22,7 +23,8 @@ export function CampaignActions({
   campaignName, 
   agentId,
   agentName,
-  onEditClick 
+  onEditClick,
+  onViewDetails
 }: CampaignActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
