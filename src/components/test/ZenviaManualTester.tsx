@@ -83,10 +83,10 @@ export function ZenviaManualTester() {
       <div>
         <h2 className="text-lg font-medium mb-4">Teste de Chamada Zenvia com Diálogo Interativo</h2>
         
-        <Alert variant="warning" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Configuração necessária</AlertTitle>
-          <AlertDescription>
+        <Alert className="mb-4 border-amber-300 bg-amber-50">
+          <AlertCircle className="h-4 w-4 text-amber-500" />
+          <AlertTitle className="text-amber-700">Configuração necessária</AlertTitle>
+          <AlertDescription className="text-amber-600">
             Para utilizar esta funcionalidade, configure a variável de ambiente <strong>ZENVIA_API_KEY</strong> no Supabase.
           </AlertDescription>
         </Alert>

@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 
 // Token de acesso da API Zenvia
-const ZENVIA_API_TOKEN = Deno.env.get("ZENVIA_API_TOKEN") || "59db3a357f71882854f0bb309aa36c2b";
+const ZENVIA_API_TOKEN = Deno.env.get("ZENVIA_API_KEY") || "";
 
 // Função para processar texto com OpenAI
 async function processWithAI(text) {
