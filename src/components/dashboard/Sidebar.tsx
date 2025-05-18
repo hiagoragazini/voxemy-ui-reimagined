@@ -1,137 +1,196 @@
+import React from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuList,
+} from "@/components/ui/navigation-menu";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { LucideIcon } from "lucide-react";
+import { Home, User, Settings, Plus, Phone } from "lucide-react";
 
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Phone, 
-  BarChart3, 
-  Settings, 
-  Menu,
-  ChevronLeft, 
-  PhoneCall
-} from "lucide-react";
-import Logo from "../shared/Logo";
+interface SidebarProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}
 
-export function Sidebar() {
-  const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
-  
-  // Links do menu
-  const menuItems = [
-    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { name: "Agentes", path: "/agents", icon: Users },
-    { name: "Campanhas", path: "/campaigns", icon: Phone },
-    { name: "Leads", path: "/leads", icon: Users },
-    { name: "Chamadas", path: "/calls", icon: PhoneCall },
-    { name: "Analytics", path: "/analytics", icon: BarChart3 },
-    { name: "Configurações", path: "/settings", icon: Settings },
-  ];
-  
-  // Links para ferramentas de teste
-  const testTools = [
-    { name: "Teste de Áudio", path: "/audio-tester", icon: Phone },
-    { name: "Teste Twilio", path: "/twilio-manual-test", icon: PhoneCall },
-    { name: "Teste Zenvia", path: "/zenvia-test", icon: PhoneCall },
-  ];
-  
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed);
-  };
-  
+interface NavigationItemProps {
+  to: string;
+  icon: LucideIcon;
+  children: React.ReactNode;
+}
+
+function NavigationItem({ to, icon: Icon, children }: NavigationItemProps) {
   return (
-    <aside
-      className={`fixed top-0 left-0 z-40 h-screen bg-white dark:bg-gray-800 shadow transition-width duration-300 ease-in-out border-r border-gray-200 dark:border-gray-700 ${
-        collapsed ? "w-16" : "w-64"
-      }`}
-    >
-      <div className="flex flex-col h-full">
-        <div className="flex items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          {!collapsed && <Logo />}
-          <button
-            onClick={toggleSidebar}
-            className="ml-auto p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+    <NavigationMenuItem>
+      <Link href={to} legacyBehavior passHref>
+        <Link
+          className="group flex w-full items-center rounded-md border border-transparent px-2 py-1.5 text-sm font-medium transition-colors hover:bg-secondary focus:bg-secondary focus:text-primary"
+          href={to}
+        >
+          <Icon className="mr-2 h-4 w-4" />
+          {children}
+        </Link>
+      </Link>
+    </NavigationMenuItem>
+  );
+}
+
+export default function Sidebar({ open, setOpen }: SidebarProps) {
+  const { user } = useUser();
+  const router = useRouter();
+
+  return (
+    <>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-0 px-2 text-base hover:bg-secondary md:hidden"
           >
-            {collapsed ? (
-              <Menu className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-            ) : (
-              <ChevronLeft className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-            )}
-          </button>
-        </div>
-        
-        <div className="flex-grow overflow-y-auto py-5">
-          <ul className="space-y-2 px-3">
-            {menuItems.map((item) => (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`flex items-center p-2 rounded-lg transition-colors ${
-                    location.pathname === item.path
-                      ? "bg-blue-50 text-blue-600 dark:bg-gray-700 dark:text-white"
-                      : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
-                  }`}
-                >
-                  <item.icon
-                    className={`${collapsed ? "mx-auto" : "mr-3"} h-5 w-5`}
-                  />
-                  {!collapsed && <span>{item.name}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-          
-          {/* Seção Ferramentas de Teste */}
-          <div className="mt-8">
-            {!collapsed && (
-              <h3 className="px-4 mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-                Ferramentas de Teste
-              </h3>
-            )}
-            <ul className="space-y-2 px-3">
-              {testTools.map((tool) => (
-                <li key={tool.path}>
-                  <Link
-                    to={tool.path}
-                    className={`flex items-center p-2 rounded-lg transition-colors ${
-                      location.pathname === tool.path
-                        ? "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                        : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
-                    }`}
-                  >
-                    <tool.icon
-                      className={`${collapsed ? "mx-auto" : "mr-3"} h-5 w-5`}
-                    />
-                    {!collapsed && <span>{tool.name}</span>}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-80 border-r p-0">
+          <SheetHeader className="text-left px-4 py-3">
+            <SheetTitle>Voxemy</SheetTitle>
+          </SheetHeader>
+
+          <nav className="flex flex-col gap-1">
+            <NavigationItem to="/" icon={Home}>
+              Home
+            </NavigationItem>
+
+            <h3 className="px-2 text-xs font-semibold text-muted-foreground">
+              Administração
+            </h3>
+
+            <NavigationItem to="/agents" icon={User}>
+              Agentes
+            </NavigationItem>
+
+            <NavigationItem to="/campaigns" icon={Settings}>
+              Campanhas
+            </NavigationItem>
+
+            <NavigationItem to="/leads" icon={Plus}>
+              Leads
+            </NavigationItem>
+
+            <h3 className="px-2 text-xs font-semibold text-muted-foreground">
+              Ferramentas
+            </h3>
+            
+            <NavigationItem to="/twilio-test" icon={Phone}>
+              Teste Twilio
+            </NavigationItem>
+            
+            <NavigationItem to="/zenvia-test" icon={Phone}>
+              Teste Zenvia
+            </NavigationItem>
+            
+            <NavigationItem to="/voicebot-test" icon={Phone}>
+              Voicebot Full-Duplex
+            </NavigationItem>
+          </nav>
+
+          <div className="mt-6 px-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex h-8 w-full items-center justify-between rounded-md">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.imageUrl} />
+                      <AvatarFallback>{user?.firstName?.[0]}{user?.lastName?.[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col items-start">
+                      <span className="text-sm font-semibold">{user?.firstName} {user?.lastName}</span>
+                      <span className="text-xs text-muted-foreground">{user?.emailAddresses[0].emailAddress}</span>
+                    </div>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" forceMount>
+                <DropdownMenuItem onClick={() => router.push("/profile")}>
+                  Editar perfil
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push("/sign-out")}>
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+        </SheetContent>
+      </Sheet>
+
+      <aside className="hidden border-r md:block">
+        <div className="space-y-4 py-4">
+          <div className="px-3 py-2">
+            <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+              Voxemy
+            </h2>
+          </div>
+
+          <nav className="flex flex-col gap-1">
+            <NavigationItem to="/" icon={Home}>
+              Home
+            </NavigationItem>
+
+            <h3 className="px-2 text-xs font-semibold text-muted-foreground">
+              Administração
+            </h3>
+
+            <NavigationItem to="/agents" icon={User}>
+              Agentes
+            </NavigationItem>
+
+            <NavigationItem to="/campaigns" icon={Settings}>
+              Campanhas
+            </NavigationItem>
+
+            <NavigationItem to="/leads" icon={Plus}>
+              Leads
+            </NavigationItem>
+
+            <h3 className="px-2 text-xs font-semibold text-muted-foreground">
+              Ferramentas
+            </h3>
+            
+            <NavigationItem to="/twilio-test" icon={Phone}>
+              Teste Twilio
+            </NavigationItem>
+            
+            <NavigationItem to="/zenvia-test" icon={Phone}>
+              Teste Zenvia
+            </NavigationItem>
+            
+            <NavigationItem to="/voicebot-test" icon={Phone}>
+              Voicebot Full-Duplex
+            </NavigationItem>
+          </nav>
         </div>
-        
-        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-          {!collapsed ? (
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                U
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Usuário
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  usuario@exemplo.com
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="h-8 w-8 mx-auto rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-              U
-            </div>
-          )}
-        </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
