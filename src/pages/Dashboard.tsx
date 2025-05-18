@@ -5,8 +5,24 @@ import { NextStepsSection } from "@/components/dashboard/NextStepsSection";
 import { Header } from "@/components/dashboard/Header";
 import { Layout } from "@/components/dashboard/Layout";
 import { VapiIntegrationCheck } from "@/components/dashboard/VapiIntegrationCheck";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
+  // Handler functions for TopAgentsSection
+  const handleViewAllAgents = () => {
+    navigate('/agents');
+  };
+
+  const handleCreateAgent = () => {
+    navigate('/agents/new');
+  };
+
+  const handleEditAgent = (id: string) => {
+    navigate(`/agents/${id}/edit`);
+  };
+
   return (
     <Layout>
       <Header />
@@ -19,7 +35,11 @@ export default function Dashboard() {
         </div>
         
         <div className="mt-6">
-          <TopAgentsSection />
+          <TopAgentsSection 
+            onViewAllClick={handleViewAllAgents}
+            onCreateAgentClick={handleCreateAgent}
+            onAgentEditClick={handleEditAgent}
+          />
         </div>
       </div>
     </Layout>
