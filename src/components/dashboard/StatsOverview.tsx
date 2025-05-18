@@ -3,15 +3,14 @@ import React from "react";
 import { PhoneCall, Clock, CheckCircle2 } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 export function StatsOverview() {
-  // Buscar estatísticas de chamadas do banco de dados
+  // Fetch call statistics from the database
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
-      // Aqui você implementaria a lógica real para buscar as estatísticas
-      // Por enquanto, retornamos dados simulados
+      // Here you would implement the actual logic to fetch statistics
+      // For now, we return simulated data
       return {
         totalCalls: "254",
         avgCallTime: "3:24",
