@@ -9,9 +9,6 @@ import Agents from './pages/Agents.tsx';
 import Campaigns from './pages/Campaigns.tsx';
 import Leads from './pages/Leads.tsx';
 import Settings from './pages/Settings.tsx';
-import ZenviaTest from './pages/ZenviaTest.tsx';
-import TwilioTest from './pages/TwilioTest.tsx';
-import VoicebotTest from './pages/VoicebotTest.tsx';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 
 const router = createBrowserRouter([
@@ -38,18 +35,6 @@ const router = createBrowserRouter([
   {
     path: "/settings",
     element: <Settings />,
-  },
-  {
-    path: "/zenvia-test",
-    element: <ZenviaTest />,
-  },
-  {
-    path: "/twilio-test",
-    element: <TwilioTest />,
-  },
-  {
-    path: "/voicebot-test",
-    element: <VoicebotTest />
   },
 ]);
 

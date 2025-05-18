@@ -5,10 +5,8 @@ import {
   LayoutDashboard, 
   Users, 
   Phone, 
-  BarChart3, 
-  Settings, 
-  PhoneCall,
-  MessageSquare
+  MessageSquare, 
+  Settings
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -40,21 +38,6 @@ export default function Sidebar() {
       name: "Configurações", 
       href: "/settings", 
       icon: Settings 
-    },
-    {
-      name: "Zenvia Test",
-      href: "/zenvia-test",
-      icon: PhoneCall
-    },
-    {
-      name: "Twilio Test",
-      href: "/twilio-test",
-      icon: PhoneCall
-    },
-    {
-      name: "Voicebot Test",
-      href: "/voicebot-test",
-      icon: PhoneCall
     }
   ];
 
