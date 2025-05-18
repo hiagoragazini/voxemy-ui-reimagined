@@ -1,13 +1,13 @@
 
 import React from "react";
-import { Sidebar } from "./Sidebar";
+import Sidebar from "./Sidebar";
 import { Header } from "./Header";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-export function Layout({ children }: LayoutProps) {
+export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen">
       {/* Sidebar fixo na esquerda */}
