@@ -19,7 +19,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Credenciais do Supabase não estão configuradas");
+      throw new Error("Supabase credentials are not configured");
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -32,8 +32,8 @@ serve(async (req) => {
       respectBusinessHours = true
     } = await req.json();
 
-    console.log(`Executor de campanha iniciado - Modo: ${dryRun ? 'Simulação' : 'Produção'}`);
-    console.log(`Parâmetros: campaignId=${campaignId || 'todas'}, maxCalls=${maxCalls}`);
+    console.log(`Campaign executor started - Mode: ${dryRun ? 'Simulation' : 'Production'}`);
+    console.log(`Parameters: campaignId=${campaignId || 'all'}, maxCalls=${maxCalls}`);
 
     // Check if current time is within business hours (9 AM to 6 PM)
     const now = new Date();
@@ -45,12 +45,12 @@ serve(async (req) => {
     
     // If respectBusinessHours is true and we're outside business hours, return early
     if (respectBusinessHours && !isBusinessHours) {
-      console.log(`Fora do horário comercial (${currentDay}:${currentHour}). Nenhuma chamada será feita.`);
+      console.log(`Outside business hours (${currentDay}:${currentHour}). No calls will be made.`);
       
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Fora do horário comercial. Nenhuma chamada será feita.",
+          message: "Outside business hours. No calls will be made.",
           processedCampaigns: 0,
           processedLeads: 0,
           errors: 0,
@@ -85,11 +85,11 @@ serve(async (req) => {
     const { data: campaigns, error: campaignsError } = await campaignsQuery;
     
     if (campaignsError) {
-      console.error("Erro ao buscar campanhas:", campaignsError);
+      console.error("Error fetching campaigns:", campaignsError);
       throw campaignsError;
     }
     
-    console.log(`Encontradas ${campaigns?.length || 0} campanhas ativas`);
+    console.log(`Found ${campaigns?.length || 0} active campaigns`);
     
     // Process each campaign
     if (campaigns && campaigns.length > 0) {
@@ -97,11 +97,11 @@ serve(async (req) => {
         try {
           // Ensure there is an agent and the agent is active
           if (!campaign.agent_id || campaign.agents?.status !== "active") {
-            console.log(`Campanha ${campaign.id} pulada: agente inativo ou não encontrado`);
+            console.log(`Campaign ${campaign.id} skipped: agent inactive or not found`);
             continue;
           }
           
-          console.log(`Processando campanha: ${campaign.name} (${campaign.id})`);
+          console.log(`Processing campaign: ${campaign.name} (${campaign.id})`);
           
           const result = await processCampaign(supabase, campaign, maxCalls, dryRun);
           processedLeads += result.processedLeads;
@@ -111,7 +111,7 @@ serve(async (req) => {
             processedCampaigns++;
           }
         } catch (campaignError) {
-          console.error(`Erro ao processar campanha ${campaign.id}:`, campaignError);
+          console.error(`Error processing campaign ${campaign.id}:`, campaignError);
           errors++;
         }
       }
@@ -119,7 +119,7 @@ serve(async (req) => {
     
     const responseData = {
       success: true,
-      message: `Execução de campanhas concluída: ${processedLeads} leads processados em ${processedCampaigns} campanhas`,
+      message: `Campaign execution completed: ${processedLeads} leads processed in ${processedCampaigns} campaigns`,
       processedCampaigns,
       processedLeads,
       errors,
@@ -127,7 +127,7 @@ serve(async (req) => {
       timestamp: now.toISOString()
     };
     
-    console.log(`Resultado: ${JSON.stringify(responseData)}`);
+    console.log(`Result: ${JSON.stringify(responseData)}`);
     
     // Return results
     return new Response(
@@ -172,7 +172,7 @@ async function processCampaign(
   // Simple rate limiting - no more than 10 calls per minute
   const maxCallsPerMinute = 10;
   if (recentCallCount >= maxCallsPerMinute) {
-    console.log(`Taxa limite atingida: ${recentCallCount} chamadas no último minuto. Aguardando...`);
+    console.log(`Rate limit reached: ${recentCallCount} calls in the last minute. Waiting...`);
     return { processedLeads: 0, errors: 0 };
   }
   
@@ -180,7 +180,7 @@ async function processCampaign(
   let errors = 0;
 
   try {
-    console.log(`Buscando leads pendentes para campanha ${campaign.id}`);
+    console.log(`Fetching pending leads for campaign ${campaign.id}`);
     
     // Get pending leads for this campaign
     const { data: leads, error: leadsError } = await supabase
@@ -192,13 +192,13 @@ async function processCampaign(
       .limit(maxCalls);
       
     if (leadsError) {
-      console.error(`Erro ao buscar leads para campanha ${campaign.id}:`, leadsError);
+      console.error(`Error fetching leads for campaign ${campaign.id}:`, leadsError);
       return { processedLeads: 0, errors: 1 };
     }
     
     // If no pending leads, check if we should mark campaign as completed
     if (!leads || leads.length === 0) {
-      console.log(`Nenhum lead pendente encontrado para campanha ${campaign.id}`);
+      console.log(`No pending leads found for campaign ${campaign.id}`);
       
       const { data: remainingLeads } = await supabase
         .from("leads")
@@ -208,7 +208,7 @@ async function processCampaign(
         
       if (remainingLeads && remainingLeads.count === 0) {
         // All leads completed, mark campaign as completed
-        console.log(`Todos os leads processados. Marcando campanha ${campaign.id} como concluída`);
+        console.log(`All leads processed. Marking campaign ${campaign.id} as completed`);
         
         if (!dryRun) {
           await supabase
@@ -221,88 +221,80 @@ async function processCampaign(
       return { processedLeads: 0, errors: 0 };
     }
     
-    console.log(`Processando ${leads.length} leads para campanha ${campaign.id}`);
+    console.log(`Processing ${leads.length} leads for campaign ${campaign.id}`);
     
     // Process each lead (make a call for each)
     for (const lead of leads) {
       try {
-        console.log(`Processando lead: ${lead.name} (${lead.id})`);
+        console.log(`Processing lead: ${lead.name} (${lead.id})`);
         
         if (dryRun) {
-          console.log(`[SIMULAÇÃO] Chamada seria feita para ${lead.phone}`);
+          console.log(`[SIMULATION] Call would be made to ${lead.phone}`);
           processedLeads++;
           continue;
         }
         
-        // Make call via make-call function
-        const callbackUrl = `${supabaseUrl}/functions/v1/call-status`;
+        // Create the message for the agent
+        const message = `Olá${lead.name ? ' ' + lead.name : ''}, aqui é ${campaign.agents.name} da empresa. Como posso ajudar você hoje?`;
         
-        // Improved error handling for fetch operations
+        // Make call via VAPI
         try {
-          const callResponse = await fetch(`${supabaseUrl}/functions/v1/make-call`, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${supabaseServiceKey}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
+          const callResponse = await supabase.functions.invoke("vapi-call-handler", {
+            body: {
               phoneNumber: lead.phone,
-              callbackUrl,
+              message,
               agentId: campaign.agent_id,
               campaignId: campaign.id,
               leadId: lead.id,
-              agentName: campaign.agents.name,
-              voiceId: campaign.agents.voice_id,
-              useAI: true
-            })
+              voiceId: campaign.agents.voice_id
+            }
           });
           
-          if (!callResponse.ok) {
-            const errorText = await callResponse.text();
-            throw new Error(`HTTP error ${callResponse.status}: ${errorText}`);
+          if (callResponse.error) {
+            throw new Error(callResponse.error.message || "Error making call");
           }
           
-          const callResult = await callResponse.json();
+          const callResult = callResponse.data;
           
           if (!callResult.success) {
             throw new Error(callResult.error || "Unknown error making call");
           }
           
-          console.log(`Chamada iniciada com sucesso para lead ${lead.id}, SID: ${callResult.callSid}`);
+          console.log(`Call started successfully for lead ${lead.id}, ID: ${callResult.callId}`);
           
           // Mark lead as called
           await supabase
             .from("leads")
             .update({
               status: "called",
-              call_result: "Chamada em andamento"
+              call_result: "Call in progress"
             })
             .eq("id", lead.id);
             
           processedLeads++;
           
         } catch (fetchError) {
-          console.error(`Erro ao chamar função make-call para lead ${lead.id}:`, fetchError);
+          console.error(`Error calling vapi-call-handler for lead ${lead.id}:`, fetchError);
           
           // Mark lead as failed
           await supabase
             .from("leads")
             .update({
               status: "failed",
-              call_result: `Erro: ${fetchError.message || "Falha na chamada"}`
+              call_result: `Error: ${fetchError.message || "Call failed"}`
             })
             .eq("id", lead.id);
             
           errors++;
         }
         
-        // Add a small delay between calls to avoid overwhelming the Twilio API
+        // Add a small delay between calls to avoid overwhelming the API
         if (processedLeads > 0 && processedLeads < leads.length) {
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
         
       } catch (leadError) {
-        console.error(`Erro ao processar lead ${lead.id}:`, leadError);
+        console.error(`Error processing lead ${lead.id}:`, leadError);
         
         if (!dryRun) {
           // Mark lead as failed
@@ -310,7 +302,7 @@ async function processCampaign(
             .from("leads")
             .update({
               status: "failed",
-              call_result: `Erro: ${leadError.message || "Erro desconhecido"}`
+              call_result: `Error: ${leadError.message || "Unknown error"}`
             })
             .eq("id", lead.id);
         }
@@ -319,10 +311,10 @@ async function processCampaign(
       }
     }
     
-    console.log(`Campanha ${campaign.id} concluída: ${processedLeads} leads processados, ${errors} erros`);
+    console.log(`Campaign ${campaign.id} completed: ${processedLeads} leads processed, ${errors} errors`);
     return { processedLeads, errors };
   } catch (error) {
-    console.error(`Erro geral em processCampaign para ${campaign.id}:`, error);
+    console.error(`General error in processCampaign for ${campaign.id}:`, error);
     return { processedLeads, errors: errors + 1 };
   }
 }

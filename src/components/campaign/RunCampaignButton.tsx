@@ -40,15 +40,15 @@ export function RunCampaignButton({
       
       if (data?.success) {
         toast.success(
-          `Campanha executada com sucesso! ${data.processedLeads || 0} leads processados.`,
+          `Campaign executed successfully! ${data.processedLeads || 0} leads processed.`,
           { duration: 5000 }
         );
       } else {
-        throw new Error(data?.error || "Erro ao executar campanha");
+        throw new Error(data?.error || "Error executing campaign");
       }
     } catch (error: any) {
       console.error("Error running campaign:", error);
-      toast.error("Erro ao executar campanha: " + (error.message || "Erro desconhecido"));
+      toast.error("Error executing campaign: " + (error.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -65,12 +65,12 @@ export function RunCampaignButton({
       {loading ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          Executando...
+          Executing...
         </>
       ) : (
         <>
           <Phone className="h-4 w-4 mr-2" />
-          Executar Agora
+          Run Now
         </>
       )}
     </Button>
