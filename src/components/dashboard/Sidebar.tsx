@@ -1,6 +1,9 @@
+
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { LayoutDashboard, Users, Phone, MessageSquare, Settings } from "lucide-react";
+import Logo from "@/components/shared/Logo";
+
 export default function Sidebar() {
   const navigate = useNavigate();
   const [activeItem, setActiveItem] = useState("/dashboard");
@@ -25,13 +28,15 @@ export default function Sidebar() {
     href: "/settings",
     icon: Settings
   }];
+  
   const handleNavigation = (href: string) => {
     setActiveItem(href);
     navigate(href);
   };
+  
   return <div className="bg-white dark:bg-gray-800 h-full w-64 fixed left-0 border-r border-gray-200 dark:border-gray-700">
       <div className="flex items-center justify-start h-16 px-4 border-b border-gray-200 dark:border-gray-700 bg-zinc-50">
-        <span className="font-semibold text-slate-950 text-xl text-center">Voxemy AI</span>
+        <Logo size="md" variant="dashboard" />
       </div>
       
       <nav className="px-4 py-4">

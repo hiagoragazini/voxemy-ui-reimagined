@@ -24,11 +24,15 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <Header />
-      <div className="py-6">
+      <div className="py-6 px-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-blue-800">Dashboard</h1>
+          <p className="text-sm text-gray-500">Visão geral do seu sistema de atendimento por voz</p>
+        </div>
+        
         <StatsOverview />
         
-        <div className="grid md:grid-cols-2 gap-6 mt-6">
+        <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
           <NextStepsSection />
         </div>
         
