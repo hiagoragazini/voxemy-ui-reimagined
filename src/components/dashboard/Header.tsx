@@ -24,9 +24,9 @@ export function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="border-b bg-background border-border/40 px-4 py-3 flex items-center justify-between">
+    <header className="border-b bg-background border-border/40 px-4 h-16 flex items-center justify-between">
       <div className="flex items-center gap-4">
-        <div className="relative md:max-w-xs md:w-full hidden md:block">
+        <div className="relative md:max-w-xs w-full hidden md:block">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <input
             type="search"
