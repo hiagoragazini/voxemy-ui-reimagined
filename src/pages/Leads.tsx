@@ -98,7 +98,7 @@ const mockLeads: Lead[] = [
   },
 ];
 
-export default function LeadList() {
+export default function Leads() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [leads, setLeads] = useState<Lead[]>([]);

@@ -13,6 +13,8 @@ import CampaignDetails from './pages/CampaignDetails';
 import TwilioTestPage from './pages/TwilioTest';
 import TwilioManualTestPage from './pages/TwilioManualTest';
 import ConversationRelayTestPage from './pages/ConversationRelayTest';
+import Leads from './pages/Leads';
+import Reports from './pages/Reports';
 
 function App() {
   return <AppRoutes />;
@@ -41,7 +43,6 @@ function AppRoutes() {
       path: "/dashboard",
       element: <ProtectedRoute><Dashboard /></ProtectedRoute>
     },
-    // Add new route for ConversationRelay test
     {
       path: "/conversation-relay-test",
       element: <ProtectedRoute><ConversationRelayTestPage /></ProtectedRoute>
@@ -57,6 +58,14 @@ function AppRoutes() {
     {
       path: "/campaigns/:id",
       element: <ProtectedRoute><CampaignDetails /></ProtectedRoute>
+    },
+    {
+      path: "/leads",
+      element: <ProtectedRoute><Leads /></ProtectedRoute>
+    },
+    {
+      path: "/reports",
+      element: <ProtectedRoute><Reports /></ProtectedRoute>
     },
     {
       path: "/twiliotest",
