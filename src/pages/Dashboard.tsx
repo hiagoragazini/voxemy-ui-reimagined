@@ -25,12 +25,12 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="px-3 py-4 sm:px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-12">
-        <div className="flex flex-col">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500">
+      <div className="px-6 py-8 md:px-8 lg:px-12 xl:px-16">
+        <div className="flex flex-col mb-10">
+          <h1 className="text-4xl font-semibold tracking-tighter text-gradient-primary">
             Dashboard
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="mt-2 text-apple-text-secondary text-lg">
             Acompanhe o desempenho do seu sistema de atendimento por voz em tempo real.
           </p>
         </div>

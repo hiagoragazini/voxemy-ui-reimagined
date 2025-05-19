@@ -5,65 +5,86 @@
 
 @layer base {
   :root {
+    /* Base colors */
     --background: 0 0% 100%; /* White */
-    --foreground: 222 47% 11%; /* Dark text color */
+    --foreground: 215 14% 12%; /* #1d1d1f Apple text color */
 
     --card: 0 0% 100%; /* White */
-    --card-foreground: 222 47% 11%; /* Dark text color */
+    --card-foreground: 215 14% 12%; /* Dark text color */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 215 14% 12%;
 
-    --primary: 210 100% 30%; /* Azul principal escuro */
+    --primary: 213 100% 45%; /* #0071e3 Apple blue */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 95% 93%; /* Azul claro secundário */
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 210 38% 95%; /* Light blue secondary */
+    --secondary-foreground: 215 14% 12%;
 
-    --muted: 215 63% 95%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 215 14% 95%;
+    --muted-foreground: 215 8% 50%; /* #86868b Apple secondary text */
 
-    --accent: 214 95% 93%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 210 38% 95%;
+    --accent-foreground: 215 14% 12%;
 
-    --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
-    --destructive-foreground: 215 63% 98%;
+    --destructive: 0 84% 60%; /* #ff3b30 Apple red */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%; /* Light border color */
-    --input: 214.3 31.8% 91.4%;
-    --ring: 210 100% 30%; /* Blue for focus rings */
+    --border: 214 32% 91%; /* Light border color */
+    --input: 214 32% 91%;
+    --ring: 213 100% 45%; /* Apple blue for focus rings */
 
-    --radius: 0.4rem;
+    /* Sidebar specific colors */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 215 14% 12%;
+    --sidebar-primary: 213 100% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 38% 95%;
+    --sidebar-accent-foreground: 215 14% 12%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 213 100% 45%;
+
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 215 63% 98%;
+    --background: 215 14% 12%;
+    --foreground: 0 0% 98%;
 
-    --card: 222 47% 11%;
-    --card-foreground: 215 63% 98%;
+    --card: 215 14% 12%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 215 63% 98%;
+    --popover: 215 14% 12%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 210 100% 40%; /* Azul principal para modo escuro */
+    --primary: 213 100% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 215 63% 98%;
+    --secondary: 217 19% 27%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217 19% 27%;
+    --muted-foreground: 218 11% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 215 63% 98%;
+    --accent: 217 19% 27%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 215 63% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 210 90% 60%;
+    --border: 217 19% 27%;
+    --input: 217 19% 27%;
+    --ring: 213 100% 45%;
+
+    /* Sidebar specific colors */
+    --sidebar-background: 215 14% 12%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 213 100% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 19% 27%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 217 19% 27%;
+    --sidebar-ring: 213 100% 45%;
   }
 }
 
@@ -73,11 +94,48 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-apple-bg text-apple-text-primary antialiased font-sans text-base leading-normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1 {
+    @apply text-3xl font-semibold leading-tight tracking-tighter mb-6;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold leading-tight tracking-tight mb-4;
+  }
+
+  h3 {
+    @apply text-xl font-medium leading-tight mb-3;
   }
 }
 
 /* Animações customizadas para UI mais fluida */
+@layer utilities {
+  .glass-card {
+    @apply bg-apple-card rounded-xl shadow-apple border border-apple-border transition-all duration-200;
+    backdrop-filter: blur(10px);
+  }
+  
+  .glass-card:hover {
+    @apply shadow-apple-hover transform -translate-y-0.5;
+  }
+
+  .nav-item {
+    @apply flex items-center px-6 py-3 text-apple-text-secondary font-medium transition-all duration-200 rounded-lg mx-3 my-1;
+  }
+
+  .nav-item:hover {
+    @apply bg-black/[0.04] text-apple-text-primary;
+  }
+
+  .nav-item.active {
+    @apply bg-primary-apple/10 text-primary-apple;
+  }
+}
+
 @keyframes pulse-gentle {
   0%, 100% {
     opacity: 1;

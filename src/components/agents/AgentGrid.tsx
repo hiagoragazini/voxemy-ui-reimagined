@@ -84,14 +84,14 @@ export const AgentGrid = ({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 3xl:grid-cols-7">
-        <div className="col-span-full flex justify-center items-center mb-4">
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
-            <span className="text-blue-600 font-medium">Carregando agentes...</span>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 4xl:grid-cols-7">
+        <div className="col-span-full flex justify-center items-center mb-6">
+          <div className="flex items-center gap-2 bg-secondary/50 px-4 py-2 rounded-lg">
+            <Loader2 className="h-5 w-5 text-primary-apple animate-spin" />
+            <span className="text-apple-text-primary font-medium">Carregando agentes...</span>
           </div>
         </div>
-        {Array(3)
+        {Array(6)
           .fill(null)
           .map((_, index) => (
             <AgentCardSkeleton key={index} />
@@ -103,12 +103,12 @@ export const AgentGrid = ({
   // Se não houver agentes, mostre uma mensagem
   if (agents.length === 0) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-        <div className="col-span-full mb-4">
-          <Alert className="bg-amber-50 text-amber-800 border-amber-200">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className="col-span-full mb-6">
+          <Alert className="bg-amber-50/70 text-amber-800 border-amber-200 rounded-xl">
             <AlertCircle className="h-5 w-5" />
-            <AlertTitle>Nenhum agente encontrado</AlertTitle>
-            <AlertDescription>
+            <AlertTitle className="text-base font-medium">Nenhum agente encontrado</AlertTitle>
+            <AlertDescription className="text-amber-700">
               Não encontramos nenhum agente no sistema. Verifique se criou corretamente o agente ou crie um novo agora mesmo.
             </AlertDescription>
           </Alert>
@@ -116,7 +116,7 @@ export const AgentGrid = ({
           <Button
             onClick={handleRefresh}
             variant="outline"
-            className="mt-4 w-full"
+            className="mt-4 w-full rounded-xl py-6 border-dashed border-2 hover:border-primary-apple/30 hover:bg-secondary/50 transition-all duration-200"
             disabled={isRefreshing}
           >
             <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -124,13 +124,13 @@ export const AgentGrid = ({
           </Button>
         </div>
         
-        <Card className="border-dashed border-2 border-gray-200 hover:border-blue-800/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group cursor-pointer" onClick={handleCreateClick}>
+        <Card className="border-dashed border-2 border-gray-200 hover:border-primary-apple/30 transition-all duration-200 hover:shadow-apple-hover hover:scale-[1.01] group cursor-pointer rounded-xl" onClick={handleCreateClick}>
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
-              <Plus className="h-8 w-8 text-blue-800 group-hover:scale-110 transition-transform" />
+            <div className="w-16 h-16 bg-primary-apple/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-primary-apple/20 transition-colors">
+              <Plus className="h-8 w-8 text-primary-apple group-hover:scale-110 transition-transform" />
             </div>
-            <h3 className="text-lg font-medium mb-2 group-hover:text-blue-800 transition-colors">Criar Novo Agente</h3>
-            <p className="text-muted-foreground text-sm">
+            <h3 className="text-lg font-medium mb-2 group-hover:text-primary-apple transition-colors">Criar Novo Agente</h3>
+            <p className="text-apple-text-secondary text-sm">
               Configure um novo assistente de voz para suas chamadas
             </p>
           </div>
@@ -149,13 +149,14 @@ export const AgentGrid = ({
           onClick={handleRefresh}
           variant="outline"
           size="sm"
+          className="rounded-lg"
           disabled={isRefreshing}
         >
           <RefreshCcw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
           Atualizar Lista
         </Button>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 3xl:grid-cols-7">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 4xl:grid-cols-7">
         {processedAgents.map((agent) => (
           <AgentCard
             key={agent.id}
@@ -167,13 +168,13 @@ export const AgentGrid = ({
           />
         ))}
         
-        <Card className="border-dashed border-2 border-gray-200 hover:border-blue-800/30 transition-all duration-200 hover:shadow-md hover:scale-[1.01] group cursor-pointer" onClick={handleCreateClick}>
+        <Card className="border-dashed border-2 border-gray-200 hover:border-primary-apple/30 transition-all duration-200 hover:shadow-apple-hover hover:scale-[1.01] group cursor-pointer rounded-xl" onClick={handleCreateClick}>
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
-              <Plus className="h-8 w-8 text-blue-800 group-hover:scale-110 transition-transform" />
+            <div className="w-16 h-16 bg-primary-apple/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-primary-apple/20 transition-colors">
+              <Plus className="h-8 w-8 text-primary-apple group-hover:scale-110 transition-transform" />
             </div>
-            <h3 className="text-lg font-medium mb-2 group-hover:text-blue-800 transition-colors">Criar Novo Agente</h3>
-            <p className="text-muted-foreground text-sm">
+            <h3 className="text-lg font-medium mb-2 group-hover:text-primary-apple transition-colors">Criar Novo Agente</h3>
+            <p className="text-apple-text-secondary text-sm">
               Configure um novo assistente de voz para suas chamadas
             </p>
           </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -110,7 +109,6 @@ export default function Agents() {
         name: agent.name,
         voiceId: agent.voiceId
       });
-      console.log(`Testando voz do agente ${agent.name} (ID: ${agent.id}, Voice ID: ${agent.voiceId})`);
     }
   };
 
@@ -118,8 +116,6 @@ export default function Agents() {
     const agent = agents.find(a => a.id === id);
     if (agent) {
       toast.info(`Para fazer uma chamada, vá para a página de Campanhas`);
-      // Alternatively, navigate to campaigns page:
-      // navigate("/campaigns");
     }
   };
 
@@ -171,12 +167,12 @@ export default function Agents() {
 
   return (
     <Layout>
-      <div className="px-3 py-4 sm:px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-12">
-        <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
+      <div className="px-6 py-8 md:px-8 lg:px-12 xl:px-16">
+        <div className="flex flex-col mb-10">
+          <h1 className="text-4xl font-semibold tracking-tighter text-gradient-primary">
             Seus Agentes de Voz
           </h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="mt-2 text-apple-text-secondary text-lg">
             Gerencie sua equipe de atendentes virtuais e configure-os para diferentes campanhas.
           </p>
         </div>
@@ -190,7 +186,7 @@ export default function Agents() {
           />
         )}
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <AgentFilters
             filter={filter}
             setFilter={setFilter}
@@ -201,10 +197,10 @@ export default function Agents() {
             isDiagnosing={isDiagnosing}
           />
           
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button
               onClick={handleCreateDemoAgent}
-              className="bg-green-600 hover:bg-green-700 text-white font-medium flex items-center gap-2"
+              className="bg-apple-success hover:bg-apple-success/90 text-white font-medium flex items-center gap-2"
             >
               <Sparkles className="h-4 w-4" />
               Criar Agente Demo
@@ -212,7 +208,7 @@ export default function Agents() {
             
             <Button 
               onClick={handleCreateAgent}
-              className="bg-blue-800 hover:bg-blue-900 text-white font-medium flex items-center gap-2"
+              className="bg-primary-apple hover:bg-primary-apple-light text-white font-medium flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />
               Criar Novo Agente
