@@ -20,7 +20,7 @@ export function Sidebar() {
   ];
 
   return (
-    <div className="h-full glass-morphism border-r border-apple-border flex flex-col">
+    <div className="h-full glass-morphism border-r border-apple-border flex flex-col w-72">
       {/* Logo */}
       <div className="h-16 border-b border-apple-border flex items-center px-6">
         <div className="flex items-center gap-3">
@@ -32,7 +32,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-2 py-6 space-y-1">
+      <nav className="flex-1 px-3 py-6 space-y-1">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}

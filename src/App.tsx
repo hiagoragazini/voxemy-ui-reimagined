@@ -10,11 +10,13 @@ import Dashboard from './pages/Dashboard';
 import Agents from './pages/Agents';
 import Campaigns from './pages/Campaigns';
 import CampaignDetails from './pages/CampaignDetails';
+import Settings from './pages/Settings';
 import TwilioTestPage from './pages/TwilioTest';
 import TwilioManualTestPage from './pages/TwilioManualTest';
 import ConversationRelayTestPage from './pages/ConversationRelayTest';
 import Leads from './pages/Leads';
 import Reports from './pages/Reports';
+import Index from './pages/Index';
 
 function App() {
   return <AppRoutes />;
@@ -37,7 +39,7 @@ function AppRoutes() {
   const routes = [
     {
       path: "/",
-      element: <ProtectedRoute><Dashboard /></ProtectedRoute>
+      element: <Index />
     },
     {
       path: "/dashboard",
@@ -66,6 +68,10 @@ function AppRoutes() {
     {
       path: "/reports",
       element: <ProtectedRoute><Reports /></ProtectedRoute>
+    },
+    {
+      path: "/settings",
+      element: <ProtectedRoute><Settings /></ProtectedRoute>
     },
     {
       path: "/twiliotest",
