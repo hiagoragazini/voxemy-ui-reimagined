@@ -1,7 +1,6 @@
 
 import './App.css'
 import {
-  BrowserRouter,
   Routes,
   Route,
   Navigate,
@@ -16,11 +15,7 @@ import TwilioManualTestPage from './pages/TwilioManualTest';
 import ConversationRelayTestPage from './pages/ConversationRelayTest';
 
 function App() {
-  return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
-  )
+  return <AppRoutes />;
 }
 
 export default App
