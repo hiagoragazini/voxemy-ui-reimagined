@@ -1,64 +1,112 @@
-
-import { Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "@/components/ui/toaster";
-
-// Pages
-import Dashboard from "./pages/Dashboard";
-import AgentList from "./pages/Agents";
-import AgentNew from "./pages/AgentConfig";
-import AgentDetails from "./pages/Agents"; // This should later be updated with a dedicated details page
-import CampaignList from "./pages/Campaigns";
-import CampaignNew from "./pages/CampaignForm";
-import CampaignDetails from "./pages/CampaignDetails";
-import LeadList from "./pages/Leads";
-import LeadImport from "./pages/LeadImport";
-import CallsMonitoring from "./pages/CallsMonitoring";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
-import Settings from "./pages/Settings";
-import AudioTester from "./pages/AudioTester";
-import TwilioManualTest from "./pages/TwilioManualTest";
+import './App.css'
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthContext } from './contexts/AuthContext';
+import { useContext } from 'react';
+import SignIn from './pages/SignIn';
+import SignUp from './pages/SignUp';
+import Dashboard from './pages/Dashboard';
+import Agents from './pages/Agents';
+import NewAgent from './pages/NewAgent';
+import EditAgent from './pages/EditAgent';
+import Campaigns from './pages/Campaigns';
+import NewCampaign from './pages/NewCampaign';
+import CampaignDetails from './pages/CampaignDetails';
+import EditCampaign from './pages/EditCampaign';
+import TwilioTestPage from './pages/TwilioTest';
+import TwilioManualTestPage from './pages/TwilioManualTest';
+import ConversationRelayTestPage from './pages/ConversationRelayTest';
 
 function App() {
   return (
-    <>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/auth" element={<Auth />} />
-        
-        {/* Specific pages from the old router config */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/audio-tester" element={<AudioTester />} />
-        <Route path="/twilio-manual-test" element={<TwilioManualTest />} />
-        
-        {/* Agents */}
-        <Route path="/agents" element={<AgentList />} />
-        <Route path="/agents/new" element={<AgentNew />} />
-        <Route path="/agents/:id" element={<AgentDetails />} />
-        <Route path="/agents/:id/edit" element={<AgentNew />} />
-        
-        {/* Campaigns */}
-        <Route path="/campaigns" element={<CampaignList />} />
-        <Route path="/campaigns/new" element={<CampaignNew />} />
-        <Route path="/campaigns/:id" element={<CampaignDetails />} />
-        <Route path="/campaigns/:id/edit" element={<CampaignNew />} />
-        
-        {/* Leads */}
-        <Route path="/leads" element={<LeadList />} />
-        <Route path="/leads/import" element={<LeadImport />} />
-        
-        {/* Calls Monitoring */}
-        <Route path="/calls" element={<CallsMonitoring />} />
-        
-        {/* 404 Page */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      
-      <Toaster />
-    </>
-  );
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
+  )
 }
 
-export default App;
+export default App
+
+function AppRoutes() {
+  const { user } = useContext(AuthContext);
+
+  const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+    if (!user) {
+      return <Navigate to="/signin" />;
+    }
+
+    return children;
+  };
+
+  const routes = [
+    {
+      path: "/",
+      element: <ProtectedRoute><Dashboard /></ProtectedRoute>
+    },
+    {
+      path: "/dashboard",
+      element: <ProtectedRoute><Dashboard /></ProtectedRoute>
+    },
+    // Add new route for ConversationRelay test
+    {
+      path: "/conversation-relay-test",
+      element: <ProtectedRoute><ConversationRelayTestPage /></ProtectedRoute>
+    },
+    {
+      path: "/agents",
+      element: <ProtectedRoute><Agents /></ProtectedRoute>
+    },
+    {
+      path: "/agents/new",
+      element: <ProtectedRoute><NewAgent /></ProtectedRoute>
+    },
+    {
+      path: "/agents/:id/edit",
+      element: <ProtectedRoute><EditAgent /></ProtectedRoute>
+    },
+    {
+      path: "/campaigns",
+      element: <ProtectedRoute><Campaigns /></ProtectedRoute>
+    },
+    {
+      path: "/campaigns/new",
+      element: <ProtectedRoute><NewCampaign /></ProtectedRoute>
+    },
+    {
+      path: "/campaigns/:id",
+      element: <ProtectedRoute><CampaignDetails /></ProtectedRoute>
+    },
+    {
+      path: "/campaigns/:id/edit",
+      element: <ProtectedRoute><EditCampaign /></ProtectedRoute>
+    },
+    {
+      path: "/twiliotest",
+      element: <ProtectedRoute><TwilioTestPage /></ProtectedRoute>
+    },
+    {
+      path: "/twiliomanualtest",
+      element: <ProtectedRoute><TwilioManualTestPage /></ProtectedRoute>
+    },
+    {
+      path: "/signin",
+      element: <SignIn />
+    },
+    {
+      path: "/signup",
+      element: <SignUp />
+    }
+  ];
+
+  return (
+    <Routes>
+      {routes.map((route, index) => (
+        <Route key={index} path={route.path} element={route.element} />
+      ))}
+    </Routes>
+  );
+}

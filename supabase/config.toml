@@ -24,3 +24,9 @@ verify_jwt = false
 
 [functions.twilio-diagnostic]
 verify_jwt = false
+
+[functions.conversation-relay-handler]
+verify_jwt = false
+
+[functions.make-conversation-call]
+verify_jwt = false
