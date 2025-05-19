@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -170,7 +171,7 @@ export default function Agents() {
 
   return (
     <Layout>
-      <div className="container mx-auto p-6">
+      <div className="w-full">
         <div className="flex flex-col mb-8">
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
             Seus Agentes de Voz

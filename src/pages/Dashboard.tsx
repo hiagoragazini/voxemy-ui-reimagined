@@ -25,7 +25,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6 w-full">
         <div className="flex flex-col">
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500">
             Dashboard

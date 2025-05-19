@@ -23,8 +23,10 @@ export function Layout({ children }: LayoutProps) {
       {/* Conteúdo principal com header e main */}
       <div className="flex flex-col w-full md:pl-64">
         <Header />
-        <main className="flex-1 bg-gray-50 dark:bg-gray-900 p-6">
-          {children}
+        <main className="flex-1 bg-gray-50 dark:bg-gray-900">
+          <div className="px-4 py-6 md:px-6 lg:px-8 xl:px-12 2xl:px-16 w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>
