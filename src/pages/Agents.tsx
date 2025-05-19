@@ -171,12 +171,12 @@ export default function Agents() {
 
   return (
     <Layout>
-      <div className="w-full">
+      <div className="px-3 py-4 sm:px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-12">
         <div className="flex flex-col mb-8">
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
             Seus Agentes de Voz
           </h1>
-          <p className="mt-1 text-muted-foreground max-w-3xl">
+          <p className="mt-1 text-muted-foreground">
             Gerencie sua equipe de atendentes virtuais e configure-os para diferentes campanhas.
           </p>
         </div>
