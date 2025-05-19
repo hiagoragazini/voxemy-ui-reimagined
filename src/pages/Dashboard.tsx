@@ -25,8 +25,8 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="container mx-auto p-6">
-        <div className="flex flex-col mb-8">
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <div className="flex flex-col">
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500">
             Dashboard
           </h1>
