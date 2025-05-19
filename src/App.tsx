@@ -1,5 +1,5 @@
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 
 // Pages
@@ -18,6 +18,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import AudioTester from "./pages/AudioTester";
+import TwilioManualTest from "./pages/TwilioManualTest";
 
 function App() {
   return (
@@ -26,10 +27,11 @@ function App() {
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         
-        {/* Dashboard and core pages */}
+        {/* Specific pages from the old router config */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/audio-tester" element={<AudioTester />} />
+        <Route path="/twilio-manual-test" element={<TwilioManualTest />} />
         
         {/* Agents */}
         <Route path="/agents" element={<AgentList />} />

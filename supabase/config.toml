@@ -24,18 +24,3 @@ verify_jwt = false
 
 [functions.twilio-diagnostic]
 verify_jwt = false
-
-[functions.zenvia-call-handler]
-verify_jwt = false
-
-[functions.zenvia-process-dialog]
-verify_jwt = false
-
-[functions.vapi-call-handler]
-verify_jwt = false
-
-[functions.vapi-text-to-speech]
-verify_jwt = false
-
-[functions.campaign-executor]
-verify_jwt = false

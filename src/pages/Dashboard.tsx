@@ -1,48 +1,55 @@
 
-import { StatsOverview } from "@/components/dashboard/StatsOverview";
-import { TopAgentsSection } from "@/components/dashboard/TopAgentsSection";
-import { NextStepsSection } from "@/components/dashboard/NextStepsSection";
-import { Header } from "@/components/dashboard/Header";
-import { Layout } from "@/components/dashboard/Layout";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Layout } from "../components/dashboard/Layout";
+import { StatsOverview } from "../components/dashboard/StatsOverview";
+import { TopAgentsSection } from "../components/dashboard/TopAgentsSection";
+import { NextStepsSection } from "../components/dashboard/NextStepsSection";
+import { useAgents } from "../hooks/use-agents";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-
-  // Handler functions for TopAgentsSection
-  const handleViewAllAgents = () => {
+  
+  // Navegar para a página de todos os agentes
+  const viewAllAgents = () => {
     navigate('/agents');
   };
 
+  // Navegar para a página de criação de agente
   const handleCreateAgent = () => {
     navigate('/agents/new');
   };
 
-  const handleEditAgent = (id: string) => {
+  // Navegar para a página de edição de agente
+  const handleAgentEditClick = (id: string) => {
+    // Corrigir a rota para /agents/:id/edit em vez de /agents/:id/editar
     navigate(`/agents/${id}/edit`);
   };
 
   return (
     <Layout>
-      <div className="py-6 px-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-blue-800">Dashboard</h1>
-          <p className="text-sm text-gray-500">Visão geral do seu sistema de atendimento por voz</p>
+      <div className="container mx-auto p-6">
+        <div className="flex flex-col mb-8">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-muted-foreground max-w-3xl">
+            Acompanhe o desempenho do seu sistema de atendimento por voz em tempo real.
+          </p>
         </div>
         
+        {/* Estatísticas do topo */}
         <StatsOverview />
-        
-        <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          <NextStepsSection />
-        </div>
-        
-        <div className="mt-6">
-          <TopAgentsSection 
-            onViewAllClick={handleViewAllAgents}
-            onCreateAgentClick={handleCreateAgent}
-            onAgentEditClick={handleEditAgent}
-          />
-        </div>
+
+        {/* Top agentes */}
+        <TopAgentsSection 
+          onViewAllClick={viewAllAgents}
+          onCreateAgentClick={handleCreateAgent}
+          onAgentEditClick={handleAgentEditClick}
+        />
+
+        {/* Próximos passos */}
+        <NextStepsSection />
       </div>
     </Layout>
   );
