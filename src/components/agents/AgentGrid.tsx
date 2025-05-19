@@ -84,7 +84,7 @@ export const AgentGrid = ({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         <div className="col-span-full flex justify-center items-center mb-4">
           <div className="flex items-center gap-2">
             <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
@@ -103,7 +103,7 @@ export const AgentGrid = ({
   // Se não houver agentes, mostre uma mensagem
   if (agents.length === 0) {
     return (
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         <div className="col-span-full mb-4">
           <Alert className="bg-amber-50 text-amber-800 border-amber-200">
             <AlertCircle className="h-5 w-5" />
@@ -155,7 +155,7 @@ export const AgentGrid = ({
           Atualizar Lista
         </Button>
       </div>
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {processedAgents.map((agent) => (
           <AgentCard
             key={agent.id}
