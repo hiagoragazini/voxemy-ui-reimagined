@@ -4,7 +4,6 @@ import { TopAgentsSection } from "@/components/dashboard/TopAgentsSection";
 import { NextStepsSection } from "@/components/dashboard/NextStepsSection";
 import { Header } from "@/components/dashboard/Header";
 import { Layout } from "@/components/dashboard/Layout";
-import { VapiIntegrationCheck } from "@/components/dashboard/VapiIntegrationCheck";
 import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
@@ -30,7 +29,6 @@ export default function Dashboard() {
         <StatsOverview />
         
         <div className="grid md:grid-cols-2 gap-6 mt-6">
-          <VapiIntegrationCheck />
           <NextStepsSection />
         </div>
         
