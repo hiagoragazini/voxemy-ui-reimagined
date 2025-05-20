@@ -11,7 +11,7 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen bg-apple-bg">
       {/* Sidebar fixa na esquerda - versão desktop */}
-      <div className="w-72 fixed left-0 h-full z-10 hidden md:block">
+      <div className="w-72 fixed left-0 h-full z-10 hidden md:block shadow-[1px_0_3px_rgba(0,0,0,0.05)]">
         <Sidebar />
       </div>
       
@@ -23,7 +23,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Conteúdo principal com header e main */}
       <div className="flex flex-col w-full md:pl-72">
         <Header />
-        <main className="flex-1 bg-apple-bg dark:bg-gray-900">
+        <main className="flex-1 bg-[#f5f5f7] dark:bg-gray-900">
           <div className="w-full">
             {children}
           </div>

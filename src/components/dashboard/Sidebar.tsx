@@ -24,8 +24,8 @@ export function Sidebar() {
       {/* Logo */}
       <div className="h-16 border-b border-apple-border flex items-center px-6">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-primary-apple flex items-center justify-center">
-            <Phone className="h-4 w-4 text-white" />
+          <div className="h-9 w-9 rounded-lg bg-primary-apple flex items-center justify-center">
+            <Phone className="h-5 w-5 text-white" />
           </div>
           <span className="text-lg font-semibold tracking-tight text-apple-text-primary">Voxemy</span>
         </div>
@@ -38,7 +38,7 @@ export function Sidebar() {
             key={item.path}
             to={item.path}
             className={({ isActive }) => `
-              flex items-center py-3 px-6 text-base ${isActive 
+              flex items-center py-2.5 px-6 text-base ${isActive 
                 ? 'text-blue-600 font-medium' 
                 : 'text-gray-500 hover:text-gray-700'
               }

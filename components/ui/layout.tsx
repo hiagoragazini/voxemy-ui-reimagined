@@ -21,7 +21,7 @@ export const Layout = ({ children }: LayoutProps) => {
       <Sidebar collapsed={collapsed} toggleSidebar={toggleSidebar} />
       <main className={`flex-1 transition-all duration-300 overflow-auto ${collapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
         <Header openSidebar={toggleSidebar} sidebarCollapsed={collapsed} />
-        {children}
+        <div className="bg-[#f5f5f7]">{children}</div>
       </main>
     </div>
   );

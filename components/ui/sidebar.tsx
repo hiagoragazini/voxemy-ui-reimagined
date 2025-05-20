@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -56,18 +57,18 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen border-r border-border/40 bg-background transition-all duration-300",
+        "fixed left-0 top-0 z-40 h-screen border-r border-border/40 bg-background transition-all duration-300 shadow-[1px_0_3px_rgba(0,0,0,0.05)]",
         collapsed ? "w-[60px]" : "w-[240px]"
       )}
     >
       <div className="flex h-full flex-col">
         <div className={cn("h-16 border-b border-border/40 flex items-center", 
-          collapsed ? "justify-center" : "px-4 justify-between"
+          collapsed ? "justify-center" : "px-6 justify-between"
         )}>
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-md bg-blue-100 flex items-center justify-center">
-                <PhoneIcon className="h-4 w-4 text-blue-600" />
+              <div className="h-9 w-9 rounded-md bg-blue-100 flex items-center justify-center">
+                <PhoneIcon className="h-5 w-5 text-blue-600" />
               </div>
               <span className="text-lg font-semibold tracking-tight">Voxemy</span>
             </div>
@@ -76,7 +77,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
             onClick={toggleSidebar}
             className={cn(
               buttonVariants({ variant: "ghost", size: "icon" }),
-              collapsed ? "px-0" : ""
+              collapsed ? "px-0" : "", "h-10 w-10"
             )}
           >
             {collapsed ? (
@@ -99,7 +100,7 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 transition-colors",
+                    "flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors",
                     isActive
                       ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
                       : "text-gray-500 hover:text-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400",

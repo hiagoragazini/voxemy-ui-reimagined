@@ -38,35 +38,35 @@ export const Header = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border/40 bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex items-center gap-4">
         {sidebarCollapsed && (
-          <Button variant="ghost" size="icon" onClick={openSidebar} className="h-8 w-8">
-            <Menu className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={openSidebar} className="h-10 w-10">
+            <Menu className="h-5 w-5" />
             <span className="sr-only">Menu</span>
           </Button>
         )}
         
         <div className={cn("md:hidden", showSearch ? "block" : "hidden")}>
           <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Buscar..."
-              className="w-full bg-muted pl-8 focus-visible:ring-1 rounded-lg h-9"
+              className="w-full bg-muted pl-10 focus-visible:ring-1 rounded-lg h-10"
             />
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <div className={cn("hidden md:block max-w-xs")}>
           <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Buscar..."
-              className="w-full bg-muted pl-8 focus-visible:ring-1 rounded-lg h-9"
+              className="w-full min-w-[280px] bg-muted pl-10 focus-visible:ring-1 rounded-lg h-10"
             />
           </div>
         </div>
@@ -74,22 +74,22 @@ export const Header = ({
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden"
+          className="md:hidden h-10 w-10"
           onClick={() => setShowSearch(!showSearch)}
         >
           <Search className="h-5 w-5" />
           <span className="sr-only">Search</span>
         </Button>
         
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative h-10 w-10">
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notificações</span>
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary"></span>
+          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary"></span>
         </Button>
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 px-2 hover:bg-accent rounded-full">
+            <Button variant="ghost" className="flex items-center gap-2 px-3 py-2 h-10 hover:bg-accent rounded-full">
               <span className="text-sm font-medium leading-none hidden md:block text-violet-600">{userName}</span>
               <Avatar className="h-8 w-8 border border-violet-200">
                 {userAvatar ? (
