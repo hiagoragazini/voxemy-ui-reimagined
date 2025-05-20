@@ -23,12 +23,14 @@ export function useConversationRelay() {
     phoneNumber, 
     agentId, 
     campaignId, 
-    leadId
+    leadId,
+    testMode = false
   }: {
     phoneNumber: string;
     agentId?: string;
     campaignId?: string;
     leadId?: string;
+    testMode?: boolean;
   }) => {
     try {
       setIsLoading(true);
@@ -49,7 +51,8 @@ export function useConversationRelay() {
         phoneNumber: cleanPhone,
         agentId,
         campaignId,
-        leadId
+        leadId,
+        testMode
       });
       
       // Call the Edge Function to make the call
@@ -58,7 +61,8 @@ export function useConversationRelay() {
           phoneNumber: cleanPhone,
           agentId,
           campaignId,
-          leadId
+          leadId,
+          testMode
         }
       });
       
@@ -76,7 +80,7 @@ export function useConversationRelay() {
         // Start polling for call status and transcripts
         startPolling(data.callSid);
         
-        toast.success("Chamada iniciada com sucesso!");
+        toast.success("Chamada iniciada com sucesso! ConversationRelay ativo.");
         return data;
       } else {
         throw new Error("Resposta inválida do servidor");
@@ -110,7 +114,7 @@ export function useConversationRelay() {
         // Fetch call status and transcript
         const { data, error } = await supabase
           .from("call_logs")
-          .select("status, transcription")
+          .select("status, transcription, conversation_relay_active")
           .eq("call_sid", sid)
           .single();
           

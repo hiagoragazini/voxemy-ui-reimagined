@@ -57,7 +57,7 @@ serve(async (req) => {
     }
     
     // Extract parameters from request
-    const { phoneNumber, agentId, campaignId, leadId } = await req.json();
+    const { phoneNumber, agentId, campaignId, leadId, testMode } = await req.json();
     
     if (!phoneNumber) {
       throw new Error("Phone number is required");
@@ -65,6 +65,48 @@ serve(async (req) => {
     
     console.log(`Making conversation call to ${phoneNumber}`);
     console.log(`Agent: ${agentId}, Campaign: ${campaignId}, Lead: ${leadId}`);
+    console.log(`Test mode: ${testMode ? "ON" : "OFF"}`);
+    
+    // If test mode is on, just simulate a successful call
+    if (testMode) {
+      console.log("Test mode is ON - simulating successful call");
+      const mockCallSid = `TEST${Date.now()}`;
+      
+      // If we have a Supabase URL, create a test record
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      
+      if (supabaseUrl && supabaseServiceKey) {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        // Create a test call log
+        await supabase.from("call_logs").insert({
+          call_sid: mockCallSid,
+          status: "initiated",
+          from_number: twilioPhone,
+          to_number: phoneNumber,
+          agent_id: agentId,
+          campaign_id: campaignId,
+          lead_id: leadId,
+          conversation_relay_active: true,
+          test_mode: true
+        });
+        
+        console.log(`Created test call log with SID: ${mockCallSid}`);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          callSid: mockCallSid,
+          status: "initiated",
+          testMode: true
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
     
     // Format phone number
     const formattedPhone = formatPhoneNumber(phoneNumber);
@@ -90,6 +132,9 @@ serve(async (req) => {
       statusCallbackMethod: 'POST',
       timeout: 30,
       machineDetection: 'DetectMessageEnd',
+      recordingEnabled: true,
+      recordingStatusCallbackMethod: 'POST',
+      recordingStatusCallback: statusCallbackUrl,
     };
     
     // Add additional parameters to pass to TwiML

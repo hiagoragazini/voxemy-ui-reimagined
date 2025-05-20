@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,10 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Phone, Loader2 } from "lucide-react";
 import { useConversationRelay, CallTranscript } from "@/hooks/use-conversation-relay";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
 export function ConversationRelayTester() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [agentId, setAgentId] = useState("");
+  const [isTestMode, setIsTestMode] = useState(false);
   
   const { 
     makeCall, 
@@ -26,15 +30,22 @@ export function ConversationRelayTester() {
   };
 
   const handleCallClick = async () => {
-    if (!phoneNumber.trim()) return;
+    if (!phoneNumber.trim()) {
+      toast.error("Por favor, insira um número de telefone válido");
+      return;
+    }
     
     try {
+      toast.info("Iniciando chamada com ConversationRelay...");
+      
       await makeCall({ 
         phoneNumber,
-        agentId: agentId || undefined
+        agentId: agentId || undefined,
+        testMode: isTestMode
       });
     } catch (err) {
       console.error("Erro ao iniciar chamada:", err);
+      toast.error("Falha ao iniciar a chamada");
     }
   };
 
@@ -99,6 +110,16 @@ export function ConversationRelayTester() {
               disabled={isLoading || !!callSid}
             />
           </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="test-mode"
+              checked={isTestMode}
+              onCheckedChange={setIsTestMode}
+              disabled={isLoading || !!callSid}
+            />
+            <Label htmlFor="test-mode">Modo de teste (sem realizar chamada real)</Label>
+          </div>
           
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -120,7 +141,7 @@ export function ConversationRelayTester() {
               ) : (
                 <>
                   <Phone className="mr-2 h-4 w-4" />
-                  Iniciar Chamada Interativa
+                  Iniciar Chamada com ConversationRelay
                 </>
               )}
             </Button>
@@ -171,14 +192,14 @@ export function ConversationRelayTester() {
         </div>
       )}
       
-      <div className="p-4 bg-blue-50 border border-blue-100 rounded">
-        <h3 className="text-sm font-medium text-blue-700 mb-2">Como funciona:</h3>
-        <ul className="text-sm text-blue-600 space-y-1 list-disc pl-5">
-          <li>Esta funcionalidade usa o Twilio ConversationRelay para conversação bidirecional em tempo real</li>
-          <li>O áudio é transcrito continuamente durante a chamada</li>
-          <li>As respostas são geradas por uma IA e convertidas em fala</li>
-          <li>Toda a conversa é salva para análise posterior</li>
-          <li>Esta é uma funcionalidade avançada que requer configuração específica na conta Twilio</li>
+      <div className="p-4 bg-green-50 border border-green-100 rounded">
+        <h3 className="text-sm font-medium text-green-700 mb-2">ConversationRelay Ativado:</h3>
+        <ul className="text-sm text-green-600 space-y-1 list-disc pl-5">
+          <li>O recurso Twilio ConversationRelay está ativo e pronto para uso</li>
+          <li>Transcrição em tempo real disponível durante as chamadas</li>
+          <li>Todos os áudios são processados e salvos automaticamente</li>
+          <li>A IA responde às interações do cliente em tempo real</li>
+          <li>Os dados da conversa são armazenados para análise posterior</li>
         </ul>
       </div>
     </div>

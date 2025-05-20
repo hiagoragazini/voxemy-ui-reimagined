@@ -24,7 +24,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 bg-background/90 backdrop-blur-md border-b border-apple-border px-6 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-20 bg-background/90 backdrop-blur-md border-b border-apple-border h-16 flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
         <div className="relative w-64 max-w-xs hidden md:block">
           <Search className="absolute left-3 top-3 h-4 w-4 text-apple-text-secondary" />

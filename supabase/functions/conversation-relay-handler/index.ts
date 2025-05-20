@@ -79,9 +79,10 @@ serve(async (req) => {
                 agent_id: agentId?.toString(),
                 campaign_id: campaignId?.toString(),
                 lead_id: leadId?.toString(),
+                conversation_relay_active: true
               });
               
-            console.log(`Created call log for call ${callSid}`);
+            console.log(`Created call log for call ${callSid} with ConversationRelay active`);
           } else {
             console.log(`Call log already exists for call ${callSid}`);
           }
@@ -101,6 +102,8 @@ serve(async (req) => {
     <ConversationRelay 
       url="${wsUrl}" 
       welcomeGreeting="${welcomeGreeting}"
+      transcriptionEnabled="true"
+      transcriptionLanguage="pt-BR"
     />
   </Connect>
 </Response>`;

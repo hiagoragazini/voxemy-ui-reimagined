@@ -24,9 +24,7 @@ export function Layout({ children }: LayoutProps) {
       <div className="flex flex-col w-full md:pl-72">
         <Header />
         <main className="flex-1 bg-[#f5f5f7] dark:bg-gray-900">
-          <div className="w-full">
-            {children}
-          </div>
+          {children}
         </main>
       </div>
     </div>
