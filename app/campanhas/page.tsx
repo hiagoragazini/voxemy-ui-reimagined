@@ -91,10 +91,10 @@ export default function CampanhasPage() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-semibold text-gray-900">
+          <h1 className="text-4xl font-bold text-blue-700">
             Campanhas de Chamadas
           </h1>
-          <p className="mt-2 text-muted-foreground max-w-3xl">
+          <p className="mt-1 text-muted-foreground max-w-3xl">
             Configure e gerencie campanhas de chamadas automatizadas para seus agentes de voz.
           </p>
         </div>

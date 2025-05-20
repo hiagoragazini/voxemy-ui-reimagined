@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -103,12 +102,12 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
                     "flex items-center gap-3 rounded-md px-3 py-2 transition-colors",
                     isActive
                       ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
-                      : "text-muted-foreground hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-400",
+                      : "text-gray-500 hover:text-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400",
                     collapsed && "justify-center px-0"
                   )}
                 >
                   <item.icon className="h-5 w-5" />
-                  {!collapsed && <span>{item.name}</span>}
+                  {!collapsed && <span className="text-base">{item.name}</span>}
                 </Link>
               );
             })}

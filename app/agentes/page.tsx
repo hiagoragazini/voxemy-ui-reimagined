@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -268,7 +269,7 @@ export default function AgentesPage() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
+          <h1 className="text-4xl font-bold text-blue-700">
             Seus Agentes de Voz
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
