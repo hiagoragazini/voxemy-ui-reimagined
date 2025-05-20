@@ -124,7 +124,7 @@ export function useConversationRelay() {
         }
         
         // Update call status
-        if (data.status) {
+        if (data && data.status) {
           setCallStatus(data.status);
           
           // Stop polling if call is completed/failed
@@ -135,7 +135,7 @@ export function useConversationRelay() {
         }
         
         // Update transcript if available
-        if (data.transcription) {
+        if (data && data.transcription) {
           try {
             const transcriptData = JSON.parse(data.transcription);
             if (Array.isArray(transcriptData)) {

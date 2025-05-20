@@ -117,6 +117,7 @@ export type Database = {
           call_analysis: Json | null
           call_sid: string
           campaign_id: string | null
+          conversation_relay_active: boolean | null
           created_at: string
           duration: number | null
           from_number: string | null
@@ -133,6 +134,7 @@ export type Database = {
           call_analysis?: Json | null
           call_sid: string
           campaign_id?: string | null
+          conversation_relay_active?: boolean | null
           created_at?: string
           duration?: number | null
           from_number?: string | null
@@ -149,6 +151,7 @@ export type Database = {
           call_analysis?: Json | null
           call_sid?: string
           campaign_id?: string | null
+          conversation_relay_active?: boolean | null
           created_at?: string
           duration?: number | null
           from_number?: string | null
