@@ -27,7 +27,7 @@ export default function Dashboard() {
     <Layout>
       <div className="px-6 py-8 md:px-8 lg:px-12 xl:px-16">
         <div className="flex flex-col mb-10">
-          <h1 className="text-4xl font-semibold tracking-tighter text-gradient-primary">
+          <h1 className="text-3xl font-semibold text-gray-900">
             Dashboard
           </h1>
           <p className="mt-2 text-apple-text-secondary text-lg">

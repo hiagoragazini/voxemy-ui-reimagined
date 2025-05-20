@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -92,10 +91,10 @@ export default function CampanhasPage() {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
-          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-700">
+          <h1 className="text-3xl font-semibold text-gray-900">
             Campanhas de Chamadas
           </h1>
-          <p className="mt-1 text-muted-foreground max-w-3xl">
+          <p className="mt-2 text-muted-foreground max-w-3xl">
             Configure e gerencie campanhas de chamadas automatizadas para seus agentes de voz.
           </p>
         </div>

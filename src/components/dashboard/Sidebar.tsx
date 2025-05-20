@@ -32,16 +32,19 @@ export function Sidebar() {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-3 py-6 space-y-1">
+      <nav className="flex-1 py-3">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) => `
-              nav-item ${isActive ? 'active' : ''}
+              flex items-center py-3 px-6 text-base ${isActive 
+                ? 'text-blue-600 font-medium' 
+                : 'text-gray-500 hover:text-gray-700'
+              }
             `}
           >
-            <item.icon className="h-5 w-5 mr-3 opacity-80" />
+            <item.icon className="h-5 w-5 mr-4" />
             {item.name}
           </NavLink>
         ))}
