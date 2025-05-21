@@ -12,7 +12,7 @@ import { toast } from "sonner";
 export function ConversationRelayTester() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [agentId, setAgentId] = useState("");
-  const [isTestMode, setIsTestMode] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(true); // Set to true by default
   
   const { 
     makeCall, 
@@ -118,7 +118,11 @@ export function ConversationRelayTester() {
               onCheckedChange={setIsTestMode}
               disabled={isLoading || !!callSid}
             />
-            <Label htmlFor="test-mode">Modo de teste (sem realizar chamada real)</Label>
+            <Label htmlFor="test-mode">
+              <span className={isTestMode ? "text-blue-600 font-medium" : ""}>
+                Modo de teste (sem realizar chamada real)
+              </span>
+            </Label>
           </div>
           
           {error && (

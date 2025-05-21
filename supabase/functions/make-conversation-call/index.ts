@@ -52,12 +52,14 @@ serve(async (req) => {
     const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER");
     
-    if (!twilioAccountSid || !twilioAuthToken || !twilioPhone) {
-      throw new Error("Twilio credentials are not properly configured");
-    }
+    // Log environment variables state (without exposing actual values)
+    console.log("Environment variables check:");
+    console.log(`- TWILIO_ACCOUNT_SID exists: ${!!twilioAccountSid}`);
+    console.log(`- TWILIO_AUTH_TOKEN exists: ${!!twilioAuthToken}`);
+    console.log(`- TWILIO_PHONE_NUMBER exists: ${!!twilioPhone}`);
     
     // Extract parameters from request
-    const { phoneNumber, agentId, campaignId, leadId, testMode } = await req.json();
+    const { phoneNumber, agentId, campaignId, leadId, testMode = false } = await req.json();
     
     if (!phoneNumber) {
       throw new Error("Phone number is required");
@@ -67,8 +69,16 @@ serve(async (req) => {
     console.log(`Agent: ${agentId}, Campaign: ${campaignId}, Lead: ${leadId}`);
     console.log(`Test mode: ${testMode ? "ON" : "OFF"}`);
     
-    // If test mode is on, just simulate a successful call
-    if (testMode) {
+    // If missing credentials, force test mode
+    const forceTestMode = !twilioAccountSid || !twilioAuthToken || !twilioPhone;
+    const useTestMode = testMode || forceTestMode;
+    
+    if (forceTestMode) {
+      console.log("WARNING: Missing Twilio credentials - forcing test mode");
+    }
+    
+    // If test mode is on, simulate a successful call
+    if (useTestMode) {
       console.log("Test mode is ON - simulating successful call");
       const mockCallSid = `TEST${Date.now()}`;
       
@@ -83,7 +93,7 @@ serve(async (req) => {
         await supabase.from("call_logs").insert({
           call_sid: mockCallSid,
           status: "initiated",
-          from_number: twilioPhone,
+          from_number: twilioPhone || "+15555555555",
           to_number: phoneNumber,
           agent_id: agentId,
           campaign_id: campaignId,
@@ -100,12 +110,18 @@ serve(async (req) => {
           success: true, 
           callSid: mockCallSid,
           status: "initiated",
-          testMode: true
+          testMode: true,
+          message: forceTestMode ? "Twilio credentials not configured - using test mode" : "Test mode active"
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+    
+    // At this point, we should have all credentials and test mode is OFF
+    if (!twilioAccountSid || !twilioAuthToken || !twilioPhone) {
+      throw new Error("Twilio credentials are not properly configured");
     }
     
     // Format phone number
