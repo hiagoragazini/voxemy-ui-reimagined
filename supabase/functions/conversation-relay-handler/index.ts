@@ -37,11 +37,22 @@ serve(async (req) => {
       );
     }
 
-    // Create websocket URL with parameters
+    // Convert HTTPS URL to WSS protocol for WebSocket connection
     let wsUrl = WEBSOCKET_URL;
+    console.log(`Original WEBSOCKET_URL: ${wsUrl}`);
+    
+    // Ensure the URL uses wss:// protocol instead of https://
+    if (wsUrl.startsWith("https://")) {
+      wsUrl = wsUrl.replace("https://", "wss://");
+      console.log(`Converted HTTPS to WSS protocol: ${wsUrl}`);
+    } else if (!wsUrl.startsWith("wss://")) {
+      // If it doesn't start with https:// or wss://, assume it needs wss://
+      wsUrl = `wss://${wsUrl.replace(/^(http:\/\/|ws:\/\/)?/, "")}`;
+      console.log(`Added WSS protocol to URL: ${wsUrl}`);
+    }
     
     // Append query parameters
-    if (agentId || campaignId || leadId) {
+    if (agentId || campaignId || leadId || callSid) {
       const params = new URLSearchParams();
       if (agentId) params.append("agentId", agentId.toString());
       if (campaignId) params.append("campaignId", campaignId.toString());
@@ -50,6 +61,8 @@ serve(async (req) => {
       
       wsUrl += `?${params.toString()}`;
     }
+
+    console.log(`Final WebSocket URL for TwiML: ${wsUrl}`);
 
     // Add record to the database if we have a callSid
     if (callSid) {
@@ -93,7 +106,7 @@ serve(async (req) => {
       }
     }
 
-    // Generate TwiML with ConversationRelay
+    // Generate TwiML with ConversationRelay using WSS protocol
     const welcomeGreeting = "Olá! Sou o assistente da Voxemy. Como posso ajudar você hoje?";
     
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
