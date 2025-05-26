@@ -126,21 +126,23 @@ serve(async (req) => {
             
             // Wait 500ms before responding as requested
             setTimeout(() => {
-              const responseMessage = {
+              const payload = {
                 event: "message",
                 streamSid: connectionState.streamSid,
-                text: "Olá, tudo bem? Aqui é a Voxemy."
+                text: "Olá! Aqui é a Voxemy. Como posso te ajudar hoje?",
+                language: "pt-BR",
+                voice: "Polly.Camila"
               };
               
-              console.log(`WebSocket ${connectionId}: Enviando mensagem para Twilio:`, responseMessage);
+              console.log(`WebSocket ${connectionId}: Enviando mensagem com voz melhorada para Twilio:`, payload);
               
               try {
-                socket.send(JSON.stringify(responseMessage));
-                console.log(`WebSocket ${connectionId}: Mensagem enviada com sucesso!`);
+                socket.send(JSON.stringify(payload));
+                console.log(`WebSocket ${connectionId}: Mensagem com voz Polly.Camila enviada com sucesso!`);
                 
                 // Log successful send to Supabase
                 if (callSid) {
-                  saveConversationLog(callSid, "sent_message", responseMessage);
+                  saveConversationLog(callSid, "sent_message_with_voice", payload);
                 }
               } catch (sendError) {
                 console.error(`WebSocket ${connectionId}: Erro ao enviar mensagem:`, sendError);
@@ -181,4 +183,4 @@ serve(async (req) => {
 });
 
 console.log("Twilio Media Streams WebSocket server started");
-console.log("Ready to handle ConversationRelay connections");
+console.log("Ready to handle ConversationRelay connections with enhanced voice quality");
