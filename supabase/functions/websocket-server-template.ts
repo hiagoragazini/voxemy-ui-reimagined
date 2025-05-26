@@ -134,15 +134,15 @@ serve(async (req) => {
                 voice: "Polly.Camila"
               };
               
-              console.log(`WebSocket ${connectionId}: Enviando mensagem com voz melhorada para Twilio:`, payload);
+              console.log(`WebSocket ${connectionId}: Enviando mensagem com voz Polly.Camila para Twilio:`, payload);
               
               try {
                 socket.send(JSON.stringify(payload));
-                console.log(`WebSocket ${connectionId}: Mensagem com voz Polly.Camila enviada com sucesso!`);
+                console.log(`WebSocket ${connectionId}: Payload com language e voice enviado com sucesso!`);
                 
                 // Log successful send to Supabase
                 if (callSid) {
-                  saveConversationLog(callSid, "sent_message_with_voice", payload);
+                  saveConversationLog(callSid, "sent_message_polly_camila", payload);
                 }
               } catch (sendError) {
                 console.error(`WebSocket ${connectionId}: Erro ao enviar mensagem:`, sendError);
@@ -183,4 +183,4 @@ serve(async (req) => {
 });
 
 console.log("Twilio Media Streams WebSocket server started");
-console.log("Ready to handle ConversationRelay connections with enhanced voice quality");
+console.log("Ready to handle ConversationRelay connections with Polly.Camila voice");
