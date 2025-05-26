@@ -115,41 +115,40 @@ serve(async (req) => {
         case "start":
           connectionState.streamSid = data.start?.streamSid;
           console.log(`WebSocket ${connectionId}: Media stream started with StreamSid: ${connectionState.streamSid}`);
+          
+          // Enviar mensagem imediatamente quando o stream iniciar
+          if (connectionState.streamSid && !connectionState.hasRespondedToMedia) {
+            connectionState.hasRespondedToMedia = true;
+            
+            console.log(`WebSocket ${connectionId}: Enviando mensagem imediata com voz Camila...`);
+            
+            const payload = {
+              event: "message",
+              streamSid: connectionState.streamSid,
+              text: "Olá! Aqui é a Voxemy. Como posso te ajudar hoje?",
+              voice: "Camila" // Formato simplificado para Polly
+            };
+            
+            console.log(`WebSocket ${connectionId}: Payload para voz Camila:`, payload);
+            
+            try {
+              socket.send(JSON.stringify(payload));
+              console.log(`WebSocket ${connectionId}: Mensagem com voz Camila enviada imediatamente!`);
+              
+              // Log successful send to Supabase
+              if (callSid) {
+                saveConversationLog(callSid, "sent_message_camila_immediate", payload);
+              }
+            } catch (sendError) {
+              console.error(`WebSocket ${connectionId}: Erro ao enviar mensagem:`, sendError);
+            }
+          }
           break;
           
         case "media":
-          // Only respond to the first media event to avoid multiple responses
-          if (!connectionState.hasRespondedToMedia && connectionState.streamSid) {
-            connectionState.hasRespondedToMedia = true;
-            
-            console.log(`WebSocket ${connectionId}: Received first media event, preparing response...`);
-            
-            // Wait 500ms before responding as requested
-            setTimeout(() => {
-              const payload = {
-                event: "message",
-                streamSid: connectionState.streamSid,
-                text: "Olá! Aqui é a Voxemy. Como posso te ajudar hoje?",
-                language: "pt-BR",
-                voice: "Polly.Camila"
-              };
-              
-              console.log(`WebSocket ${connectionId}: Enviando mensagem com voz Polly.Camila para Twilio:`, payload);
-              
-              try {
-                socket.send(JSON.stringify(payload));
-                console.log(`WebSocket ${connectionId}: Payload com language e voice enviado com sucesso!`);
-                
-                // Log successful send to Supabase
-                if (callSid) {
-                  saveConversationLog(callSid, "sent_message_polly_camila", payload);
-                }
-              } catch (sendError) {
-                console.error(`WebSocket ${connectionId}: Erro ao enviar mensagem:`, sendError);
-              }
-            }, 500);
-          } else if (!connectionState.streamSid) {
-            console.warn(`WebSocket ${connectionId}: Received media event but no streamSid available`);
+          // Log apenas para debug - não enviar novamente
+          if (!connectionState.hasRespondedToMedia) {
+            console.log(`WebSocket ${connectionId}: Recebido primeiro evento media, mas já enviou no start`);
           }
           break;
           
@@ -183,4 +182,4 @@ serve(async (req) => {
 });
 
 console.log("Twilio Media Streams WebSocket server started");
-console.log("Ready to handle ConversationRelay connections with Polly.Camila voice");
+console.log("Ready to handle ConversationRelay connections with Camila voice - immediate response");
