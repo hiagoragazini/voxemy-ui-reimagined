@@ -30,30 +30,33 @@ serve(async (req) => {
     console.log(`From: ${from} To: ${to} AgentId: ${agentId} LeadId: ${leadId}`);
     console.log(`ElevenLabs API available: ${ELEVENLABS_API_KEY ? 'YES' : 'NO'}`);
     
-    // Verify WEBSOCKET_URL is configured
-    if (!WEBSOCKET_URL) {
-      console.error("WEBSOCKET_URL is not configured");
+    // Usar nossa própria Edge Function como servidor WebSocket
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    let wsUrl = "";
+    
+    if (supabaseUrl) {
+      // Usar nossa Edge Function de IA WebSocket
+      const baseUrl = supabaseUrl.replace("https://", "");
+      wsUrl = `wss://${baseUrl}/functions/v1/ai-websocket-server`;
+      console.log(`Usando servidor WebSocket de IA próprio: ${wsUrl}`);
+    } else if (WEBSOCKET_URL) {
+      // Fallback para WEBSOCKET_URL configurada
+      wsUrl = WEBSOCKET_URL;
+      if (wsUrl.startsWith("https://")) {
+        wsUrl = wsUrl.replace("https://", "wss://");
+      } else if (!wsUrl.startsWith("wss://")) {
+        wsUrl = `wss://${wsUrl.replace(/^(http:\/\/|ws:\/\/)?/, "")}`;
+      }
+      console.log(`Usando WEBSOCKET_URL configurada: ${wsUrl}`);
+    } else {
+      console.error("❌ Nenhuma URL de WebSocket configurada");
       return new Response(
-        "Error: WebSocket URL is not configured",
+        "Error: WebSocket URL não configurada",
         { status: 500, headers: corsHeaders }
       );
     }
-
-    // Convert HTTPS URL to WSS protocol for WebSocket connection
-    let wsUrl = WEBSOCKET_URL;
-    console.log(`Original WEBSOCKET_URL: ${wsUrl}`);
     
-    // Ensure the URL uses wss:// protocol instead of https://
-    if (wsUrl.startsWith("https://")) {
-      wsUrl = wsUrl.replace("https://", "wss://");
-      console.log(`Converted HTTPS to WSS protocol: ${wsUrl}`);
-    } else if (!wsUrl.startsWith("wss://")) {
-      // If it doesn't start with https:// or wss://, assume it needs wss://
-      wsUrl = `wss://${wsUrl.replace(/^(http:\/\/|ws:\/\/)?/, "")}`;
-      console.log(`Added WSS protocol to URL: ${wsUrl}`);
-    }
-    
-    // Append query parameters
+    // Adicionar parâmetros à URL do WebSocket
     if (agentId || campaignId || leadId || callSid) {
       const params = new URLSearchParams();
       if (agentId) params.append("agentId", agentId.toString());
@@ -64,7 +67,7 @@ serve(async (req) => {
       wsUrl += `?${params.toString()}`;
     }
 
-    console.log(`Final WebSocket URL for TwiML: ${wsUrl}`);
+    console.log(`Final WebSocket URL: ${wsUrl}`);
 
     // Add record to the database if we have a callSid
     if (callSid) {
@@ -108,26 +111,27 @@ serve(async (req) => {
       }
     }
 
-    // Generate TwiML with ConversationRelay using WSS protocol and ElevenLabs integration
+    // Generate TwiML with ConversationRelay using optimized ElevenLabs configuration
     const welcomeGreeting = "Olá! Sou o assistente da Voxemy. Como posso ajudar você hoje?";
     
     // Determine TTS configuration based on ElevenLabs availability
     let twimlContent;
     
     if (ELEVENLABS_API_KEY) {
-      console.log("🎙️ Using ElevenLabs TTS with optimized Brazilian Portuguese voice");
+      console.log("🎙️ Using ElevenLabs TTS with optimized Brazilian Portuguese voice (Laura)");
       
-      // ElevenLabs TwiML with optimized voice parameters for sales/customer service
+      // ElevenLabs TwiML with optimized voice parameters for superior quality
       twimlContent = `<ConversationRelay 
         url="${wsUrl}" 
         welcomeGreeting="${welcomeGreeting}"
         transcriptionEnabled="true"
         transcriptionLanguage="pt-BR"
         ttsProvider="ElevenLabs"
-        ttsVoice="pNInz6obpgDQGcFmaJgB"
+        ttsVoice="FGY2WhTYpPnrIDTdsKH5"
         ttsLanguage="pt-BR"
-        ttsConfig="{&quot;stability&quot;:0.35,&quot;similarity_boost&quot;:0.75,&quot;style&quot;:0.4,&quot;use_speaker_boost&quot;:true}"
-        ttsSpeed="0.95"
+        ttsConfig="{&quot;stability&quot;:0.5,&quot;similarity_boost&quot;:0.5,&quot;style&quot;:0.0,&quot;use_speaker_boost&quot;:false}"
+        ttsSpeed="1.0"
+        ttsModel="eleven_multilingual_v2"
       />`;
     } else {
       console.log("⚠️ ElevenLabs API key not available, using default Twilio TTS");
@@ -148,7 +152,7 @@ serve(async (req) => {
   </Connect>
 </Response>`;
 
-    console.log(`Generated TwiML with ${ELEVENLABS_API_KEY ? 'ElevenLabs' : 'default'} TTS using WebSocket URL: ${wsUrl}`);
+    console.log(`Generated TwiML with ${ELEVENLABS_API_KEY ? 'ElevenLabs (Laura Voice)' : 'default'} TTS using WebSocket URL: ${wsUrl}`);
 
     return new Response(twiml, {
       headers: {
