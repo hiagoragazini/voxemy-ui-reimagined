@@ -52,12 +52,10 @@ serve(async (req) => {
 
     console.log(`Número formatado: ${formattedPhone}`);
 
-    // Prepare Vapi call payload
+    // Prepare Vapi call payload with correct structure
     const vapiPayload = {
-      customer: {
-        number: formattedPhone
-      },
-      assistantId: assistantId || "your-default-assistant-id", // Configure with your Vapi assistant ID
+      phoneNumber: formattedPhone, // Enviando diretamente como phoneNumber
+      assistantId: assistantId || "your-default-assistant-id",
       assistantOverrides: {
         firstMessage: message || "Olá! Aqui é a Voxemy. Como posso te ajudar hoje?"
       }
