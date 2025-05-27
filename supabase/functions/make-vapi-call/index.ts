@@ -3,10 +3,17 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 
+// VERSION LOG - Added to track which version is running
+const FUNCTION_VERSION = "v2.1.0-vapi-fixed-2025-01-27";
+console.log(`🚀 MAKE-VAPI-CALL FUNCTION STARTED - VERSION: ${FUNCTION_VERSION}`);
+
 const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY");
 const VAPI_BASE_URL = "https://api.vapi.ai";
 
 serve(async (req) => {
+  // Log function start with timestamp
+  console.log(`📞 [${new Date().toISOString()}] Function called - Version: ${FUNCTION_VERSION}`);
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,18 +33,22 @@ serve(async (req) => {
       message
     } = await req.json();
 
+    // Log all received parameters for debugging
+    console.log(`📋 Parâmetros recebidos (${FUNCTION_VERSION}):`, {
+      phoneNumber: phoneNumber || 'não fornecido',
+      agentId: agentId || 'não fornecido',
+      campaignId: campaignId || 'não fornecido',
+      leadId: leadId || 'não fornecido',
+      assistantId: assistantId || 'não fornecido',
+      message: message ? 'fornecida' : 'não fornecida'
+    });
+
     // Validate required parameters
     if (!phoneNumber) {
       throw new Error("Número de telefone é obrigatório");
     }
 
-    console.log(`Iniciando chamada Vapi para: ${phoneNumber}`);
-    console.log(`Parâmetros recebidos:`, {
-      agentId: agentId || 'não fornecido',
-      campaignId: campaignId || 'não fornecido',
-      leadId: leadId || 'não fornecido',
-      assistantId: assistantId || 'não fornecido'
-    });
+    console.log(`🔄 Iniciando chamada Vapi para: ${phoneNumber} (Version: ${FUNCTION_VERSION})`);
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
@@ -60,14 +71,14 @@ serve(async (req) => {
       formattedPhone = `+55${cleanPhone}`;
     }
 
-    console.log(`Número formatado: ${formattedPhone}`);
+    console.log(`📱 Número formatado: ${formattedPhone} (Version: ${FUNCTION_VERSION})`);
 
     // Check if assistantId is provided and valid
     let validAssistantId = null;
     
     if (assistantId) {
       try {
-        console.log(`Verificando assistantId: ${assistantId}`);
+        console.log(`🤖 Verificando assistantId: ${assistantId} (Version: ${FUNCTION_VERSION})`);
         const assistantCheckResponse = await fetch(`${VAPI_BASE_URL}/assistant/${assistantId}`, {
           method: "GET",
           headers: {
@@ -78,16 +89,16 @@ serve(async (req) => {
         
         if (assistantCheckResponse.ok) {
           validAssistantId = assistantId;
-          console.log(`AssistantId ${assistantId} é válido`);
+          console.log(`✅ AssistantId ${assistantId} é válido (Version: ${FUNCTION_VERSION})`);
         } else {
-          console.log(`AssistantId ${assistantId} não é válido, usando configuração padrão`);
+          console.log(`⚠️ AssistantId ${assistantId} não é válido, usando configuração padrão (Version: ${FUNCTION_VERSION})`);
         }
       } catch (err) {
-        console.log(`Erro ao verificar assistantId: ${err.message}`);
+        console.log(`❌ Erro ao verificar assistantId: ${err.message} (Version: ${FUNCTION_VERSION})`);
       }
     }
 
-    // Prepare Vapi call payload with CORRECT structure for outbound calls
+    // *** FIXED PAYLOAD STRUCTURE FOR VAPI API ***
     let vapiPayload;
     
     if (validAssistantId) {
@@ -142,7 +153,7 @@ serve(async (req) => {
       vapiPayload.metadata = metadata;
     }
 
-    console.log("Payload Vapi CORRIGIDO (estrutura completa):", JSON.stringify(vapiPayload, null, 2));
+    console.log(`🚀 PAYLOAD VAPI CORRIGIDO (${FUNCTION_VERSION}) - estrutura FIXED:`, JSON.stringify(vapiPayload, null, 2));
 
     // Make call to Vapi API
     const vapiResponse = await fetch(`${VAPI_BASE_URL}/call`, {
@@ -163,17 +174,18 @@ serve(async (req) => {
         errorData = { message: errorText };
       }
       
-      console.error(`Erro detalhado da API Vapi:`, {
+      console.error(`❌ Erro detalhado da API Vapi (${FUNCTION_VERSION}):`, {
         status: vapiResponse.status,
         statusText: vapiResponse.statusText,
-        errorData
+        errorData,
+        sentPayload: vapiPayload
       });
       
       throw new Error(`Vapi API error: ${vapiResponse.status} - ${JSON.stringify(errorData)}`);
     }
 
     const vapiResult = await vapiResponse.json();
-    console.log("Resposta Vapi (sucesso):", JSON.stringify(vapiResult, null, 2));
+    console.log(`✅ Resposta Vapi (sucesso) - ${FUNCTION_VERSION}:`, JSON.stringify(vapiResult, null, 2));
 
     // Create call log record
     const { data: callLog, error: logError } = await supabase
@@ -192,9 +204,9 @@ serve(async (req) => {
       .single();
 
     if (logError) {
-      console.error("Erro ao criar log da chamada:", logError);
+      console.error(`⚠️ Erro ao criar log da chamada (${FUNCTION_VERSION}):`, logError);
     } else {
-      console.log("Log da chamada criado:", callLog);
+      console.log(`📝 Log da chamada criado (${FUNCTION_VERSION}):`, callLog);
     }
 
     // Update lead status if leadId provided
@@ -208,7 +220,7 @@ serve(async (req) => {
         .eq("id", leadId);
 
       if (leadError) {
-        console.error("Erro ao atualizar lead:", leadError);
+        console.error(`⚠️ Erro ao atualizar lead (${FUNCTION_VERSION}):`, leadError);
       }
     }
 
@@ -221,7 +233,8 @@ serve(async (req) => {
         message: "Chamada Vapi iniciada com sucesso",
         vapiResponse: vapiResult,
         usedAssistantId: validAssistantId,
-        metadata: metadata
+        metadata: metadata,
+        functionVersion: FUNCTION_VERSION
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -229,13 +242,14 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error("Erro na função make-vapi-call:", error);
+    console.error(`❌ Erro na função make-vapi-call (${FUNCTION_VERSION}):`, error);
     
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message || "Erro interno do servidor",
-        details: error.stack || "Sem detalhes adicionais"
+        details: error.stack || "Sem detalhes adicionais",
+        functionVersion: FUNCTION_VERSION
       }),
       {
         status: 500,
