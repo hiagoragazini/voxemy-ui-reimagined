@@ -1,4 +1,5 @@
 
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -77,12 +78,14 @@ serve(async (req) => {
       }
     }
 
-    // Prepare Vapi call payload with CORRECT phoneNumber format (as string, not object)
+    // Prepare Vapi call payload with CORRECT phoneNumber format (as object with number property)
     let vapiPayload;
     
     if (validAssistantId) {
       vapiPayload = {
-        phoneNumber: formattedPhone,  // CORRECTED: Direct string, not object
+        phoneNumber: {
+          number: formattedPhone
+        },
         assistantId: validAssistantId,
         assistantOverrides: {
           firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?"
@@ -91,7 +94,9 @@ serve(async (req) => {
     } else {
       // Create a basic call configuration without assistantId
       vapiPayload = {
-        phoneNumber: formattedPhone,  // CORRECTED: Direct string, not object
+        phoneNumber: {
+          number: formattedPhone
+        },
         assistant: {
           firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?",
           model: {
@@ -200,3 +205,4 @@ serve(async (req) => {
     );
   }
 });
+
