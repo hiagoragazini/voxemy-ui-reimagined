@@ -1,10 +1,11 @@
 
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 
-// VERSION LOG - Alternative structure without customer object
-const FUNCTION_VERSION = "v2.3.0-vapi-alternative-2025-01-27";
+// VERSION LOG - Final structure with phoneNumber as string
+const FUNCTION_VERSION = "v2.4.0-vapi-final-2025-01-27";
 console.log(`🚀 MAKE-VAPI-CALL FUNCTION STARTED - VERSION: ${FUNCTION_VERSION}`);
 
 const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY");
@@ -98,15 +99,13 @@ serve(async (req) => {
       }
     }
 
-    // *** ALTERNATIVE PAYLOAD STRUCTURE - NO CUSTOMER OBJECT ***
+    // *** FINAL PAYLOAD STRUCTURE - PHONENUMBER AS STRING ***
     let vapiPayload;
     
     if (validAssistantId) {
       vapiPayload = {
         type: "outboundPhoneCall",
-        phoneNumber: {
-          number: formattedPhone  // phoneNumber directly at root level
-        },
+        phoneNumber: formattedPhone,  // phoneNumber as direct string
         assistantId: validAssistantId,
         assistantOverrides: {
           firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?"
@@ -116,9 +115,7 @@ serve(async (req) => {
       // Create a basic call configuration without assistantId
       vapiPayload = {
         type: "outboundPhoneCall",
-        phoneNumber: {
-          number: formattedPhone  // phoneNumber directly at root level
-        },
+        phoneNumber: formattedPhone,  // phoneNumber as direct string
         assistant: {
           firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?",
           model: {
@@ -149,8 +146,8 @@ serve(async (req) => {
       vapiPayload.metadata = metadata;
     }
 
-    console.log(`🚀 PAYLOAD VAPI ALTERNATIVO (${FUNCTION_VERSION}) - SEM customer object:`, JSON.stringify(vapiPayload, null, 2));
-    console.log(`🔍 ESTRUTURA phoneNumber (${FUNCTION_VERSION}):`, JSON.stringify(vapiPayload.phoneNumber, null, 2));
+    console.log(`🚀 PAYLOAD VAPI FINAL (${FUNCTION_VERSION}) - phoneNumber como STRING:`, JSON.stringify(vapiPayload, null, 2));
+    console.log(`🔍 TIPO phoneNumber (${FUNCTION_VERSION}):`, typeof vapiPayload.phoneNumber, '- Valor:', vapiPayload.phoneNumber);
 
     // Make call to Vapi API
     const vapiResponse = await fetch(`${VAPI_BASE_URL}/call`, {
@@ -255,3 +252,4 @@ serve(async (req) => {
     );
   }
 });
+
