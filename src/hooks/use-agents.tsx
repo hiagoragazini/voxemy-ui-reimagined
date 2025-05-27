@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +48,7 @@ export function useAgents() {
             description: "Especializado em qualificação de leads e agendamento de demonstrações para software empresarial",
             status: "active",
             voice_id: VOICE_IDS.ROGER,
+            assistant_id: null,
             created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
           },
@@ -59,6 +59,7 @@ export function useAgents() {
             description: "Especializada em resolver dúvidas técnicas e problemas com produtos",
             status: "active",
             voice_id: VOICE_IDS.SARAH,
+            assistant_id: null,
             created_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
           },
@@ -69,6 +70,7 @@ export function useAgents() {
             description: "Focado em reativar clientes inativos e reduzir cancelamentos",
             status: "active",
             voice_id: VOICE_IDS.THOMAS,
+            assistant_id: null,
             created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
           },
@@ -79,6 +81,7 @@ export function useAgents() {
             description: "Especializada em follow-up após reuniões para fechamento de vendas",
             status: "paused",
             voice_id: VOICE_IDS.ARIA,
+            assistant_id: null,
             created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
           },
@@ -89,6 +92,7 @@ export function useAgents() {
             description: "Especializado em coletar feedback e realizar pesquisas de satisfação",
             status: "active",
             voice_id: VOICE_IDS.ROGER,
+            assistant_id: null,
             created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
           }
