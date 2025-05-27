@@ -79,16 +79,31 @@ export function useConversationRelay() {
         return { success: true, callSid: simulatedCallId, status: "in-progress" };
       }
       
+      // Prepare payload with proper parameter handling
+      const payload = {
+        phoneNumber: cleanPhone,
+        message: "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?"
+      };
+
+      // Only add non-empty parameters
+      if (agentId && agentId.trim()) {
+        payload.agentId = agentId;
+      }
+      if (campaignId && campaignId.trim()) {
+        payload.campaignId = campaignId;
+      }
+      if (leadId && leadId.trim()) {
+        payload.leadId = leadId;
+      }
+      if (assistantId && assistantId.trim()) {
+        payload.assistantId = assistantId;
+      }
+
+      console.log("Payload sendo enviado para make-vapi-call:", payload);
+      
       // Call the Vapi edge function
       const { data, error } = await supabase.functions.invoke("make-vapi-call", {
-        body: {
-          phoneNumber: cleanPhone,
-          agentId,
-          campaignId,
-          leadId,
-          assistantId,
-          message: "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?"
-        }
+        body: payload
       });
       
       if (error) {

@@ -27,7 +27,7 @@ serve(async (req) => {
     } = await req.json();
 
     console.log(`Iniciando chamada Vapi para: ${phoneNumber}`);
-    console.log(`Parâmetros: agentId=${agentId}, campaignId=${campaignId}, leadId=${leadId}`);
+    console.log(`Parâmetros recebidos: agentId=${agentId}, campaignId=${campaignId}, leadId=${leadId}, assistantId=${assistantId}`);
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
@@ -77,12 +77,12 @@ serve(async (req) => {
       }
     }
 
-    // Prepare Vapi call payload with correct phoneNumber format
+    // Prepare Vapi call payload with CORRECT phoneNumber format
     let vapiPayload;
     
     if (validAssistantId) {
       vapiPayload = {
-        customer: {
+        phoneNumber: {
           number: formattedPhone
         },
         assistantId: validAssistantId,
@@ -93,7 +93,7 @@ serve(async (req) => {
     } else {
       // Create a basic call configuration without assistantId
       vapiPayload = {
-        customer: {
+        phoneNumber: {
           number: formattedPhone
         },
         assistant: {
@@ -116,7 +116,7 @@ serve(async (req) => {
       };
     }
 
-    console.log("Payload Vapi:", JSON.stringify(vapiPayload, null, 2));
+    console.log("Payload Vapi CORRIGIDO:", JSON.stringify(vapiPayload, null, 2));
 
     // Make call to Vapi API
     const vapiResponse = await fetch(`${VAPI_BASE_URL}/call`, {
@@ -145,9 +145,9 @@ serve(async (req) => {
         status: "initiated",
         from_number: "+5511999999999", // Your Vapi phone number
         to_number: formattedPhone,
-        agent_id: agentId,
-        campaign_id: campaignId,
-        lead_id: leadId,
+        agent_id: agentId || null,
+        campaign_id: campaignId || null,
+        lead_id: leadId || null,
         conversation_relay_active: false // Not using ConversationRelay anymore
       })
       .select()
