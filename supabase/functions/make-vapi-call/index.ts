@@ -3,8 +3,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 
-// VERSION LOG - Added to track which version is running
-const FUNCTION_VERSION = "v2.1.0-vapi-fixed-2025-01-27";
+// VERSION LOG - Updated to fix customer.phoneNumber structure
+const FUNCTION_VERSION = "v2.2.0-vapi-fixed-2025-01-27";
 console.log(`🚀 MAKE-VAPI-CALL FUNCTION STARTED - VERSION: ${FUNCTION_VERSION}`);
 
 const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY");
@@ -98,7 +98,7 @@ serve(async (req) => {
       }
     }
 
-    // *** FIXED PAYLOAD STRUCTURE FOR VAPI API ***
+    // *** CORRECTED PAYLOAD STRUCTURE FOR VAPI API ***
     let vapiPayload;
     
     if (validAssistantId) {
@@ -106,7 +106,7 @@ serve(async (req) => {
         type: "outboundPhoneCall",
         customer: {
           phoneNumber: {
-            number: formattedPhone
+            number: formattedPhone  // FIXED: phoneNumber is now an object with 'number' property
           }
         },
         assistantId: validAssistantId,
@@ -120,7 +120,7 @@ serve(async (req) => {
         type: "outboundPhoneCall",
         customer: {
           phoneNumber: {
-            number: formattedPhone
+            number: formattedPhone  // FIXED: phoneNumber is now an object with 'number' property
           }
         },
         assistant: {
@@ -153,7 +153,8 @@ serve(async (req) => {
       vapiPayload.metadata = metadata;
     }
 
-    console.log(`🚀 PAYLOAD VAPI CORRIGIDO (${FUNCTION_VERSION}) - estrutura FIXED:`, JSON.stringify(vapiPayload, null, 2));
+    console.log(`🚀 PAYLOAD VAPI FINAL CORRIGIDO (${FUNCTION_VERSION}) - customer.phoneNumber como OBJETO:`, JSON.stringify(vapiPayload, null, 2));
+    console.log(`🔍 ESTRUTURA customer.phoneNumber (${FUNCTION_VERSION}):`, JSON.stringify(vapiPayload.customer.phoneNumber, null, 2));
 
     // Make call to Vapi API
     const vapiResponse = await fetch(`${VAPI_BASE_URL}/call`, {
