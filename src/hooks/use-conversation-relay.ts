@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -79,8 +78,8 @@ export function useConversationRelay() {
         return { success: true, callSid: simulatedCallId, status: "in-progress" };
       }
       
-      // Prepare payload with proper parameter handling
-      const payload = {
+      // Prepare payload with proper parameter handling using Record type
+      const payload: Record<string, any> = {
         phoneNumber: cleanPhone,
         message: "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?"
       };
