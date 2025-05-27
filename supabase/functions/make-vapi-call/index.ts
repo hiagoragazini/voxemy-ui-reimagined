@@ -1,5 +1,4 @@
 
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -27,8 +26,18 @@ serve(async (req) => {
       message
     } = await req.json();
 
+    // Validate required parameters
+    if (!phoneNumber) {
+      throw new Error("Número de telefone é obrigatório");
+    }
+
     console.log(`Iniciando chamada Vapi para: ${phoneNumber}`);
-    console.log(`Parâmetros recebidos: agentId=${agentId}, campaignId=${campaignId}, leadId=${leadId}, assistantId=${assistantId}`);
+    console.log(`Parâmetros recebidos:`, {
+      agentId: agentId || 'não fornecido',
+      campaignId: campaignId || 'não fornecido',
+      leadId: leadId || 'não fornecido',
+      assistantId: assistantId || 'não fornecido'
+    });
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
@@ -53,7 +62,7 @@ serve(async (req) => {
 
     console.log(`Número formatado: ${formattedPhone}`);
 
-    // First, check if assistantId is provided and valid by trying to get assistant info
+    // Check if assistantId is provided and valid
     let validAssistantId = null;
     
     if (assistantId) {
@@ -78,13 +87,16 @@ serve(async (req) => {
       }
     }
 
-    // Prepare Vapi call payload with CORRECT phoneNumber format (as object with number property)
+    // Prepare Vapi call payload with CORRECT structure for outbound calls
     let vapiPayload;
     
     if (validAssistantId) {
       vapiPayload = {
-        phoneNumber: {
-          number: formattedPhone
+        type: "outboundPhoneCall",
+        customer: {
+          phoneNumber: {
+            number: formattedPhone
+          }
         },
         assistantId: validAssistantId,
         assistantOverrides: {
@@ -94,8 +106,11 @@ serve(async (req) => {
     } else {
       // Create a basic call configuration without assistantId
       vapiPayload = {
-        phoneNumber: {
-          number: formattedPhone
+        type: "outboundPhoneCall",
+        customer: {
+          phoneNumber: {
+            number: formattedPhone
+          }
         },
         assistant: {
           firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?",
@@ -111,13 +126,23 @@ serve(async (req) => {
           },
           voice: {
             provider: "11labs",
-            voiceId: "pFZP5JQG7iQjIQuC4Bku" // Lily voice ID
+            voiceId: "pFZP5JQG7iQjIQuC4Bku"
           }
         }
       };
     }
 
-    console.log("Payload Vapi CORRIGIDO:", JSON.stringify(vapiPayload, null, 2));
+    // Add optional metadata if available
+    const metadata = {};
+    if (agentId) metadata.agentId = agentId;
+    if (campaignId) metadata.campaignId = campaignId;
+    if (leadId) metadata.leadId = leadId;
+    
+    if (Object.keys(metadata).length > 0) {
+      vapiPayload.metadata = metadata;
+    }
+
+    console.log("Payload Vapi CORRIGIDO (estrutura completa):", JSON.stringify(vapiPayload, null, 2));
 
     // Make call to Vapi API
     const vapiResponse = await fetch(`${VAPI_BASE_URL}/call`, {
@@ -131,12 +156,24 @@ serve(async (req) => {
 
     if (!vapiResponse.ok) {
       const errorText = await vapiResponse.text();
-      console.error(`Erro Vapi API: ${vapiResponse.status} - ${errorText}`);
-      throw new Error(`Vapi API error: ${vapiResponse.status} - ${errorText}`);
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: errorText };
+      }
+      
+      console.error(`Erro detalhado da API Vapi:`, {
+        status: vapiResponse.status,
+        statusText: vapiResponse.statusText,
+        errorData
+      });
+      
+      throw new Error(`Vapi API error: ${vapiResponse.status} - ${JSON.stringify(errorData)}`);
     }
 
     const vapiResult = await vapiResponse.json();
-    console.log("Resposta Vapi:", JSON.stringify(vapiResult, null, 2));
+    console.log("Resposta Vapi (sucesso):", JSON.stringify(vapiResult, null, 2));
 
     // Create call log record
     const { data: callLog, error: logError } = await supabase
@@ -144,12 +181,12 @@ serve(async (req) => {
       .insert({
         call_sid: vapiResult.id,
         status: "initiated",
-        from_number: "+5511999999999", // Your Vapi phone number
+        from_number: "+5511999999999",
         to_number: formattedPhone,
         agent_id: agentId || null,
         campaign_id: campaignId || null,
         lead_id: leadId || null,
-        conversation_relay_active: false // Not using ConversationRelay anymore
+        conversation_relay_active: false
       })
       .select()
       .single();
@@ -183,7 +220,8 @@ serve(async (req) => {
         status: vapiResult.status,
         message: "Chamada Vapi iniciada com sucesso",
         vapiResponse: vapiResult,
-        usedAssistantId: validAssistantId
+        usedAssistantId: validAssistantId,
+        metadata: metadata
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -196,7 +234,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "Erro interno do servidor"
+        error: error.message || "Erro interno do servidor",
+        details: error.stack || "Sem detalhes adicionais"
       }),
       {
         status: 500,
@@ -205,4 +244,3 @@ serve(async (req) => {
     );
   }
 });
-
