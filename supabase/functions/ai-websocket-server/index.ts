@@ -7,21 +7,8 @@ const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-// Configurações otimizadas para ElevenLabs (compatível com telefonia)
-const ELEVENLABS_CONFIG = {
-  voice_id: "FGY2WhTYpPnrIDTdsKH5", // Laura - melhor para português brasileiro
-  model_id: "eleven_multilingual_v2",
-  voice_settings: {
-    stability: 0.5,
-    similarity_boost: 0.5,
-    style: 0.0,
-    use_speaker_boost: false
-  },
-  output_format: "ulaw_8000" // Formato compatível com telefonia
-};
-
-// Cache de respostas comuns
-const responseCache = new Map();
+console.log("🚀 Iniciando servidor WebSocket otimizado para ConversationRelay");
+console.log(`📊 APIs disponíveis: OpenAI=${!!OPENAI_API_KEY}, ElevenLabs=${!!ELEVENLABS_API_KEY}`);
 
 serve(async (req) => {
   const upgradeHeader = req.headers.get("Upgrade");
@@ -33,174 +20,197 @@ serve(async (req) => {
   const callSid = url.searchParams.get("callSid");
   const agentId = url.searchParams.get("agentId");
   
-  console.log(`🎯 Nova conexão WebSocket Twilio: CallSid=${callSid}, AgentId=${agentId}`);
+  console.log(`🎯 Nova conexão WebSocket: CallSid=${callSid}, AgentId=${agentId}`);
 
   const { socket, response } = Deno.upgradeWebSocket(req);
   
-  // Estado da conversa e processamento de áudio
-  let conversationHistory: Array<{role: string, content: string}> = [];
+  // Estado da conversa
+  let conversationHistory: Array<{role: string, content: string, timestamp: string}> = [];
   let streamSid: string | null = null;
-  let isProcessing = false;
   let audioBuffer: Uint8Array[] = [];
-  let lastAudioTime = Date.now();
-  let transcriptionInProgress = false;
+  let lastSpeechTime = Date.now();
+  let isProcessingAudio = false;
+  let hasGreeted = false;
 
-  // Prompt otimizado para atendimento telefônico brasileiro
-  const systemPrompt = `Você é um assistente virtual brasileiro da Voxemy, especializado em atendimento telefônico em tempo real.
+  const systemPrompt = `Você é Laura, assistente virtual brasileira da Voxemy, especializada em atendimento telefônico.
 
-REGRAS CRÍTICAS:
+INSTRUÇÕES CRÍTICAS:
 - Responda SEMPRE em português brasileiro natural e conversacional
-- Seja conciso e direto (máximo 2-3 frases por resposta)
-- Use linguagem telefônica apropriada (evite termos técnicos)
-- Seja proativo e útil
-- Mantenha tom profissional mas caloroso
-- Processe a fala do cliente em tempo real e responda adequadamente
+- Seja concisa (máximo 2 frases por resposta)
+- Use linguagem telefônica apropriada e amigável
+- Seja proativa e útil
+- Se o cliente não falar por 3 segundos, faça uma pergunta para manter a conversa
+- Processe a fala do cliente e responda adequadamente
 
-CONTEXTO: Esta é uma conversa telefônica ao vivo. O cliente pode interromper ou fazer pausas. Responda baseado no que o cliente disse até o momento.`;
+Esta é uma conversa telefônica ao vivo. O cliente pode interromper ou fazer pausas.`;
 
-  socket.onopen = () => {
-    console.log(`✅ WebSocket Twilio conectado para call ${callSid}`);
-  };
+  // Função para salvar logs de conversa
+  async function saveConversationLog(event: string, data: any) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !callSid) return;
 
-  socket.onmessage = async (event) => {
     try {
-      const data = JSON.parse(event.data);
-      console.log(`📨 Evento Twilio recebido:`, data.event, data);
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
       
-      switch (data.event) {
-        case "connected":
-          console.log(`🔗 Twilio Media Stream conectado`);
-          break;
-          
-        case "start":
-          streamSid = data.start?.streamSid;
-          console.log(`▶️ Stream iniciado: ${streamSid}`);
-          console.log(`📋 Configuração do stream:`, data.start);
-          
-          // Enviar saudação inicial
-          await sendWelcomeMessage();
-          break;
-          
-        case "media":
-          // Processar áudio do cliente em tempo real
-          if (data.media?.payload && streamSid) {
-            await processIncomingAudio(data.media.payload);
-          }
-          break;
-          
-        case "stop":
-          console.log(`⏹️ Stream finalizado: ${streamSid}`);
-          await saveConversationSummary();
-          break;
-      }
+      await supabase
+        .from("call_logs")
+        .update({
+          conversation_log: JSON.stringify({
+            event,
+            data,
+            timestamp: new Date().toISOString(),
+            conversation_history: conversationHistory
+          }),
+          transcription: JSON.stringify(conversationHistory),
+          status: "conversation_active"
+        })
+        .eq("call_sid", callSid);
     } catch (error) {
-      console.error(`❌ Erro processando evento Twilio:`, error);
-    }
-  };
-
-  socket.onclose = () => {
-    console.log(`🔌 WebSocket Twilio desconectado para call ${callSid}`);
-  };
-
-  socket.onerror = (error) => {
-    console.error(`💥 Erro WebSocket Twilio:`, error);
-  };
-
-  // Função para enviar mensagem de boas-vindas
-  async function sendWelcomeMessage() {
-    const welcomeText = "Olá! Aqui é a Voxemy. Como posso ajudar você hoje?";
-    console.log(`👋 Enviando saudação: "${welcomeText}"`);
-    await generateAndSendAudio(welcomeText);
-  }
-
-  // Função para processar áudio recebido do cliente
-  async function processIncomingAudio(payload: string) {
-    try {
-      // Decodificar payload base64 para áudio raw
-      const audioData = Uint8Array.from(atob(payload), c => c.charCodeAt(0));
-      audioBuffer.push(audioData);
-      lastAudioTime = Date.now();
-      
-      // Implementar Voice Activity Detection simples baseado em tempo
-      if (!transcriptionInProgress) {
-        transcriptionInProgress = true;
-        
-        // Aguardar 1.5 segundos de silêncio antes de processar
-        setTimeout(async () => {
-          if (Date.now() - lastAudioTime >= 1500 && audioBuffer.length > 0) {
-            await processAudioBuffer();
-          }
-          transcriptionInProgress = false;
-        }, 1500);
-      }
-      
-    } catch (error) {
-      console.error(`❌ Erro processando áudio:`, error);
+      console.error("❌ Erro salvando log:", error);
     }
   }
 
-  // Função para processar buffer de áudio acumulado
-  async function processAudioBuffer() {
-    if (audioBuffer.length === 0 || isProcessing) return;
-    
+  // Função para gerar resposta da IA
+  async function generateAIResponse(userText: string): Promise<string | null> {
+    if (!OPENAI_API_KEY) {
+      return "Desculpe, estou com problemas técnicos no momento.";
+    }
+
     try {
-      isProcessing = true;
-      console.log(`🎙️ Processando ${audioBuffer.length} chunks de áudio`);
+      // Adicionar fala do usuário ao histórico
+      conversationHistory.push({
+        role: "user",
+        content: userText,
+        timestamp: new Date().toISOString()
+      });
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...conversationHistory.slice(-6).map(h => ({ role: h.role, content: h.content }))
+          ],
+          max_tokens: 150,
+          temperature: 0.7
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const aiResponse = data.choices[0]?.message?.content?.trim();
       
-      // Concatenar todos os chunks de áudio
-      const totalLength = audioBuffer.reduce((acc, chunk) => acc + chunk.length, 0);
-      const combinedAudio = new Uint8Array(totalLength);
-      let offset = 0;
-      
-      for (const chunk of audioBuffer) {
-        combinedAudio.set(chunk, offset);
-        offset += chunk.length;
+      if (aiResponse) {
+        conversationHistory.push({
+          role: "assistant",
+          content: aiResponse,
+          timestamp: new Date().toISOString()
+        });
       }
       
-      // Limpar buffer
-      audioBuffer = [];
-      
-      // Converter áudio para formato WAV para Whisper
-      const wavAudio = convertToWav(combinedAudio);
-      
-      // Transcrever áudio
-      const transcription = await transcribeAudio(wavAudio);
-      
-      if (transcription && transcription.trim().length > 0) {
-        console.log(`📝 Transcrição: "${transcription}"`);
-        
-        // Gerar resposta da IA
-        await processUserSpeech(transcription);
-      } else {
-        console.log(`⚠️ Transcrição vazia ou inválida`);
-      }
-      
+      return aiResponse;
     } catch (error) {
-      console.error(`❌ Erro processando buffer de áudio:`, error);
-    } finally {
-      isProcessing = false;
+      console.error(`❌ Erro gerando resposta IA:`, error);
+      return "Desculpe, não entendi. Pode repetir?";
     }
   }
 
-  // Função para converter áudio ulaw para WAV
-  function convertToWav(audioData: Uint8Array): ArrayBuffer {
-    // Converter μ-law para PCM 16-bit
+  // Função para gerar áudio com ElevenLabs
+  async function generateAudio(text: string): Promise<string | null> {
+    if (!ELEVENLABS_API_KEY) {
+      console.warn("⚠️ ElevenLabs não disponível");
+      return null;
+    }
+
+    try {
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/FGY2WhTYpPnrIDTdsKH5`, {
+        method: "POST",
+        headers: {
+          "Accept": "audio/mpeg",
+          "Content-Type": "application/json",
+          "xi-api-key": ELEVENLABS_API_KEY,
+        },
+        body: JSON.stringify({
+          text: text,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.5,
+            style: 0.0,
+            use_speaker_boost: false
+          },
+          output_format: "ulaw_8000"
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`ElevenLabs error: ${response.status}`);
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+      
+      console.log(`✅ Áudio gerado: ${text.substring(0, 50)}... (${audioBuffer.byteLength} bytes)`);
+      return base64Audio;
+    } catch (error) {
+      console.error(`❌ Erro ElevenLabs:`, error);
+      return null;
+    }
+  }
+
+  // Função para transcrever áudio
+  async function transcribeAudio(audioBuffer: ArrayBuffer): Promise<string | null> {
+    if (!OPENAI_API_KEY) return null;
+
+    try {
+      const formData = new FormData();
+      const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' });
+      formData.append('file', audioBlob, 'audio.wav');
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'pt');
+
+      const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) return null;
+      
+      const result = await response.json();
+      return result.text?.trim() || null;
+    } catch (error) {
+      console.error(`❌ Erro transcrição:`, error);
+      return null;
+    }
+  }
+
+  // Função para converter μ-law para WAV
+  function convertUlawToWav(audioData: Uint8Array): ArrayBuffer {
     const pcmData = new Int16Array(audioData.length);
     
+    // Tabela de decodificação μ-law simplificada
     for (let i = 0; i < audioData.length; i++) {
-      // Decodificação μ-law simplificada
       const sample = audioData[i];
       const sign = (sample & 0x80) ? -1 : 1;
       const magnitude = ((sample & 0x7F) ^ 0x55);
-      const step = magnitude << 3;
-      pcmData[i] = sign * (step + 4);
+      pcmData[i] = sign * (magnitude << 3);
     }
     
     // Criar header WAV
     const wavBuffer = new ArrayBuffer(44 + pcmData.byteLength);
     const view = new DataView(wavBuffer);
     
-    // Header WAV
+    // Header WAV padrão
     const writeString = (offset: number, string: string) => {
       for (let i = 0; i < string.length; i++) {
         view.setUint8(offset + i, string.charCodeAt(i));
@@ -221,245 +231,147 @@ CONTEXTO: Esta é uma conversa telefônica ao vivo. O cliente pode interromper o
     writeString(36, 'data');
     view.setUint32(40, pcmData.byteLength, true);
     
-    // Copiar dados PCM
-    const pcmBytes = new Uint8Array(pcmData.buffer);
     const wavBytes = new Uint8Array(wavBuffer);
-    wavBytes.set(pcmBytes, 44);
+    wavBytes.set(new Uint8Array(pcmData.buffer), 44);
     
     return wavBuffer;
   }
 
-  // Função para transcrever áudio usando OpenAI Whisper
-  async function transcribeAudio(audioBuffer: ArrayBuffer): Promise<string | null> {
-    if (!OPENAI_API_KEY) {
-      console.error("❌ OPENAI_API_KEY não configurada");
-      return null;
-    }
+  // Função para enviar áudio de resposta
+  async function sendAudioResponse(text: string) {
+    if (!streamSid) return;
 
-    try {
-      const formData = new FormData();
-      const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' });
-      formData.append('file', audioBlob, 'audio.wav');
-      formData.append('model', 'whisper-1');
-      formData.append('language', 'pt');
-      formData.append('temperature', '0.2');
-
-      const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Whisper API error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      return result.text?.trim() || null;
-    } catch (error) {
-      console.error(`❌ Erro na transcrição:`, error);
-      return null;
-    }
-  }
-
-  // Função para processar fala do usuário e gerar resposta
-  async function processUserSpeech(userText: string) {
-    try {
-      console.log(`👤 Processando fala: "${userText}"`);
-      
-      // Verificar cache primeiro
-      const cacheKey = userText.toLowerCase().trim();
-      if (responseCache.has(cacheKey)) {
-        const cachedResponse = responseCache.get(cacheKey);
-        console.log(`⚡ Resposta do cache: "${cachedResponse}"`);
-        await generateAndSendAudio(cachedResponse);
-        return;
-      }
-      
-      // Adicionar à história da conversa
-      conversationHistory.push({ role: "user", content: userText });
-      
-      // Manter apenas últimas 8 mensagens para performance
-      if (conversationHistory.length > 8) {
-        conversationHistory = conversationHistory.slice(-8);
-      }
-      
-      // Gerar resposta com OpenAI
-      const aiResponse = await generateAIResponse();
-      
-      if (aiResponse) {
-        console.log(`🤖 Resposta da IA: "${aiResponse}"`);
-        
-        // Adicionar à história
-        conversationHistory.push({ role: "assistant", content: aiResponse });
-        
-        // Cache respostas curtas
-        if (userText.length < 50) {
-          responseCache.set(cacheKey, aiResponse);
+    console.log(`🎙️ Gerando resposta: "${text}"`);
+    
+    const audioBase64 = await generateAudio(text);
+    
+    if (audioBase64) {
+      const mediaMessage = {
+        event: "media",
+        streamSid: streamSid,
+        media: {
+          payload: audioBase64
         }
-        
-        // Gerar e enviar áudio
-        await generateAndSendAudio(aiResponse);
-      }
-    } catch (error) {
-      console.error(`❌ Erro processando fala do usuário:`, error);
-      await generateAndSendAudio("Desculpe, não consegui entender. Pode repetir?");
-    }
-  }
-
-  // Função para gerar resposta da IA
-  async function generateAIResponse(): Promise<string | null> {
-    if (!OPENAI_API_KEY) {
-      console.error("❌ OPENAI_API_KEY não configurada");
-      return "Desculpe, estou com problemas técnicos no momento.";
-    }
-
-    try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...conversationHistory
-          ],
-          max_tokens: 100, // Respostas bem curtas para telefone
-          temperature: 0.7,
-          presence_penalty: 0.3,
-          frequency_penalty: 0.3
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0]?.message?.content?.trim() || null;
-    } catch (error) {
-      console.error(`❌ Erro gerando resposta IA:`, error);
-      return null;
-    }
-  }
-
-  // Função para gerar áudio e enviar via Twilio
-  async function generateAndSendAudio(text: string) {
-    if (!streamSid) {
-      console.warn("⚠️ Sem streamSid disponível");
-      return;
-    }
-
-    try {
-      console.log(`🎙️ Gerando áudio para: "${text}"`);
-      
-      // Gerar áudio com ElevenLabs
-      const audioBase64 = await generateOptimizedAudio(text);
-      
-      if (audioBase64) {
-        // Enviar áudio para o Twilio no formato correto
-        const mediaMessage = {
-          event: "media",
-          streamSid: streamSid,
-          media: {
-            payload: audioBase64
-          }
-        };
-        
-        socket.send(JSON.stringify(mediaMessage));
-        console.log(`🔊 Áudio enviado para Twilio (${audioBase64.length} chars base64)`);
-        
-        // Salvar no banco de dados
-        await saveConversationLog("ai_response", { text, audio_generated: true });
-      } else {
-        console.warn("⚠️ Falha ao gerar áudio");
-      }
-    } catch (error) {
-      console.error(`❌ Erro enviando áudio:`, error);
-    }
-  }
-
-  // Função para gerar áudio otimizado com ElevenLabs
-  async function generateOptimizedAudio(text: string): Promise<string | null> {
-    if (!ELEVENLABS_API_KEY) {
-      console.warn("⚠️ ElevenLabs API key não disponível");
-      return null;
-    }
-
-    try {
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_CONFIG.voice_id}`, {
-        method: "POST",
-        headers: {
-          "Accept": "audio/mpeg",
-          "Content-Type": "application/json",
-          "xi-api-key": ELEVENLABS_API_KEY,
-        },
-        body: JSON.stringify({
-          text: text,
-          model_id: ELEVENLABS_CONFIG.model_id,
-          voice_settings: ELEVENLABS_CONFIG.voice_settings,
-          output_format: ELEVENLABS_CONFIG.output_format
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`ElevenLabs API error: ${response.status}`);
-      }
-
-      const audioBuffer = await response.arrayBuffer();
-      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
-      
-      console.log(`✅ Áudio ElevenLabs gerado (${audioBuffer.byteLength} bytes)`);
-      return base64Audio;
-    } catch (error) {
-      console.error(`❌ Erro gerando áudio ElevenLabs:`, error);
-      return null;
-    }
-  }
-
-  // Função para salvar log da conversa
-  async function saveConversationLog(event: string, data: any) {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !callSid) return;
-
-    try {
-      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-      
-      const logEntry = {
-        event,
-        data,
-        timestamp: new Date().toISOString(),
-        conversation_history: conversationHistory
       };
       
-      await supabase
-        .from("call_logs")
-        .update({
-          conversation_log: JSON.stringify(logEntry),
-          transcription: JSON.stringify(conversationHistory)
-        })
-        .eq("call_sid", callSid);
-    } catch (error) {
-      console.error("❌ Erro salvando log:", error);
+      socket.send(JSON.stringify(mediaMessage));
+      console.log(`🔊 Áudio enviado para Twilio`);
+      
+      await saveConversationLog("ai_response", { text, audio_sent: true });
     }
   }
 
-  // Função para salvar resumo da conversa
-  async function saveConversationSummary() {
-    if (conversationHistory.length > 0) {
-      console.log(`📋 Salvando resumo da conversa (${conversationHistory.length} mensagens)`);
-      await saveConversationLog("conversation_ended", {
-        total_messages: conversationHistory.length,
-        summary: conversationHistory
-      });
+  // Função para processar buffer de áudio acumulado
+  async function processAudioBuffer() {
+    if (audioBuffer.length === 0 || isProcessingAudio) return;
+    
+    try {
+      isProcessingAudio = true;
+      console.log(`🎤 Processando ${audioBuffer.length} chunks de áudio`);
+      
+      // Concatenar chunks
+      const totalLength = audioBuffer.reduce((acc, chunk) => acc + chunk.length, 0);
+      const combinedAudio = new Uint8Array(totalLength);
+      let offset = 0;
+      
+      for (const chunk of audioBuffer) {
+        combinedAudio.set(chunk, offset);
+        offset += chunk.length;
+      }
+      
+      audioBuffer = []; // Limpar buffer
+      
+      // Converter para WAV
+      const wavAudio = convertUlawToWav(combinedAudio);
+      
+      // Transcrever
+      const transcription = await transcribeAudio(wavAudio);
+      
+      if (transcription && transcription.trim().length > 2) {
+        console.log(`📝 Transcrição: "${transcription}"`);
+        
+        // Gerar resposta
+        const aiResponse = await generateAIResponse(transcription);
+        
+        if (aiResponse) {
+          await sendAudioResponse(aiResponse);
+        }
+      }
+      
+    } catch (error) {
+      console.error(`❌ Erro processando áudio:`, error);
+    } finally {
+      isProcessingAudio = false;
     }
   }
+
+  // Eventos WebSocket
+  socket.onopen = () => {
+    console.log(`✅ WebSocket conectado para call ${callSid}`);
+  };
+
+  socket.onmessage = async (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log(`📨 Evento recebido:`, data.event);
+      
+      switch (data.event) {
+        case "connected":
+          console.log(`🔗 Media Stream conectado`);
+          break;
+          
+        case "start":
+          streamSid = data.start?.streamSid;
+          console.log(`▶️ Stream iniciado: ${streamSid}`);
+          
+          // Enviar saudação inicial após delay pequeno
+          setTimeout(async () => {
+            if (!hasGreeted) {
+              hasGreeted = true;
+              const welcomeText = "Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?";
+              await sendAudioResponse(welcomeText);
+            }
+          }, 1000);
+          break;
+          
+        case "media":
+          if (data.media?.payload && streamSid) {
+            // Decodificar áudio
+            const audioData = Uint8Array.from(atob(data.media.payload), c => c.charCodeAt(0));
+            audioBuffer.push(audioData);
+            lastSpeechTime = Date.now();
+            
+            // Processar após silêncio de 2 segundos
+            setTimeout(async () => {
+              if (Date.now() - lastSpeechTime >= 2000) {
+                await processAudioBuffer();
+              }
+            }, 2000);
+          }
+          break;
+          
+        case "stop":
+          console.log(`⏹️ Stream finalizado: ${streamSid}`);
+          await saveConversationLog("conversation_ended", {
+            total_messages: conversationHistory.length,
+            final_history: conversationHistory
+          });
+          break;
+      }
+    } catch (error) {
+      console.error(`❌ Erro processando evento:`, error);
+    }
+  };
+
+  socket.onclose = () => {
+    console.log(`🔌 WebSocket desconectado para call ${callSid}`);
+  };
+
+  socket.onerror = (error) => {
+    console.error(`💥 Erro WebSocket:`, error);
+  };
 
   return response;
 });
 
-console.log("🚀 Servidor WebSocket Twilio ConversationRelay iniciado com processamento de áudio em tempo real");
+console.log("🚀 Servidor WebSocket ConversationRelay pronto");
