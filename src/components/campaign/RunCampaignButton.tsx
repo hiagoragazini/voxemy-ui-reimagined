@@ -26,11 +26,14 @@ export function RunCampaignButton({
     try {
       setLoading(true);
       
+      // Since we're now using Vapi AI, we'll call the campaign executor
+      // which will need to be updated to use Vapi instead of Twilio
       const { data, error } = await supabase.functions.invoke("campaign-executor", {
         body: {
           campaignId,
           maxCalls,
-          dryRun: false
+          dryRun: false,
+          useVapi: true // Flag to indicate using Vapi AI
         }
       });
       
@@ -40,7 +43,7 @@ export function RunCampaignButton({
       
       if (data?.success) {
         toast.success(
-          `Campanha executada com sucesso! ${data.processedLeads || 0} leads processados.`,
+          `Campanha executada com Vapi AI! ${data.processedLeads || 0} leads processados.`,
           { duration: 5000 }
         );
       } else {
@@ -70,7 +73,7 @@ export function RunCampaignButton({
       ) : (
         <>
           <Phone className="h-4 w-4 mr-2" />
-          Executar Agora
+          Executar (Vapi AI)
         </>
       )}
     </Button>

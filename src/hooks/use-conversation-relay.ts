@@ -18,19 +18,21 @@ export function useConversationRelay() {
   const [transcript, setTranscript] = useState<CallTranscript[]>([]);
   const [lastPolled, setLastPolled] = useState<number>(0);
 
-  // Function to make a conversation relay call
+  // Function to make a Vapi AI call
   const makeCall = useCallback(async ({
     phoneNumber, 
     agentId, 
     campaignId, 
     leadId,
-    testMode = false
+    testMode = false,
+    assistantId
   }: {
     phoneNumber: string;
     agentId?: string;
     campaignId?: string;
     leadId?: string;
     testMode?: boolean;
+    assistantId?: string;
   }) => {
     try {
       setIsLoading(true);
@@ -47,40 +49,63 @@ export function useConversationRelay() {
         throw new Error("Número de telefone inválido");
       }
       
-      console.log("Iniciando chamada com ConversationRelay:", {
+      console.log("Iniciando chamada Vapi AI:", {
         phoneNumber: cleanPhone,
         agentId,
         campaignId,
         leadId,
-        testMode
+        testMode,
+        assistantId
       });
+
+      if (testMode) {
+        // Simulate a test call
+        const simulatedCallId = `vapi_test_${Date.now()}`;
+        setCallSid(simulatedCallId);
+        setCallStatus("in-progress");
+        toast.success("Chamada de teste simulada (Vapi AI)");
+        
+        // Simulate transcript after a delay
+        setTimeout(() => {
+          setTranscript([
+            {
+              role: "assistant",
+              text: "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?",
+              timestamp: new Date().toISOString()
+            }
+          ]);
+        }, 2000);
+        
+        return { success: true, callSid: simulatedCallId, status: "in-progress" };
+      }
       
-      // Call the Edge Function to make the call
-      const { data, error } = await supabase.functions.invoke("make-conversation-call", {
+      // Call the Vapi edge function
+      const { data, error } = await supabase.functions.invoke("make-vapi-call", {
         body: {
           phoneNumber: cleanPhone,
           agentId,
           campaignId,
           leadId,
-          testMode
+          assistantId,
+          message: "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?"
         }
       });
       
       if (error) {
-        console.error("Erro ao fazer chamada:", error);
+        console.error("Erro ao fazer chamada Vapi:", error);
         throw new Error(error.message || "Falha ao conectar");
       }
       
-      console.log("Chamada iniciada com sucesso:", data);
+      console.log("Chamada Vapi iniciada com sucesso:", data);
       
-      if (data.success && data.callSid) {
-        setCallSid(data.callSid);
+      if (data.success && data.callId) {
+        setCallSid(data.callId);
         setCallStatus(data.status);
         
         // Start polling for call status and transcripts
-        startPolling(data.callSid);
+        startPolling(data.callId);
         
-        toast.success("Chamada iniciada com sucesso! ConversationRelay ativo.");
+        toast.success("Chamada iniciada com sucesso via Vapi AI!");
         return data;
       } else {
         throw new Error("Resposta inválida do servidor");
@@ -96,7 +121,7 @@ export function useConversationRelay() {
   }, []);
   
   // Start polling for call status and transcript updates
-  const startPolling = useCallback((sid: string) => {
+  const startPolling = useCallback((callId: string) => {
     if (isPolling) return;
     
     setIsPolling(true);
@@ -104,18 +129,18 @@ export function useConversationRelay() {
     
     const pollInterval = setInterval(async () => {
       try {
-        // Only poll if we haven't polled in the last 1 second
-        if (Date.now() - lastPolled < 1000) {
+        // Only poll if we haven't polled in the last 2 seconds
+        if (Date.now() - lastPolled < 2000) {
           return;
         }
         
         setLastPolled(Date.now());
         
-        // Fetch call status and transcript
+        // Fetch call status and transcript from our database
         const { data, error } = await supabase
           .from("call_logs")
-          .select("status, transcription, conversation_relay_active")
-          .eq("call_sid", sid)
+          .select("status, transcription")
+          .eq("call_sid", callId)
           .single();
           
         if (error) {
@@ -139,7 +164,13 @@ export function useConversationRelay() {
           try {
             const transcriptData = JSON.parse(data.transcription);
             if (Array.isArray(transcriptData)) {
-              setTranscript(transcriptData);
+              // Convert Vapi transcript format to our format
+              const formattedTranscript = transcriptData.map((item: any) => ({
+                role: item.role === "user" ? "user" : "assistant",
+                text: item.content || item.text || "",
+                timestamp: item.timestamp
+              }));
+              setTranscript(formattedTranscript);
             }
           } catch (parseError) {
             console.error("Erro ao analisar transcrição:", parseError);
@@ -148,7 +179,7 @@ export function useConversationRelay() {
       } catch (pollError) {
         console.error("Erro durante polling:", pollError);
       }
-    }, 2000); // Poll every 2 seconds
+    }, 3000); // Poll every 3 seconds
     
     // Clean up interval on unmount
     return () => {

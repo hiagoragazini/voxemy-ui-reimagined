@@ -3,70 +3,25 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Loader2, Volume2, Phone } from "lucide-react";
+import { Loader2, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { useVoiceCall } from "@/hooks/use-voice-call";
-import { AudioPlayer } from "@/components/ui/AudioPlayer";
 
 interface AgentVoiceTesterProps {
   agentName?: string;
   agentId?: string;
-  voiceId?: string;
+  assistantId?: string;
   onClose?: () => void;
 }
 
 export function AgentVoiceTester({
   agentName = "Agente",
   agentId,
-  voiceId,
+  assistantId,
   onClose
 }: AgentVoiceTesterProps) {
-  const [text, setText] = useState(`Olá, eu sou ${agentName}, um assistente de voz. Como posso ajudar você hoje?`);
-  const [audioContent, setAudioContent] = useState<string | null>(null);
-  const { isLoading, textToSpeech, makeCall, playAudio, stopAudio, isPlaying } = useVoiceCall();
-  
-  // Use a voz Laura que tem boa qualidade para português
-  const defaultVoiceId = "FGY2WhTYpPnrIDTdsKH5"; // Laura - melhor para português
-  
-  const handleTestVoice = async () => {
-    if (!text.trim()) {
-      toast.error("Por favor, insira um texto para testar");
-      return;
-    }
-
-    try {
-      if (isPlaying) {
-        // If already playing, stop playback
-        stopAudio();
-        return;
-      }
-      
-      console.log("Iniciando teste de voz para:", agentName);
-      console.log("Usando voiceId:", voiceId || defaultVoiceId);
-      console.log("Texto para falar:", text);
-      
-      // Usar sempre o modelo multilingual para português com configurações otimizadas
-      const audioData = await textToSpeech({ 
-        text, 
-        voiceId: voiceId || defaultVoiceId,
-        model: "eleven_multilingual_v2", // Modelo atualizado para melhor qualidade
-        stability: 0.5,         // Configurações ajustadas
-        similarity_boost: 0.5,  // para melhor performance em chamadas
-        style: 0.0
-      });
-      
-      if (audioData) {
-        setAudioContent(audioData);
-        playAudio(audioData);
-        toast.success("Áudio gerado com sucesso!");
-      } else {
-        throw new Error("Não foi possível gerar áudio");
-      }
-    } catch (err: any) {
-      console.error("Erro ao testar voz:", err);
-      toast.error("Erro ao testar a voz do agente: " + err.message);
-    }
-  };
+  const [text, setText] = useState(`Olá, eu sou ${agentName}, um assistente de voz da Voxemy via Vapi AI. Como posso ajudar você hoje?`);
+  const { isLoading, makeCall } = useVoiceCall();
   
   const handleMakeCall = async () => {
     if (!agentId) {
@@ -89,25 +44,11 @@ export function AgentVoiceTester({
     }
     
     try {
-      toast.info(`Iniciando chamada para ${phoneNumber}...`);
+      toast.info(`Iniciando chamada Vapi AI para ${phoneNumber}...`);
       
-      // Log detalhado para diagnóstico
-      console.log("Usando voice ID do state:", voiceId);
-      console.log("Iniciando chamada com voice ID:", voiceId || defaultVoiceId);
+      console.log("Iniciando chamada Vapi com assistantId:", assistantId);
       console.log("Mensagem a ser enviada:", text);
       console.log("Número de telefone:", phoneNumber);
-      console.log("Tipo de voiceId:", typeof voiceId);
-      if (voiceId) console.log("Comprimento do voiceId:", voiceId.length);
-      
-      // Incluir todos os parâmetros para diagnóstico completo
-      console.log("Parâmetros completos para makeCall:", {
-        agentId,
-        campaignId: "",
-        phoneNumber,
-        message: text,
-        leadId: "",
-        voiceId: voiceId || defaultVoiceId
-      });
       
       const result = await makeCall({
         agentId,
@@ -115,11 +56,11 @@ export function AgentVoiceTester({
         phoneNumber,
         message: text,
         leadId: "",
-        voiceId: voiceId || defaultVoiceId
+        assistantId
       });
       
-      if (result) {
-        toast.success(`Chamada iniciada com sucesso! ID da chamada: ${result.callSid || result.call_sid}`);
+      if (result && result.success) {
+        toast.success(`Chamada Vapi AI iniciada com sucesso! ID: ${result.callId}`);
       } else {
         toast.error("Erro ao iniciar chamada: Nenhuma resposta recebida");
       }
@@ -132,9 +73,9 @@ export function AgentVoiceTester({
   return (
     <Card className="p-4 space-y-4">
       <div className="space-y-1">
-        <h3 className="text-lg font-medium">Testar voz: {agentName}</h3>
+        <h3 className="text-lg font-medium">Testar chamada: {agentName}</h3>
         <p className="text-sm text-muted-foreground">
-          Digite um texto para ouvir como a voz deste agente soa
+          Configure a mensagem e teste uma chamada via Vapi AI
         </p>
       </div>
 
@@ -147,35 +88,16 @@ export function AgentVoiceTester({
 
       <div className="flex flex-col space-y-3">
         <Button 
-          onClick={handleTestVoice}
+          onClick={handleMakeCall}
           disabled={isLoading || !text}
-          className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700"
+          className="flex items-center gap-2"
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Volume2 className="h-4 w-4" />
+            <Phone className="h-4 w-4" />
           )}
-          <span>{isPlaying ? "Parar Áudio" : "Testar Voz"}</span>
-        </Button>
-        
-        {audioContent && (
-          <div className="flex items-center justify-center p-2 bg-slate-50 rounded-md">
-            <AudioPlayer 
-              audioData={audioContent} 
-              isLoading={isLoading} 
-            />
-          </div>
-        )}
-
-        <Button 
-          onClick={handleMakeCall}
-          variant="outline"
-          className="flex items-center gap-2"
-          disabled={isLoading || !text}
-        >
-          <Phone className="h-4 w-4" />
-          <span>Fazer ligação teste</span>
+          <span>Fazer ligação teste (Vapi AI)</span>
         </Button>
       </div>
 
@@ -190,11 +112,12 @@ export function AgentVoiceTester({
       )}
       
       <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
-        <p>O sistema de chamadas Voxemy usa:</p>
+        <p>O sistema Voxemy agora usa Vapi AI com:</p>
         <ul className="list-disc pl-5 mt-1">
-          <li>Twilio para telefonia</li>
-          <li>ElevenLabs para síntese de voz natural em português</li>
-          <li>IA para processamento de linguagem natural</li>
+          <li>Voz natural ElevenLabs em português brasileiro</li>
+          <li>Transcrição precisa via OpenAI</li>
+          <li>Conversas mais fluidas e naturais</li>
+          <li>Integração simplificada sem WebSockets</li>
         </ul>
       </div>
     </Card>

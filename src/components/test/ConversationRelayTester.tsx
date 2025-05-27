@@ -12,7 +12,8 @@ import { toast } from "sonner";
 export function ConversationRelayTester() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [agentId, setAgentId] = useState("");
-  const [isTestMode, setIsTestMode] = useState(true); // Set to true by default
+  const [assistantId, setAssistantId] = useState("");
+  const [isTestMode, setIsTestMode] = useState(true);
   
   const { 
     makeCall, 
@@ -36,11 +37,12 @@ export function ConversationRelayTester() {
     }
     
     try {
-      toast.info("Iniciando chamada com ConversationRelay...");
+      toast.info("Iniciando chamada via Vapi AI...");
       
       await makeCall({ 
         phoneNumber,
         agentId: agentId || undefined,
+        assistantId: assistantId || undefined,
         testMode: isTestMode
       });
     } catch (err) {
@@ -82,7 +84,7 @@ export function ConversationRelayTester() {
   return (
     <div className="space-y-6 bg-white p-6 rounded-lg shadow">
       <div>
-        <h2 className="text-lg font-medium mb-4">Teste do Twilio ConversationRelay</h2>
+        <h2 className="text-lg font-medium mb-4">Teste com Vapi AI</h2>
         
         <div className="space-y-4">
           <div className="space-y-2">
@@ -107,6 +109,17 @@ export function ConversationRelayTester() {
               value={agentId}
               onChange={(e) => setAgentId(e.target.value)}
               placeholder="ID do agente para personalização"
+              disabled={isLoading || !!callSid}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="assistant-id">Assistant ID Vapi (opcional)</Label>
+            <Input
+              id="assistant-id"
+              value={assistantId}
+              onChange={(e) => setAssistantId(e.target.value)}
+              placeholder="ID do assistant configurado na Vapi"
               disabled={isLoading || !!callSid}
             />
           </div>
@@ -145,7 +158,7 @@ export function ConversationRelayTester() {
               ) : (
                 <>
                   <Phone className="mr-2 h-4 w-4" />
-                  Iniciar Chamada com ConversationRelay
+                  Iniciar Chamada com Vapi AI
                 </>
               )}
             </Button>
@@ -166,7 +179,7 @@ export function ConversationRelayTester() {
       {/* Transcrição em tempo real */}
       {callSid && transcript.length > 0 && (
         <div className="mt-6">
-          <h3 className="font-medium mb-3">Transcrição em Tempo Real</h3>
+          <h3 className="font-medium mb-3">Transcrição em Tempo Real (Vapi AI)</h3>
           <div className="border rounded-md overflow-hidden">
             <div className="max-h-80 overflow-y-auto p-4 space-y-3">
               {transcript.map((item: CallTranscript, index: number) => (
@@ -192,18 +205,18 @@ export function ConversationRelayTester() {
       {callSid && transcript.length === 0 && (
         <div className="flex items-center justify-center p-6 bg-gray-50 rounded-lg border border-gray-200">
           <Loader2 className="mr-2 h-5 w-5 animate-spin text-blue-600" />
-          <span>Aguardando início da conversa...</span>
+          <span>Aguardando início da conversa via Vapi AI...</span>
         </div>
       )}
       
       <div className="p-4 bg-green-50 border border-green-100 rounded">
-        <h3 className="text-sm font-medium text-green-700 mb-2">ConversationRelay Ativado:</h3>
+        <h3 className="text-sm font-medium text-green-700 mb-2">Vapi AI Ativado:</h3>
         <ul className="text-sm text-green-600 space-y-1 list-disc pl-5">
-          <li>O recurso Twilio ConversationRelay está ativo e pronto para uso</li>
-          <li>Transcrição em tempo real disponível durante as chamadas</li>
-          <li>Todos os áudios são processados e salvos automaticamente</li>
-          <li>A IA responde às interações do cliente em tempo real</li>
-          <li>Os dados da conversa são armazenados para análise posterior</li>
+          <li>Voz natural ElevenLabs em português brasileiro</li>
+          <li>Transcrição precisa com OpenAI</li>
+          <li>Conversas mais fluidas e naturais</li>
+          <li>Integração simplificada sem WebSockets complexos</li>
+          <li>Melhor qualidade de áudio para telefonia</li>
         </ul>
       </div>
     </div>

@@ -1,8 +1,0 @@
-
-{
-  "imports": {
-    "std/": "https://deno.land/std@0.190.0/",
-    "npm:twilio": "https://esm.sh/twilio@4.20.0",
-    "twilio": "https://esm.sh/twilio@4.20.0"
-  }
-}
