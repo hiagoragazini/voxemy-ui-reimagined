@@ -1,11 +1,9 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Phone, Loader2 } from "lucide-react";
-import { useConversationRelay, CallTranscript } from "@/hooks/use-conversation-relay";
-import { Badge } from "@/components/ui/badge";
+import { useVoiceCall } from "@/hooks/use-voice-call";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
@@ -14,15 +12,9 @@ export function ConversationRelayTester() {
   const [agentId, setAgentId] = useState("");
   const [assistantId, setAssistantId] = useState("");
   const [isTestMode, setIsTestMode] = useState(true);
+  const [message, setMessage] = useState("Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?");
   
-  const { 
-    makeCall, 
-    isLoading, 
-    callSid, 
-    callStatus, 
-    error, 
-    transcript 
-  } = useConversationRelay();
+  const { makeCall, isLoading, error, callDetails } = useVoiceCall();
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Keep only numbers
@@ -36,49 +28,24 @@ export function ConversationRelayTester() {
       return;
     }
     
+    if (isTestMode) {
+      toast.success("Modo de teste: Chamada simulada com sucesso!");
+      return;
+    }
+    
     try {
       toast.info("Iniciando chamada via Vapi AI...");
       
       await makeCall({ 
         phoneNumber,
-        agentId: agentId || undefined,
-        assistantId: assistantId || undefined,
-        testMode: isTestMode
+        agentId: agentId || '',
+        message,
+        assistantId: assistantId || undefined
       });
     } catch (err) {
       console.error("Erro ao iniciar chamada:", err);
       toast.error("Falha ao iniciar a chamada");
     }
-  };
-
-  const getStatusBadge = () => {
-    if (!callStatus) return null;
-    
-    let color = "bg-gray-100 text-gray-800";
-    
-    switch (callStatus) {
-      case "queued":
-      case "initiated":
-        color = "bg-blue-100 text-blue-800";
-        break;
-      case "ringing":
-        color = "bg-yellow-100 text-yellow-800";
-        break;
-      case "in-progress":
-        color = "bg-green-100 text-green-800";
-        break;
-      case "completed":
-        color = "bg-purple-100 text-purple-800";
-        break;
-      case "busy":
-      case "failed":
-      case "no-answer":
-      case "canceled":
-        color = "bg-red-100 text-red-800";
-        break;
-    }
-    
-    return <Badge className={color}>{callStatus}</Badge>;
   };
 
   return (
@@ -95,7 +62,7 @@ export function ConversationRelayTester() {
               onChange={handlePhoneChange}
               placeholder="Ex: 11999887766 (apenas números)"
               type="tel"
-              disabled={isLoading || !!callSid}
+              disabled={isLoading}
             />
             <p className="text-xs text-muted-foreground">
               Digite apenas números, incluindo DDD (ex: 11999887766)
@@ -109,7 +76,7 @@ export function ConversationRelayTester() {
               value={agentId}
               onChange={(e) => setAgentId(e.target.value)}
               placeholder="ID do agente para personalização"
-              disabled={isLoading || !!callSid}
+              disabled={isLoading}
             />
           </div>
 
@@ -120,7 +87,18 @@ export function ConversationRelayTester() {
               value={assistantId}
               onChange={(e) => setAssistantId(e.target.value)}
               placeholder="ID do assistant configurado na Vapi"
-              disabled={isLoading || !!callSid}
+              disabled={isLoading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="message">Mensagem inicial</Label>
+            <Input
+              id="message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Mensagem que o assistente irá falar"
+              disabled={isLoading}
             />
           </div>
 
@@ -129,7 +107,7 @@ export function ConversationRelayTester() {
               id="test-mode"
               checked={isTestMode}
               onCheckedChange={setIsTestMode}
-              disabled={isLoading || !!callSid}
+              disabled={isLoading}
             />
             <Label htmlFor="test-mode">
               <span className={isTestMode ? "text-blue-600 font-medium" : ""}>
@@ -144,70 +122,36 @@ export function ConversationRelayTester() {
             </div>
           )}
           
-          {!callSid ? (
-            <Button 
-              onClick={handleCallClick} 
-              disabled={isLoading || !phoneNumber}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Iniciando chamada...
-                </>
-              ) : (
-                <>
-                  <Phone className="mr-2 h-4 w-4" />
-                  Iniciar Chamada com Vapi AI
-                </>
-              )}
-            </Button>
-          ) : (
-            <div className="flex flex-col space-y-2 items-center justify-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-center mb-2">
-                <span className="font-medium mr-2">Status:</span>
-                {getStatusBadge()}
+          {callDetails && (
+            <div className="flex flex-col space-y-2 items-center justify-center p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="text-sm">
+                <span className="font-medium">Chamada iniciada com sucesso!</span>
               </div>
               <div className="text-sm">
-                <span className="font-medium">ID da chamada:</span> {callSid}
+                <span className="font-medium">ID da chamada:</span> {callDetails.callId}
               </div>
             </div>
           )}
+          
+          <Button 
+            onClick={handleCallClick} 
+            disabled={isLoading || !phoneNumber}
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Iniciando chamada...
+              </>
+            ) : (
+              <>
+                <Phone className="mr-2 h-4 w-4" />
+                Iniciar Chamada com Vapi AI
+              </>
+            )}
+          </Button>
         </div>
       </div>
-      
-      {/* Transcrição em tempo real */}
-      {callSid && transcript.length > 0 && (
-        <div className="mt-6">
-          <h3 className="font-medium mb-3">Transcrição em Tempo Real (Vapi AI)</h3>
-          <div className="border rounded-md overflow-hidden">
-            <div className="max-h-80 overflow-y-auto p-4 space-y-3">
-              {transcript.map((item: CallTranscript, index: number) => (
-                <div
-                  key={index}
-                  className={`p-3 rounded-lg ${
-                    item.role === "user"
-                      ? "bg-gray-100 ml-6"
-                      : "bg-blue-50 mr-6"
-                  }`}
-                >
-                  <div className="font-medium text-xs mb-1 text-gray-500">
-                    {item.role === "user" ? "Cliente" : "Assistente"}:
-                  </div>
-                  <div>{item.text}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {callSid && transcript.length === 0 && (
-        <div className="flex items-center justify-center p-6 bg-gray-50 rounded-lg border border-gray-200">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin text-blue-600" />
-          <span>Aguardando início da conversa via Vapi AI...</span>
-        </div>
-      )}
       
       <div className="p-4 bg-green-50 border border-green-100 rounded">
         <h3 className="text-sm font-medium text-green-700 mb-2">Vapi AI Ativado:</h3>

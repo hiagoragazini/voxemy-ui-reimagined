@@ -77,14 +77,12 @@ serve(async (req) => {
       }
     }
 
-    // Prepare Vapi call payload with CORRECT phoneNumber format
+    // Prepare Vapi call payload with CORRECT phoneNumber format (as string, not object)
     let vapiPayload;
     
     if (validAssistantId) {
       vapiPayload = {
-        phoneNumber: {
-          number: formattedPhone
-        },
+        phoneNumber: formattedPhone,  // CORRECTED: Direct string, not object
         assistantId: validAssistantId,
         assistantOverrides: {
           firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?"
@@ -93,9 +91,7 @@ serve(async (req) => {
     } else {
       // Create a basic call configuration without assistantId
       vapiPayload = {
-        phoneNumber: {
-          number: formattedPhone
-        },
+        phoneNumber: formattedPhone,  // CORRECTED: Direct string, not object
         assistant: {
           firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?",
           model: {
