@@ -177,6 +177,7 @@ export function useAgents() {
           avatarLetter: agent.name.charAt(0),
           avatarColor: getAvatarColor(agent.name),
           voiceId: agent.voice_id || VOICE_IDS.ROGER,
+          assistantId: agent.assistant_id, // Map assistant_id from database
         };
       });
 

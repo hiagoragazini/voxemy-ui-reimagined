@@ -15,6 +15,7 @@ export interface AgentCardProps {
   description?: string;
   status: "active" | "paused" | "inactive";
   voiceId?: string;
+  assistantId?: string; // Added assistantId property
   calls?: number;
   avgTime?: string;
   successRate?: number;
