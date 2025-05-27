@@ -12,6 +12,7 @@ export type Database = {
       agents: {
         Row: {
           ai_model: string | null
+          assistant_id: string | null
           category: string
           conversation_prompt: string | null
           created_at: string
@@ -31,6 +32,7 @@ export type Database = {
         }
         Insert: {
           ai_model?: string | null
+          assistant_id?: string | null
           category: string
           conversation_prompt?: string | null
           created_at?: string
@@ -50,6 +52,7 @@ export type Database = {
         }
         Update: {
           ai_model?: string | null
+          assistant_id?: string | null
           category?: string
           conversation_prompt?: string | null
           created_at?: string

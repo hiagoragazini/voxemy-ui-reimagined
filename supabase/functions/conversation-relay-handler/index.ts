@@ -6,6 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const WEBSOCKET_URL = Deno.env.get("WEBSOCKET_URL") || "";
 const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -27,6 +28,7 @@ serve(async (req) => {
 
     console.log(`ConversationRelay handler called for call ${callSid}`);
     console.log(`From: ${from} To: ${to} AgentId: ${agentId} LeadId: ${leadId}`);
+    console.log(`ElevenLabs API available: ${ELEVENLABS_API_KEY ? 'YES' : 'NO'}`);
     
     // Verify WEBSOCKET_URL is configured
     if (!WEBSOCKET_URL) {
@@ -106,22 +108,47 @@ serve(async (req) => {
       }
     }
 
-    // Generate TwiML with ConversationRelay using WSS protocol
+    // Generate TwiML with ConversationRelay using WSS protocol and ElevenLabs integration
     const welcomeGreeting = "Olá! Sou o assistente da Voxemy. Como posso ajudar você hoje?";
     
+    // Determine TTS configuration based on ElevenLabs availability
+    let twimlContent;
+    
+    if (ELEVENLABS_API_KEY) {
+      console.log("🎙️ Using ElevenLabs TTS with optimized Brazilian Portuguese voice");
+      
+      // ElevenLabs TwiML with optimized voice parameters for sales/customer service
+      twimlContent = `<ConversationRelay 
+        url="${wsUrl}" 
+        welcomeGreeting="${welcomeGreeting}"
+        transcriptionEnabled="true"
+        transcriptionLanguage="pt-BR"
+        ttsProvider="ElevenLabs"
+        ttsVoice="pNInz6obpgDQGcFmaJgB"
+        ttsLanguage="pt-BR"
+        ttsConfig="{&quot;stability&quot;:0.35,&quot;similarity_boost&quot;:0.75,&quot;style&quot;:0.4,&quot;use_speaker_boost&quot;:true}"
+        ttsSpeed="0.95"
+      />`;
+    } else {
+      console.log("⚠️ ElevenLabs API key not available, using default Twilio TTS");
+      
+      // Default Twilio TTS fallback
+      twimlContent = `<ConversationRelay 
+        url="${wsUrl}" 
+        welcomeGreeting="${welcomeGreeting}"
+        transcriptionEnabled="true"
+        transcriptionLanguage="pt-BR"
+      />`;
+    }
+
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <ConversationRelay 
-      url="${wsUrl}" 
-      welcomeGreeting="${welcomeGreeting}"
-      transcriptionEnabled="true"
-      transcriptionLanguage="pt-BR"
-    />
+    ${twimlContent}
   </Connect>
 </Response>`;
 
-    console.log(`Generated TwiML with ConversationRelay using WebSocket URL: ${wsUrl}`);
+    console.log(`Generated TwiML with ${ELEVENLABS_API_KEY ? 'ElevenLabs' : 'default'} TTS using WebSocket URL: ${wsUrl}`);
 
     return new Response(twiml, {
       headers: {

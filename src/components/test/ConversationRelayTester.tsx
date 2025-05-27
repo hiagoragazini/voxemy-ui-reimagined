@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, Loader2 } from "lucide-react";
+import { Phone, Loader2, Mic, Volume2 } from "lucide-react";
 import { useConversationRelay, CallTranscript } from "@/hooks/use-conversation-relay";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -12,7 +12,7 @@ import { toast } from "sonner";
 export function ConversationRelayTester() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [agentId, setAgentId] = useState("");
-  const [isTestMode, setIsTestMode] = useState(true); // Set to true by default
+  const [isTestMode, setIsTestMode] = useState(true);
   
   const { 
     makeCall, 
@@ -82,7 +82,7 @@ export function ConversationRelayTester() {
   return (
     <div className="space-y-6 bg-white p-6 rounded-lg shadow">
       <div>
-        <h2 className="text-lg font-medium mb-4">Teste do Twilio ConversationRelay</h2>
+        <h2 className="text-lg font-medium mb-4">Teste do Twilio ConversationRelay com ElevenLabs</h2>
         
         <div className="space-y-4">
           <div className="space-y-2">
@@ -196,14 +196,35 @@ export function ConversationRelayTester() {
         </div>
       )}
       
+      {/* Enhanced status card with ElevenLabs integration info */}
       <div className="p-4 bg-green-50 border border-green-100 rounded">
-        <h3 className="text-sm font-medium text-green-700 mb-2">ConversationRelay Ativado:</h3>
+        <h3 className="text-sm font-medium text-green-700 mb-2 flex items-center">
+          <Volume2 className="mr-2 h-4 w-4" />
+          ConversationRelay com ElevenLabs Ativado:
+        </h3>
         <ul className="text-sm text-green-600 space-y-1 list-disc pl-5">
-          <li>O recurso Twilio ConversationRelay está ativo e pronto para uso</li>
-          <li>Transcrição em tempo real disponível durante as chamadas</li>
-          <li>Todos os áudios são processados e salvos automaticamente</li>
-          <li>A IA responde às interações do cliente em tempo real</li>
-          <li>Os dados da conversa são armazenados para análise posterior</li>
+          <li>Integração ElevenLabs com voz "Lax" otimizada para português brasileiro</li>
+          <li>Parâmetros de voz configurados para vendas/atendimento (stability: 0.35, similarity: 0.75)</li>
+          <li>Transcrição em tempo real com processamento de IA em português</li>
+          <li>Fallback automático para TTS padrão caso ElevenLabs não esteja disponível</li>
+          <li>Velocidade de fala otimizada (0.95x) para melhor compreensão</li>
+          <li>Todos os dados da conversa são armazenados para análise posterior</li>
+        </ul>
+      </div>
+
+      {/* Technical details card */}
+      <div className="p-4 bg-blue-50 border border-blue-100 rounded">
+        <h3 className="text-sm font-medium text-blue-700 mb-2 flex items-center">
+          <Mic className="mr-2 h-4 w-4" />
+          Configurações Técnicas ElevenLabs:
+        </h3>
+        <ul className="text-sm text-blue-600 space-y-1 list-disc pl-5">
+          <li><strong>Voz:</strong> Lax (pNInz6obpgDQGcFmaJgB) - Otimizada para português brasileiro</li>
+          <li><strong>Estabilidade:</strong> 0.35 - Variação natural para conversas dinâmicas</li>
+          <li><strong>Similaridade:</strong> 0.75 - Mantém características consistentes da voz</li>
+          <li><strong>Estilo:</strong> 0.4 - Expressividade moderada para engajamento</li>
+          <li><strong>Velocidade:</strong> 0.95x - Otimizada para compreensão em vendas</li>
+          <li><strong>Speaker Boost:</strong> Ativado - Melhora qualidade e clareza</li>
         </ul>
       </div>
     </div>
