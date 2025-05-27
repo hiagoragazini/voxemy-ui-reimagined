@@ -52,14 +52,65 @@ serve(async (req) => {
 
     console.log(`Número formatado: ${formattedPhone}`);
 
-    // Prepare Vapi call payload with correct structure
-    const vapiPayload = {
-      phoneNumber: formattedPhone, // Enviando diretamente como phoneNumber
-      assistantId: assistantId || "your-default-assistant-id",
-      assistantOverrides: {
-        firstMessage: message || "Olá! Aqui é a Voxemy. Como posso te ajudar hoje?"
+    // First, check if assistantId is provided and valid by trying to get assistant info
+    let validAssistantId = null;
+    
+    if (assistantId) {
+      try {
+        console.log(`Verificando assistantId: ${assistantId}`);
+        const assistantCheckResponse = await fetch(`${VAPI_BASE_URL}/assistant/${assistantId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${VAPI_API_KEY}`,
+            "Content-Type": "application/json"
+          }
+        });
+        
+        if (assistantCheckResponse.ok) {
+          validAssistantId = assistantId;
+          console.log(`AssistantId ${assistantId} é válido`);
+        } else {
+          console.log(`AssistantId ${assistantId} não é válido, usando configuração padrão`);
+        }
+      } catch (err) {
+        console.log(`Erro ao verificar assistantId: ${err.message}`);
       }
-    };
+    }
+
+    // Prepare Vapi call payload - if no valid assistantId, create call without it
+    let vapiPayload;
+    
+    if (validAssistantId) {
+      vapiPayload = {
+        phoneNumber: formattedPhone,
+        assistantId: validAssistantId,
+        assistantOverrides: {
+          firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?"
+        }
+      };
+    } else {
+      // Create a basic call configuration without assistantId
+      vapiPayload = {
+        phoneNumber: formattedPhone,
+        assistant: {
+          firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?",
+          model: {
+            provider: "openai",
+            model: "gpt-3.5-turbo",
+            messages: [
+              {
+                role: "system",
+                content: "Você é um assistente de voz da Voxemy via Vapi AI. Seja útil, educado e responda em português brasileiro."
+              }
+            ]
+          },
+          voice: {
+            provider: "11labs",
+            voiceId: "pFZP5JQG7iQjIQuC4Bku" // Lily voice ID
+          }
+        }
+      };
+    }
 
     console.log("Payload Vapi:", JSON.stringify(vapiPayload, null, 2));
 
@@ -126,7 +177,8 @@ serve(async (req) => {
         callSid: vapiResult.id,
         status: vapiResult.status,
         message: "Chamada Vapi iniciada com sucesso",
-        vapiResponse: vapiResult
+        vapiResponse: vapiResult,
+        usedAssistantId: validAssistantId
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
