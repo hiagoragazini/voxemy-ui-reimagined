@@ -21,7 +21,7 @@ export default function Agents() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [hasRun, setHasRun] = useState(false);
-  const [selectedAgentForVoice, setSelectedAgentForVoice] = useState<{id: string, name: string, voiceId?: string} | null>(null);
+  const [selectedAgentForVoice, setSelectedAgentForVoice] = useState<{id: string, name: string, assistantId?: string} | null>(null);
   
   // Safe access to useAgents hook with default values
   const { 
@@ -108,7 +108,7 @@ export default function Agents() {
       setSelectedAgentForVoice({
         id: agent.id,
         name: agent.name,
-        voiceId: agent.voiceId
+        assistantId: agent.assistantId
       });
     }
   };
@@ -239,7 +239,7 @@ export default function Agents() {
             <AgentVoiceTester
               agentId={selectedAgentForVoice.id}
               agentName={selectedAgentForVoice.name}
-              voiceId={selectedAgentForVoice.voiceId}
+              assistantId={selectedAgentForVoice.assistantId}
               onClose={() => setSelectedAgentForVoice(null)}
             />
           )}

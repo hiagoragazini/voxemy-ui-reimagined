@@ -191,7 +191,6 @@ export const AgentGrid = ({
             <CampaignCallTester
               agentId={selectedAgent.id}
               agentName={selectedAgent.name}
-              agentVoiceId={selectedAgent.voiceId}
               onClose={() => setShowCallTester(null)}
             />
           )}

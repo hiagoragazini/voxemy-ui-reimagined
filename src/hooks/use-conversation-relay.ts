@@ -165,8 +165,8 @@ export function useConversationRelay() {
             const transcriptData = JSON.parse(data.transcription);
             if (Array.isArray(transcriptData)) {
               // Convert Vapi transcript format to our format
-              const formattedTranscript = transcriptData.map((item: any) => ({
-                role: item.role === "user" ? "user" : "assistant",
+              const formattedTranscript: CallTranscript[] = transcriptData.map((item: any) => ({
+                role: (item.role === "user" ? "user" : "assistant") as "user" | "assistant",
                 text: item.content || item.text || "",
                 timestamp: item.timestamp
               }));

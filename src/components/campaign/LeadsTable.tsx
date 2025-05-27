@@ -237,7 +237,6 @@ export function LeadsTable({ campaignId, agentId, agentName }: LeadsTableProps) 
               campaignId={campaignId}
               agentId={agentId}
               agentName={agentName}
-              agentVoiceId={agentData?.voice_id}
               phoneNumber={selectedLead.phone}
               leadName={selectedLead.name}
               leadId={selectedLead.id}
