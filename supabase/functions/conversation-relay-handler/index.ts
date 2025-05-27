@@ -18,7 +18,7 @@ serve(async (req) => {
     // Parse request body
     const formData = await req.formData();
     
-    // Extract parameters (callSid, agentId, campaignId, etc.)
+    // Extract parameters
     const callSid = formData.get("CallSid");
     const to = formData.get("To");
     const from = formData.get("From");
@@ -26,28 +26,26 @@ serve(async (req) => {
     const campaignId = formData.get("campaignId");
     const leadId = formData.get("leadId");
 
-    console.log(`ConversationRelay handler called for call ${callSid}`);
-    console.log(`From: ${from} To: ${to} AgentId: ${agentId} LeadId: ${leadId}`);
-    console.log(`ElevenLabs API available: ${ELEVENLABS_API_KEY ? 'YES' : 'NO'}`);
+    console.log(`🚀 ConversationRelay handler para call ${callSid}`);
+    console.log(`📞 De: ${from} Para: ${to} Agent: ${agentId} Lead: ${leadId}`);
+    console.log(`🎙️ ElevenLabs disponível: ${ELEVENLABS_API_KEY ? 'SIM' : 'NÃO'}`);
     
-    // Usar nossa própria Edge Function como servidor WebSocket
+    // Configurar URL do WebSocket
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     let wsUrl = "";
     
     if (supabaseUrl) {
-      // Usar nossa Edge Function de IA WebSocket
       const baseUrl = supabaseUrl.replace("https://", "");
       wsUrl = `wss://${baseUrl}/functions/v1/ai-websocket-server`;
-      console.log(`Usando servidor WebSocket de IA próprio: ${wsUrl}`);
+      console.log(`🔗 Usando servidor WebSocket: ${wsUrl}`);
     } else if (WEBSOCKET_URL) {
-      // Fallback para WEBSOCKET_URL configurada
       wsUrl = WEBSOCKET_URL;
       if (wsUrl.startsWith("https://")) {
         wsUrl = wsUrl.replace("https://", "wss://");
       } else if (!wsUrl.startsWith("wss://")) {
         wsUrl = `wss://${wsUrl.replace(/^(http:\/\/|ws:\/\/)?/, "")}`;
       }
-      console.log(`Usando WEBSOCKET_URL configurada: ${wsUrl}`);
+      console.log(`🔗 Usando WEBSOCKET_URL: ${wsUrl}`);
     } else {
       console.error("❌ Nenhuma URL de WebSocket configurada");
       return new Response(
@@ -67,9 +65,9 @@ serve(async (req) => {
       wsUrl += `?${params.toString()}`;
     }
 
-    console.log(`Final WebSocket URL: ${wsUrl}`);
+    console.log(`🎯 URL WebSocket final: ${wsUrl}`);
 
-    // Add record to the database if we have a callSid
+    // Registrar chamada no banco de dados
     if (callSid) {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -78,7 +76,6 @@ serve(async (req) => {
         if (supabaseUrl && supabaseServiceKey) {
           const supabase = createClient(supabaseUrl, supabaseServiceKey);
           
-          // Check if there's already a call record
           const { data: existingCall } = await supabase
             .from("call_logs")
             .select("id")
@@ -86,12 +83,11 @@ serve(async (req) => {
             .maybeSingle();
             
           if (!existingCall) {
-            // Create call log record
             await supabase
               .from("call_logs")
               .insert({
                 call_sid: callSid.toString(),
-                status: "initiated",
+                status: "conversation_active",
                 from_number: from?.toString(),
                 to_number: to?.toString(),
                 agent_id: agentId?.toString(),
@@ -100,30 +96,34 @@ serve(async (req) => {
                 conversation_relay_active: true
               });
               
-            console.log(`Created call log for call ${callSid} with ConversationRelay active`);
+            console.log(`📝 Call log criado para ${callSid} com ConversationRelay ativo`);
           } else {
-            console.log(`Call log already exists for call ${callSid}`);
+            // Atualizar para indicar que ConversationRelay está ativo
+            await supabase
+              .from("call_logs")
+              .update({
+                conversation_relay_active: true,
+                status: "conversation_active"
+              })
+              .eq("call_sid", callSid);
+              
+            console.log(`📝 Call log atualizado para ${callSid} - ConversationRelay ativo`);
           }
         }
       } catch (dbError) {
-        console.error("Error recording call to database:", dbError);
-        // Don't fail the response if DB recording fails
+        console.error("❌ Erro registrando no banco:", dbError);
       }
     }
 
-    // Generate TwiML with ConversationRelay using optimized ElevenLabs configuration
-    const welcomeGreeting = "Olá! Sou o assistente da Voxemy. Como posso ajudar você hoje?";
-    
-    // Determine TTS configuration based on ElevenLabs availability
+    // Configurar TwiML otimizado para conversação em tempo real
     let twimlContent;
     
     if (ELEVENLABS_API_KEY) {
-      console.log("🎙️ Using ElevenLabs TTS with optimized Brazilian Portuguese voice (Laura)");
+      console.log("🎙️ Configurando TwiML com ElevenLabs otimizado");
       
-      // ElevenLabs TwiML with optimized voice parameters for superior quality
+      // TwiML otimizado para conversação em tempo real
       twimlContent = `<ConversationRelay 
         url="${wsUrl}" 
-        welcomeGreeting="${welcomeGreeting}"
         transcriptionEnabled="true"
         transcriptionLanguage="pt-BR"
         ttsProvider="ElevenLabs"
@@ -132,16 +132,20 @@ serve(async (req) => {
         ttsConfig="{&quot;stability&quot;:0.5,&quot;similarity_boost&quot;:0.5,&quot;style&quot;:0.0,&quot;use_speaker_boost&quot;:false}"
         ttsSpeed="1.0"
         ttsModel="eleven_multilingual_v2"
+        detectSpeechTimeout="3"
+        interruptByDtmf="true"
+        dtmfInputs="#,*"
       />`;
     } else {
-      console.log("⚠️ ElevenLabs API key not available, using default Twilio TTS");
+      console.log("⚠️ ElevenLabs não disponível, usando TTS padrão Twilio");
       
-      // Default Twilio TTS fallback
       twimlContent = `<ConversationRelay 
         url="${wsUrl}" 
-        welcomeGreeting="${welcomeGreeting}"
         transcriptionEnabled="true"
         transcriptionLanguage="pt-BR"
+        detectSpeechTimeout="3"
+        interruptByDtmf="true"
+        dtmfInputs="#,*"
       />`;
     }
 
@@ -152,7 +156,8 @@ serve(async (req) => {
   </Connect>
 </Response>`;
 
-    console.log(`Generated TwiML with ${ELEVENLABS_API_KEY ? 'ElevenLabs (Laura Voice)' : 'default'} TTS using WebSocket URL: ${wsUrl}`);
+    console.log(`✅ TwiML gerado com ${ELEVENLABS_API_KEY ? 'ElevenLabs (Laura)' : 'TTS padrão'}`);
+    console.log(`🔊 Configurações: transcrição PT-BR, timeout 3s, interruption via DTMF`);
 
     return new Response(twiml, {
       headers: {
@@ -161,7 +166,7 @@ serve(async (req) => {
       },
     });
   } catch (error) {
-    console.error("Error in conversation-relay-handler:", error);
+    console.error("❌ Erro no conversation-relay-handler:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Internal server error" }),
       {
