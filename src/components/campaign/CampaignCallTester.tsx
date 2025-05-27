@@ -3,9 +3,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, Play } from "lucide-react";
+import { Phone, Play, StopCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useVoiceCall } from "@/hooks/use-voice-call";
+import { AudioPlayer } from "@/components/ui/AudioPlayer";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +15,7 @@ interface CampaignCallTesterProps {
   campaignId?: string;
   agentId?: string;
   agentName?: string;
-  assistantId?: string;
+  agentVoiceId?: string; 
   phoneNumber?: string;
   leadName?: string;
   leadId?: string;
@@ -26,7 +27,7 @@ export function CampaignCallTester({
   campaignId = '',
   agentId,
   agentName = "Agente",
-  assistantId,
+  agentVoiceId,
   phoneNumber = '',
   leadName = 'Teste',
   leadId = '',
@@ -35,11 +36,13 @@ export function CampaignCallTester({
 }: CampaignCallTesterProps) {
   const [testPhone, setTestPhone] = useState(phoneNumber);
   const [testName, setTestName] = useState(leadName);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState(agentVoiceId || "");
+  const [audioContent, setAudioContent] = useState<string | null>(null);
   const [phoneValid, setPhoneValid] = useState(true);
   const [testMessage, setTestMessage] = useState<string>("");
-  const [selectedAssistantId, setSelectedAssistantId] = useState(assistantId || "");
   
-  const { makeCall, isLoading } = useVoiceCall();
+  const { makeCall, textToSpeech, playAudio, isLoading, stopAudio } = useVoiceCall();
   
   // Fetch agent data if agentId is provided
   const { data: agentData } = useQuery({
@@ -61,13 +64,16 @@ export function CampaignCallTester({
     enabled: !!agentId,
   });
 
-  // Update selected assistant when agent data is loaded or changed
+  // Update selected voice when agent data is loaded or changed
   useEffect(() => {
-    if (assistantId) {
-      setSelectedAssistantId(assistantId);
-      console.log("Assistant ID from props:", assistantId);
+    if (agentData?.voice_id) {
+      setSelectedVoice(agentData.voice_id);
+      console.log("Voice ID loaded from agent data:", agentData.voice_id);
+    } else if (agentVoiceId) {
+      setSelectedVoice(agentVoiceId);
+      console.log("Voice ID from props:", agentVoiceId);
     }
-  }, [assistantId]);
+  }, [agentData, agentVoiceId]);
   
   // Validate phone number when it changes
   useEffect(() => {
@@ -76,11 +82,30 @@ export function CampaignCallTester({
   
   // Preparar a mensagem de teste padrão
   useEffect(() => {
-    const defaultMessage = `Olá ${testName || "cliente"}, aqui é ${agentName} da Voxemy via Vapi AI. Como posso ajudar você hoje?`;
+    const defaultMessage = `Olá ${testName || "cliente"}, aqui é ${agentName} da empresa. Como posso ajudar você hoje?`;
     setTestMessage(defaultMessage);
     console.log("Mensagem de teste padrão definida:", defaultMessage);
   }, [testName, agentName]);
   
+  // Get best available voice ID
+  const getVoiceId = () => {
+    // Prioridade 1: Voz selecionada no componente
+    if (selectedVoice) {
+      console.log("Usando voice ID do state:", selectedVoice);
+      return selectedVoice;
+    }
+    
+    // Prioridade 2: Voz associada ao agente no banco de dados
+    if (agentData?.voice_id) {
+      console.log("Usando voice ID do banco de dados:", agentData.voice_id);
+      return agentData.voice_id;
+    }
+    
+    // Prioridade 3: Fallback para voz padrão em português
+    console.log("Usando voice ID padrão (Laura)");
+    return "FGY2WhTYpPnrIDTdsKH5"; // ID da voz Laura
+  };
+
   // Validate phone number format
   const validatePhone = (phone: string) => {
     // Limpa o número para conter apenas dígitos
@@ -90,6 +115,47 @@ export function CampaignCallTester({
     const isValid = cleanedPhone.length >= 10;
     setPhoneValid(isValid);
     return isValid;
+  };
+
+  const handleTestVoice = async () => {
+    try {
+      if (isPlaying) {
+        // If already playing, stop playback
+        stopAudio();
+        setIsPlaying(false);
+        return;
+      }
+      
+      setIsPlaying(true);
+      
+      const voiceId = getVoiceId();
+      console.log("Testando voz com voice ID:", voiceId);
+      console.log("Texto a ser falado:", testMessage);
+      
+      if (!testMessage.trim()) {
+        throw new Error("Por favor, insira uma mensagem para testar");
+      }
+      
+      // Generate the audio from text
+      const audioData = await textToSpeech({
+        text: testMessage,
+        voiceId: voiceId
+      });
+      
+      if (audioData) {
+        setAudioContent(audioData);
+        // Play the audio
+        playAudio(audioData);
+        toast.success("Áudio de teste reproduzido com sucesso!");
+      } else {
+        throw new Error("Falha ao gerar áudio");
+      }
+    } catch (err: any) {
+      console.error("Erro no teste de voz:", err);
+      toast.error(`Erro ao testar voz: ${err.message}`);
+    } finally {
+      setIsPlaying(false);
+    }
   };
 
   const handleTestCall = async () => {
@@ -112,26 +178,35 @@ export function CampaignCallTester({
         return;
       }
       
-      toast.info("Iniciando chamada de teste via Vapi AI...");
+      toast.info("Iniciando chamada de teste...");
       
-      console.log("Iniciando chamada Vapi com assistantId:", selectedAssistantId);
+      const voiceId = getVoiceId();
+      console.log("Iniciando chamada com voice ID:", voiceId);
       console.log("Mensagem a ser enviada:", testMessage);
       console.log("Número de telefone:", cleanPhone);
       
-      const result = await makeCall({
+      // Add additional debug information
+      console.log("Tipo de voiceId:", typeof voiceId);
+      console.log("Comprimento do voiceId:", voiceId ? voiceId.length : "undefined/null");
+      console.log("Parâmetros completos para makeCall:", {
+        agentId,
+        campaignId,
+        phoneNumber: cleanPhone,
+        message: testMessage,
+        leadId,
+        voiceId
+      });
+      
+      await makeCall({
         agentId: agentId || '',
         campaignId: campaignId,
         phoneNumber: cleanPhone,
         message: testMessage,
         leadId: leadId,
-        assistantId: selectedAssistantId
+        voiceId: voiceId
       });
       
-      if (result && result.success) {
-        toast.success(`Chamada Vapi AI iniciada com sucesso! ID: ${result.callId}`);
-      } else {
-        toast.error("Erro ao iniciar chamada: Nenhuma resposta recebida");
-      }
+      toast.success("Chamada de teste iniciada com sucesso!");
       
       if (onCallComplete) {
         onCallComplete();
@@ -151,10 +226,10 @@ export function CampaignCallTester({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <h3 className="text-lg font-semibold text-center">
-          Teste de Chamada Vapi AI
+          Teste de Chamada
         </h3>
         <p className="text-sm text-center text-muted-foreground mb-2">
-          Teste uma chamada do agente {agentName} via Vapi AI
+          Teste a voz do agente {agentName} ou inicie uma chamada de teste
         </p>
       </div>
       
@@ -167,19 +242,6 @@ export function CampaignCallTester({
             onChange={(e) => setTestName(e.target.value)}
             placeholder="Nome do cliente para teste"
           />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="assistant-id">Assistant ID Vapi</Label>
-          <Input 
-            id="assistant-id"
-            value={selectedAssistantId}
-            onChange={(e) => setSelectedAssistantId(e.target.value)}
-            placeholder="ID do assistant configurado na Vapi"
-          />
-          <p className="text-xs text-muted-foreground">
-            Configure este ID na plataforma Vapi para personalizar o comportamento do agente
-          </p>
         </div>
         
         <div className="space-y-2">
@@ -215,24 +277,39 @@ export function CampaignCallTester({
         
         <div className="space-y-4">
           <Button 
+            onClick={handleTestVoice} 
+            className="w-full"
+            disabled={isLoading || !testMessage.trim()}
+            variant={isPlaying ? "secondary" : "default"}
+          >
+            {isPlaying ? (
+              <>
+                <StopCircle className="mr-2 h-4 w-4" />
+                Parar Áudio
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Testar Voz do Agente
+              </>
+            )}
+          </Button>
+          
+          {audioContent && !isPlaying && (
+            <div className="mb-2">
+              <AudioPlayer audioData={audioContent} />
+            </div>
+          )}
+          
+          <Button 
             onClick={handleTestCall} 
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             disabled={isLoading || !testPhone || !phoneValid || !testMessage.trim()}
           >
             <Phone className="mr-2 h-4 w-4" />
-            Iniciar Chamada de Teste (Vapi AI)
+            Iniciar Chamada de Teste
           </Button>
         </div>
-      </div>
-      
-      <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
-        <p>O sistema Voxemy agora usa Vapi AI com:</p>
-        <ul className="list-disc pl-5 mt-1">
-          <li>Voz natural ElevenLabs em português brasileiro</li>
-          <li>Transcrição precisa via OpenAI</li>
-          <li>Conversas mais fluidas e naturais</li>
-          <li>Melhor qualidade de áudio para telefonia</li>
-        </ul>
       </div>
     </div>
   );

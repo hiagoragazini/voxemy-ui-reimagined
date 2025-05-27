@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -139,7 +140,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     
     try {
       const audioContent = await textToSpeech({
-        text: textToTest
+        text: textToTest,
+        voiceId: formState.voiceId
       });
       
       if (audioContent) {

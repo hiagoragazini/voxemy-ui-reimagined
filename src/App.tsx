@@ -11,6 +11,8 @@ import Agents from './pages/Agents';
 import Campaigns from './pages/Campaigns';
 import CampaignDetails from './pages/CampaignDetails';
 import Settings from './pages/Settings';
+import TwilioTestPage from './pages/TwilioTest';
+import TwilioManualTestPage from './pages/TwilioManualTest';
 import ConversationRelayTestPage from './pages/ConversationRelayTest';
 import Leads from './pages/Leads';
 import Reports from './pages/Reports';
@@ -44,7 +46,7 @@ function AppRoutes() {
       element: <ProtectedRoute><Dashboard /></ProtectedRoute>
     },
     {
-      path: "/vapi-test",
+      path: "/conversation-relay-test",
       element: <ProtectedRoute><ConversationRelayTestPage /></ProtectedRoute>
     },
     {
@@ -70,6 +72,14 @@ function AppRoutes() {
     {
       path: "/settings",
       element: <ProtectedRoute><Settings /></ProtectedRoute>
+    },
+    {
+      path: "/twiliotest",
+      element: <ProtectedRoute><TwilioTestPage /></ProtectedRoute>
+    },
+    {
+      path: "/twiliomanualtest",
+      element: <ProtectedRoute><TwilioManualTestPage /></ProtectedRoute>
     }
   ];
 

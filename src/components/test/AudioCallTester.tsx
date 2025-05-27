@@ -27,7 +27,7 @@ export function AudioCallTester() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [description, setDescription] = useState('Teste com áudio MP3 simples');
-  const { isLoading } = useVoiceCall();
+  const { testCallWithSimpleAudio, isLoading } = useVoiceCall();
 
   const handleTest = async () => {
     if (!phoneNumber) {
@@ -40,9 +40,11 @@ export function AudioCallTester() {
       return;
     }
 
-    // Com a migração para Vapi AI, não precisamos mais de testes de áudio simples
-    // A Vapi já gerencia a qualidade de áudio automaticamente
-    alert('Com Vapi AI, não precisamos mais de testes de áudio simples. A qualidade é garantida automaticamente!');
+    await testCallWithSimpleAudio({
+      phoneNumber,
+      testAudioUrl: audioUrl,
+      description
+    });
   };
 
   return (
@@ -50,7 +52,7 @@ export function AudioCallTester() {
       <CardHeader>
         <CardTitle>Testador de Áudio Simples</CardTitle>
         <CardDescription>
-          Com Vapi AI, a qualidade de áudio é garantida automaticamente. Use os testes de agente nas outras páginas.
+          Teste chamadas com arquivos MP3 simples para diagnosticar problemas de compatibilidade
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -115,7 +117,7 @@ export function AudioCallTester() {
               Iniciando chamada...
             </>
           ) : (
-            'Testar Chamada com Áudio Simples (Depreciado)'
+            'Testar Chamada com Áudio Simples'
           )}
         </Button>
       </CardFooter>
