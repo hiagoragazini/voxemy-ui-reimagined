@@ -77,12 +77,14 @@ serve(async (req) => {
       }
     }
 
-    // Prepare Vapi call payload - if no valid assistantId, create call without it
+    // Prepare Vapi call payload with correct phoneNumber format
     let vapiPayload;
     
     if (validAssistantId) {
       vapiPayload = {
-        phoneNumber: formattedPhone,
+        customer: {
+          number: formattedPhone
+        },
         assistantId: validAssistantId,
         assistantOverrides: {
           firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?"
@@ -91,7 +93,9 @@ serve(async (req) => {
     } else {
       // Create a basic call configuration without assistantId
       vapiPayload = {
-        phoneNumber: formattedPhone,
+        customer: {
+          number: formattedPhone
+        },
         assistant: {
           firstMessage: message || "Olá! Aqui é a Voxemy via Vapi AI. Como posso te ajudar hoje?",
           model: {
