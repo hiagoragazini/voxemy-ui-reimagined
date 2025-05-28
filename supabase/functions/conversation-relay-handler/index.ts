@@ -4,6 +4,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const WEBSOCKET_URL = Deno.env.get("WEBSOCKET_URL") || "";
+const EXTERNAL_WEBSOCKET_URL = Deno.env.get("EXTERNAL_WEBSOCKET_URL") || "";
 const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
 const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
@@ -26,19 +27,26 @@ serve(async (req) => {
     const campaignId = formData.get("campaignId");
     const leadId = formData.get("leadId");
 
-    console.log(`🚀 ConversationRelay handler - Protocol Correto`);
+    console.log(`🚀 ConversationRelay handler - Infrastructure Fix`);
     console.log(`📞 CallSid: ${callSid}, De: ${from}, Para: ${to}`);
     console.log(`🎙️ ElevenLabs: ${ELEVENLABS_API_KEY ? 'ATIVO' : 'INATIVO'}`);
     
-    // Configurar URL do WebSocket
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    // Configurar URL do WebSocket - priorizar servidor externo
     let wsUrl = "";
     
-    if (supabaseUrl) {
-      const baseUrl = supabaseUrl.replace("https://", "");
-      wsUrl = `wss://${baseUrl}/functions/v1/ai-websocket-server`;
-      console.log(`🔗 WebSocket URL: ${wsUrl}`);
+    if (EXTERNAL_WEBSOCKET_URL) {
+      // Usar servidor WebSocket externo (recomendado)
+      wsUrl = EXTERNAL_WEBSOCKET_URL;
+      if (wsUrl.startsWith("https://")) {
+        wsUrl = wsUrl.replace("https://", "wss://");
+      } else if (wsUrl.startsWith("http://")) {
+        wsUrl = wsUrl.replace("http://", "ws://");
+      } else if (!wsUrl.startsWith("wss://") && !wsUrl.startsWith("ws://")) {
+        wsUrl = `wss://${wsUrl}`;
+      }
+      console.log(`🔗 Usando servidor WebSocket externo: ${wsUrl}`);
     } else if (WEBSOCKET_URL) {
+      // Fallback para WebSocket configurado
       wsUrl = WEBSOCKET_URL;
       if (wsUrl.startsWith("https://")) {
         wsUrl = wsUrl.replace("https://", "wss://");
@@ -47,11 +55,19 @@ serve(async (req) => {
       }
       console.log(`🔗 Usando WEBSOCKET_URL: ${wsUrl}`);
     } else {
-      console.error("❌ URL WebSocket não configurada");
-      return new Response(
-        "Error: WebSocket URL não configurada",
-        { status: 500, headers: corsHeaders }
-      );
+      // Último recurso: tentar Supabase (pode não funcionar)
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      if (supabaseUrl) {
+        const baseUrl = supabaseUrl.replace("https://", "");
+        wsUrl = `wss://${baseUrl}/functions/v1/ai-websocket-server`;
+        console.log(`⚠️ Usando Supabase WebSocket (pode falhar): ${wsUrl}`);
+      } else {
+        console.error("❌ Nenhuma URL WebSocket configurada");
+        return new Response(
+          "Error: WebSocket URL não configurada. Configure EXTERNAL_WEBSOCKET_URL.",
+          { status: 500, headers: corsHeaders }
+        );
+      }
     }
     
     // Adicionar parâmetros à URL do WebSocket
@@ -62,7 +78,8 @@ serve(async (req) => {
       if (leadId) params.append("leadId", leadId.toString());
       if (callSid) params.append("callSid", callSid.toString());
       
-      wsUrl += `?${params.toString()}`;
+      const separator = wsUrl.includes('?') ? '&' : '?';
+      wsUrl += `${separator}${params.toString()}`;
     }
 
     console.log(`🎯 URL WebSocket final: ${wsUrl}`);
@@ -93,21 +110,23 @@ serve(async (req) => {
                 agent_id: agentId?.toString(),
                 campaign_id: campaignId?.toString(),
                 lead_id: leadId?.toString(),
-                conversation_relay_active: true
+                conversation_relay_active: true,
+                websocket_url: wsUrl
               });
               
-            console.log(`📝 Call log criado - ConversationRelay Protocol ativo`);
+            console.log(`📝 Call log criado - WebSocket: ${EXTERNAL_WEBSOCKET_URL ? 'EXTERNO' : 'INTERNO'}`);
           } else {
             // Atualizar para indicar que ConversationRelay está ativo
             await supabase
               .from("call_logs")
               .update({
                 conversation_relay_active: true,
-                status: "conversation_active"
+                status: "conversation_active",
+                websocket_url: wsUrl
               })
               .eq("call_sid", callSid);
               
-            console.log(`📝 Call log atualizado - ConversationRelay Protocol ativo`);
+            console.log(`📝 Call log atualizado - WebSocket: ${EXTERNAL_WEBSOCKET_URL ? 'EXTERNO' : 'INTERNO'}`);
           }
         }
       } catch (dbError) {
@@ -116,7 +135,7 @@ serve(async (req) => {
     }
 
     // TwiML otimizado para ConversationRelay Protocol
-    console.log("🎙️ Gerando TwiML com ConversationRelay Protocol correto");
+    console.log("🎙️ Gerando TwiML com ConversationRelay Protocol");
     
     const twimlContent = `<ConversationRelay 
       url="${wsUrl}" 
@@ -136,7 +155,7 @@ serve(async (req) => {
 
     console.log(`✅ TwiML gerado com ConversationRelay Protocol`);
     console.log(`🔊 Configurações: PT-BR, timeout 2s, DTMF interrupt`);
-    console.log(`🧠 WebSocket server implementa protocolo correto do Twilio`);
+    console.log(`🌐 Servidor WebSocket: ${EXTERNAL_WEBSOCKET_URL ? 'DEDICADO' : 'FALLBACK'}`);
 
     return new Response(twiml, {
       headers: {
