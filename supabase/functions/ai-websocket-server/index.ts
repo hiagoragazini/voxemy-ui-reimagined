@@ -7,8 +7,8 @@ const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-console.log("🚀 Iniciando servidor WebSocket otimizado para ConversationRelay");
-console.log(`📊 APIs disponíveis: OpenAI=${!!OPENAI_API_KEY}, ElevenLabs=${!!ELEVENLABS_API_KEY}`);
+console.log("🚀 Iniciando servidor WebSocket ConversationRelay Protocol");
+console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, ElevenLabs=${!!ELEVENLABS_API_KEY}`);
 
 serve(async (req) => {
   const upgradeHeader = req.headers.get("Upgrade");
@@ -24,27 +24,26 @@ serve(async (req) => {
 
   const { socket, response } = Deno.upgradeWebSocket(req);
   
-  // Estado da conversa
-  let conversationHistory: Array<{role: string, content: string, timestamp: string}> = [];
-  let streamSid: string | null = null;
-  let audioBuffer: Uint8Array[] = [];
-  let lastSpeechTime = Date.now();
-  let isProcessingAudio = false;
+  // Estado da conexão
+  let isConnected = false;
+  let hasStarted = false;
   let hasGreeted = false;
+  let conversationHistory: Array<{role: string, content: string, timestamp: string}> = [];
+  let lastTranscript = "";
+  let heartbeatInterval: number | null = null;
 
-  const systemPrompt = `Você é Laura, assistente virtual brasileira da Voxemy, especializada em atendimento telefônico.
+  const systemPrompt = `Você é Laura, assistente virtual brasileira da Voxemy para atendimento telefônico.
 
 INSTRUÇÕES CRÍTICAS:
-- Responda SEMPRE em português brasileiro natural e conversacional
-- Seja concisa (máximo 2 frases por resposta)
-- Use linguagem telefônica apropriada e amigável
-- Seja proativa e útil
-- Se o cliente não falar por 3 segundos, faça uma pergunta para manter a conversa
-- Processe a fala do cliente e responda adequadamente
+- Seja natural, amigável e concisa (máximo 2 frases)
+- Use português brasileiro coloquial para telefone
+- Processe o que o cliente disse e responda adequadamente
+- Se não entender, peça para repetir educadamente
+- Mantenha a conversa fluindo naturalmente
 
-Esta é uma conversa telefônica ao vivo. O cliente pode interromper ou fazer pausas.`;
+Esta é uma conversa telefônica ao vivo em tempo real.`;
 
-  // Função para salvar logs de conversa
+  // Função para salvar logs
   async function saveConversationLog(event: string, data: any) {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !callSid) return;
 
@@ -76,7 +75,6 @@ Esta é uma conversa telefônica ao vivo. O cliente pode interromper ou fazer pa
     }
 
     try {
-      // Adicionar fala do usuário ao histórico
       conversationHistory.push({
         role: "user",
         content: userText,
@@ -95,7 +93,7 @@ Esta é uma conversa telefônica ao vivo. O cliente pode interromper ou fazer pa
             { role: "system", content: systemPrompt },
             ...conversationHistory.slice(-6).map(h => ({ role: h.role, content: h.content }))
           ],
-          max_tokens: 150,
+          max_tokens: 100,
           temperature: 0.7
         }),
       });
@@ -118,260 +116,182 @@ Esta é uma conversa telefônica ao vivo. O cliente pode interromper ou fazer pa
       return aiResponse;
     } catch (error) {
       console.error(`❌ Erro gerando resposta IA:`, error);
-      return "Desculpe, não entendi. Pode repetir?";
+      return "Desculpe, não entendi bem. Pode repetir?";
     }
   }
 
-  // Função para gerar áudio com ElevenLabs
-  async function generateAudio(text: string): Promise<string | null> {
-    if (!ELEVENLABS_API_KEY) {
-      console.warn("⚠️ ElevenLabs não disponível");
-      return null;
-    }
+  // Função para enviar resposta de áudio no protocolo ConversationRelay
+  async function sendSpeakEvent(text: string) {
+    if (!isConnected) return;
 
-    try {
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/FGY2WhTYpPnrIDTdsKH5`, {
-        method: "POST",
-        headers: {
-          "Accept": "audio/mpeg",
-          "Content-Type": "application/json",
-          "xi-api-key": ELEVENLABS_API_KEY,
-        },
-        body: JSON.stringify({
-          text: text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.5,
-            style: 0.0,
-            use_speaker_boost: false
-          },
-          output_format: "ulaw_8000"
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`ElevenLabs error: ${response.status}`);
-      }
-
-      const audioBuffer = await response.arrayBuffer();
-      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
-      
-      console.log(`✅ Áudio gerado: ${text.substring(0, 50)}... (${audioBuffer.byteLength} bytes)`);
-      return base64Audio;
-    } catch (error) {
-      console.error(`❌ Erro ElevenLabs:`, error);
-      return null;
-    }
-  }
-
-  // Função para transcrever áudio
-  async function transcribeAudio(audioBuffer: ArrayBuffer): Promise<string | null> {
-    if (!OPENAI_API_KEY) return null;
-
-    try {
-      const formData = new FormData();
-      const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' });
-      formData.append('file', audioBlob, 'audio.wav');
-      formData.append('model', 'whisper-1');
-      formData.append('language', 'pt');
-
-      const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) return null;
-      
-      const result = await response.json();
-      return result.text?.trim() || null;
-    } catch (error) {
-      console.error(`❌ Erro transcrição:`, error);
-      return null;
-    }
-  }
-
-  // Função para converter μ-law para WAV
-  function convertUlawToWav(audioData: Uint8Array): ArrayBuffer {
-    const pcmData = new Int16Array(audioData.length);
+    console.log(`🎙️ Enviando speak event: "${text}"`);
     
-    // Tabela de decodificação μ-law simplificada
-    for (let i = 0; i < audioData.length; i++) {
-      const sample = audioData[i];
-      const sign = (sample & 0x80) ? -1 : 1;
-      const magnitude = ((sample & 0x7F) ^ 0x55);
-      pcmData[i] = sign * (magnitude << 3);
-    }
-    
-    // Criar header WAV
-    const wavBuffer = new ArrayBuffer(44 + pcmData.byteLength);
-    const view = new DataView(wavBuffer);
-    
-    // Header WAV padrão
-    const writeString = (offset: number, string: string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
+    const speakEvent = {
+      event: "speak",
+      text: text,
+      config: {
+        provider: "elevenlabs",
+        voice_id: "FGY2WhTYpPnrIDTdsKH5", // Laura - voz brasileira
+        stability: 0.35,
+        similarity: 0.75,
+        style: 0.4,
+        speed: 0.95,
+        audio_format: "ulaw_8000" // Formato telefônico obrigatório
       }
     };
     
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + pcmData.byteLength, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, 8000, true);
-    view.setUint32(28, 16000, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeString(36, 'data');
-    view.setUint32(40, pcmData.byteLength, true);
-    
-    const wavBytes = new Uint8Array(wavBuffer);
-    wavBytes.set(new Uint8Array(pcmData.buffer), 44);
-    
-    return wavBuffer;
-  }
-
-  // Função para enviar áudio de resposta
-  async function sendAudioResponse(text: string) {
-    if (!streamSid) return;
-
-    console.log(`🎙️ Gerando resposta: "${text}"`);
-    
-    const audioBase64 = await generateAudio(text);
-    
-    if (audioBase64) {
-      const mediaMessage = {
-        event: "media",
-        streamSid: streamSid,
-        media: {
-          payload: audioBase64
-        }
-      };
-      
-      socket.send(JSON.stringify(mediaMessage));
-      console.log(`🔊 Áudio enviado para Twilio`);
-      
-      await saveConversationLog("ai_response", { text, audio_sent: true });
+    if (ELEVENLABS_API_KEY) {
+      speakEvent.config.provider = "elevenlabs";
+    } else {
+      // Fallback para TTS padrão do Twilio
+      delete speakEvent.config.provider;
+      delete speakEvent.config.voice_id;
+      delete speakEvent.config.stability;
+      delete speakEvent.config.similarity;
+      delete speakEvent.config.style;
+      delete speakEvent.config.speed;
+      console.log("⚠️ Usando TTS padrão do Twilio (ElevenLabs não disponível)");
     }
-  }
-
-  // Função para processar buffer de áudio acumulado
-  async function processAudioBuffer() {
-    if (audioBuffer.length === 0 || isProcessingAudio) return;
     
     try {
-      isProcessingAudio = true;
-      console.log(`🎤 Processando ${audioBuffer.length} chunks de áudio`);
-      
-      // Concatenar chunks
-      const totalLength = audioBuffer.reduce((acc, chunk) => acc + chunk.length, 0);
-      const combinedAudio = new Uint8Array(totalLength);
-      let offset = 0;
-      
-      for (const chunk of audioBuffer) {
-        combinedAudio.set(chunk, offset);
-        offset += chunk.length;
-      }
-      
-      audioBuffer = []; // Limpar buffer
-      
-      // Converter para WAV
-      const wavAudio = convertUlawToWav(combinedAudio);
-      
-      // Transcrever
-      const transcription = await transcribeAudio(wavAudio);
-      
-      if (transcription && transcription.trim().length > 2) {
-        console.log(`📝 Transcrição: "${transcription}"`);
-        
-        // Gerar resposta
-        const aiResponse = await generateAIResponse(transcription);
-        
-        if (aiResponse) {
-          await sendAudioResponse(aiResponse);
+      socket.send(JSON.stringify(speakEvent));
+      console.log(`✅ Speak event enviado com sucesso`);
+      await saveConversationLog("ai_response", { text, config: speakEvent.config });
+    } catch (error) {
+      console.error(`❌ Erro enviando speak event:`, error);
+    }
+  }
+
+  // Configurar heartbeat para manter conexão ativa
+  function startHeartbeat() {
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    
+    heartbeatInterval = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        try {
+          socket.ping();
+          console.log("❤️ Heartbeat enviado");
+        } catch (error) {
+          console.error("❌ Erro enviando heartbeat:", error);
         }
       }
-      
-    } catch (error) {
-      console.error(`❌ Erro processando áudio:`, error);
-    } finally {
-      isProcessingAudio = false;
-    }
+    }, 25000); // A cada 25 segundos
+  }
+
+  // Função de log detalhado
+  function logEvent(type: string, data: any) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${type}: ${JSON.stringify(data)}`);
   }
 
   // Eventos WebSocket
   socket.onopen = () => {
-    console.log(`✅ WebSocket conectado para call ${callSid}`);
+    console.log(`✅ WebSocket aberto para call ${callSid}`);
+    startHeartbeat();
   };
 
   socket.onmessage = async (event) => {
     try {
       const data = JSON.parse(event.data);
-      console.log(`📨 Evento recebido:`, data.event);
+      logEvent("RECEIVED", data);
       
       switch (data.event) {
         case "connected":
-          console.log(`🔗 Media Stream conectado`);
+          console.log(`🤝 Evento connected recebido - respondendo handshake`);
+          isConnected = true;
+          
+          // CRÍTICO: Responder imediatamente ao handshake
+          const connectedResponse = { event: "connected" };
+          socket.send(JSON.stringify(connectedResponse));
+          logEvent("SENT", connectedResponse);
           break;
           
         case "start":
-          streamSid = data.start?.streamSid;
-          console.log(`▶️ Stream iniciado: ${streamSid}`);
+          console.log(`🚀 Evento start recebido - iniciando conversa`);
+          hasStarted = true;
           
-          // Enviar saudação inicial após delay pequeno
-          setTimeout(async () => {
-            if (!hasGreeted) {
-              hasGreeted = true;
-              const welcomeText = "Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?";
-              await sendAudioResponse(welcomeText);
-            }
-          }, 1000);
-          break;
-          
-        case "media":
-          if (data.media?.payload && streamSid) {
-            // Decodificar áudio
-            const audioData = Uint8Array.from(atob(data.media.payload), c => c.charCodeAt(0));
-            audioBuffer.push(audioData);
-            lastSpeechTime = Date.now();
-            
-            // Processar após silêncio de 2 segundos
-            setTimeout(async () => {
-              if (Date.now() - lastSpeechTime >= 2000) {
-                await processAudioBuffer();
-              }
-            }, 2000);
+          // Enviar mensagem de boas-vindas imediatamente
+          if (!hasGreeted) {
+            hasGreeted = true;
+            await sendSpeakEvent("Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?");
           }
           break;
           
+        case "media":
+          // Evento de áudio do usuário - apenas loggar (não precisa processar)
+          console.log(`🎤 Evento media recebido (audio chunk)`);
+          break;
+          
+        case "transcript":
+          if (data.transcript && data.transcript.speech) {
+            const userSpeech = data.transcript.speech.trim();
+            console.log(`💬 Transcrição recebida: "${userSpeech}"`);
+            
+            // Evitar processar transcrições duplicadas ou muito curtas
+            if (userSpeech.length > 2 && userSpeech !== lastTranscript) {
+              lastTranscript = userSpeech;
+              
+              // Gerar resposta da IA
+              const aiResponse = await generateAIResponse(userSpeech);
+              
+              if (aiResponse) {
+                await sendSpeakEvent(aiResponse);
+              }
+            }
+          }
+          break;
+          
+        case "mark":
+          console.log(`🔖 Evento mark recebido: ${data.mark}`);
+          // Não requer resposta
+          break;
+          
         case "stop":
-          console.log(`⏹️ Stream finalizado: ${streamSid}`);
+          console.log(`🛑 Evento stop recebido - encerrando conexão`);
           await saveConversationLog("conversation_ended", {
             total_messages: conversationHistory.length,
             final_history: conversationHistory
           });
+          
+          if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+          }
+          
+          socket.close();
+          break;
+          
+        default:
+          console.log(`❓ Evento desconhecido: ${data.event}`);
+          logEvent("UNKNOWN_EVENT", data);
           break;
       }
     } catch (error) {
       console.error(`❌ Erro processando evento:`, error);
+      logEvent("ERROR", { error: error.message, raw_data: event.data });
     }
   };
 
   socket.onclose = () => {
-    console.log(`🔌 WebSocket desconectado para call ${callSid}`);
+    console.log(`🔌 WebSocket fechado para call ${callSid}`);
+    isConnected = false;
+    
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+    }
   };
 
   socket.onerror = (error) => {
-    console.error(`💥 Erro WebSocket:`, error);
+    console.error(`💥 Erro WebSocket para call ${callSid}:`, error);
+    logEvent("WEBSOCKET_ERROR", error);
+  };
+
+  socket.onpong = () => {
+    console.log("🏓 Pong recebido - conexão ativa");
   };
 
   return response;
 });
 
-console.log("🚀 Servidor WebSocket ConversationRelay pronto");
+console.log("🚀 Servidor WebSocket ConversationRelay Protocol pronto");

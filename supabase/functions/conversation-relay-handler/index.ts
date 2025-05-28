@@ -26,9 +26,9 @@ serve(async (req) => {
     const campaignId = formData.get("campaignId");
     const leadId = formData.get("leadId");
 
-    console.log(`🚀 ConversationRelay handler para call ${callSid}`);
-    console.log(`📞 De: ${from} Para: ${to} Agent: ${agentId} Lead: ${leadId}`);
-    console.log(`🎙️ ElevenLabs disponível: ${ELEVENLABS_API_KEY ? 'SIM' : 'NÃO'}`);
+    console.log(`🚀 ConversationRelay handler - Protocol Correto`);
+    console.log(`📞 CallSid: ${callSid}, De: ${from}, Para: ${to}`);
+    console.log(`🎙️ ElevenLabs: ${ELEVENLABS_API_KEY ? 'ATIVO' : 'INATIVO'}`);
     
     // Configurar URL do WebSocket
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -37,7 +37,7 @@ serve(async (req) => {
     if (supabaseUrl) {
       const baseUrl = supabaseUrl.replace("https://", "");
       wsUrl = `wss://${baseUrl}/functions/v1/ai-websocket-server`;
-      console.log(`🔗 Usando servidor WebSocket: ${wsUrl}`);
+      console.log(`🔗 WebSocket URL: ${wsUrl}`);
     } else if (WEBSOCKET_URL) {
       wsUrl = WEBSOCKET_URL;
       if (wsUrl.startsWith("https://")) {
@@ -47,7 +47,7 @@ serve(async (req) => {
       }
       console.log(`🔗 Usando WEBSOCKET_URL: ${wsUrl}`);
     } else {
-      console.error("❌ Nenhuma URL de WebSocket configurada");
+      console.error("❌ URL WebSocket não configurada");
       return new Response(
         "Error: WebSocket URL não configurada",
         { status: 500, headers: corsHeaders }
@@ -96,7 +96,7 @@ serve(async (req) => {
                 conversation_relay_active: true
               });
               
-            console.log(`📝 Call log criado para ${callSid} com ConversationRelay ativo`);
+            console.log(`📝 Call log criado - ConversationRelay Protocol ativo`);
           } else {
             // Atualizar para indicar que ConversationRelay está ativo
             await supabase
@@ -107,7 +107,7 @@ serve(async (req) => {
               })
               .eq("call_sid", callSid);
               
-            console.log(`📝 Call log atualizado para ${callSid} - ConversationRelay ativo`);
+            console.log(`📝 Call log atualizado - ConversationRelay Protocol ativo`);
           }
         }
       } catch (dbError) {
@@ -115,39 +115,17 @@ serve(async (req) => {
       }
     }
 
-    // Configurar TwiML otimizado para conversação em tempo real
-    let twimlContent;
+    // TwiML otimizado para ConversationRelay Protocol
+    console.log("🎙️ Gerando TwiML com ConversationRelay Protocol correto");
     
-    if (ELEVENLABS_API_KEY) {
-      console.log("🎙️ Configurando TwiML com ElevenLabs otimizado");
-      
-      // TwiML otimizado para conversação em tempo real
-      twimlContent = `<ConversationRelay 
-        url="${wsUrl}" 
-        transcriptionEnabled="true"
-        transcriptionLanguage="pt-BR"
-        ttsProvider="ElevenLabs"
-        ttsVoice="FGY2WhTYpPnrIDTdsKH5"
-        ttsLanguage="pt-BR"
-        ttsConfig="{&quot;stability&quot;:0.5,&quot;similarity_boost&quot;:0.5,&quot;style&quot;:0.0,&quot;use_speaker_boost&quot;:false}"
-        ttsSpeed="1.0"
-        ttsModel="eleven_multilingual_v2"
-        detectSpeechTimeout="3"
-        interruptByDtmf="true"
-        dtmfInputs="#,*"
-      />`;
-    } else {
-      console.log("⚠️ ElevenLabs não disponível, usando TTS padrão Twilio");
-      
-      twimlContent = `<ConversationRelay 
-        url="${wsUrl}" 
-        transcriptionEnabled="true"
-        transcriptionLanguage="pt-BR"
-        detectSpeechTimeout="3"
-        interruptByDtmf="true"
-        dtmfInputs="#,*"
-      />`;
-    }
+    const twimlContent = `<ConversationRelay 
+      url="${wsUrl}" 
+      transcriptionEnabled="true"
+      transcriptionLanguage="pt-BR"
+      detectSpeechTimeout="2"
+      interruptByDtmf="true"
+      dtmfInputs="#,*"
+    />`;
 
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -156,8 +134,9 @@ serve(async (req) => {
   </Connect>
 </Response>`;
 
-    console.log(`✅ TwiML gerado com ${ELEVENLABS_API_KEY ? 'ElevenLabs (Laura)' : 'TTS padrão'}`);
-    console.log(`🔊 Configurações: transcrição PT-BR, timeout 3s, interruption via DTMF`);
+    console.log(`✅ TwiML gerado com ConversationRelay Protocol`);
+    console.log(`🔊 Configurações: PT-BR, timeout 2s, DTMF interrupt`);
+    console.log(`🧠 WebSocket server implementa protocolo correto do Twilio`);
 
     return new Response(twiml, {
       headers: {

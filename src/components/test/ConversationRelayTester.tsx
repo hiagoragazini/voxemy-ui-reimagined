@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, Loader2, Mic, Volume2, Zap } from "lucide-react";
+import { Phone, Loader2, Mic, Volume2, Zap, CheckCircle } from "lucide-react";
 import { useConversationRelay, CallTranscript } from "@/hooks/use-conversation-relay";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -35,7 +36,7 @@ export function ConversationRelayTester() {
     }
     
     try {
-      toast.info("Iniciando chamada com ConversationRelay...");
+      toast.info("Iniciando chamada com ConversationRelay Protocol...");
       
       await makeCall({ 
         phoneNumber,
@@ -81,7 +82,7 @@ export function ConversationRelayTester() {
   return (
     <div className="space-y-6 bg-white p-6 rounded-lg shadow">
       <div>
-        <h2 className="text-lg font-medium mb-4">Teste do Twilio ConversationRelay com IA WebSocket</h2>
+        <h2 className="text-lg font-medium mb-4">Teste ConversationRelay - Protocol Correto Implementado</h2>
         
         <div className="space-y-4">
           <div className="space-y-2">
@@ -178,7 +179,7 @@ export function ConversationRelayTester() {
                   }`}
                 >
                   <div className="font-medium text-xs mb-1 text-gray-500">
-                    {item.role === "user" ? "Cliente" : "Assistente"}:
+                    {item.role === "user" ? "Cliente" : "Laura (Assistente)"}:
                   </div>
                   <div>{item.text}</div>
                 </div>
@@ -195,37 +196,39 @@ export function ConversationRelayTester() {
         </div>
       )}
       
-      {/* Enhanced status card with AI WebSocket integration info */}
+      {/* Protocol implementation status */}
       <div className="p-4 bg-green-50 border border-green-100 rounded">
         <h3 className="text-sm font-medium text-green-700 mb-2 flex items-center">
-          <Zap className="mr-2 h-4 w-4" />
-          ConversationRelay com IA WebSocket + ElevenLabs Otimizado:
+          <CheckCircle className="mr-2 h-4 w-4" />
+          ConversationRelay Protocol Correto Implementado:
         </h3>
         <ul className="text-sm text-green-600 space-y-1 list-disc pl-5">
-          <li>🧠 Servidor WebSocket de IA próprio para processamento inteligente em tempo real</li>
-          <li>🎙️ Voz Laura (ElevenLabs) otimizada para português brasileiro</li>
-          <li>⚡ Respostas rápidas com cache inteligente e prompt otimizado para telefone</li>
-          <li>🔊 Qualidade de áudio superior (stability: 0.5, sem speaker boost para evitar distorção)</li>
-          <li>📝 Transcrição e processamento contextual com OpenAI GPT-4o-mini</li>
-          <li>🛡️ Fallback automático para TTS padrão se ElevenLabs não estiver disponível</li>
+          <li>✅ Handshake correto com evento 'connected'</li>
+          <li>✅ Processamento de eventos: start, media, transcript, mark, stop</li>
+          <li>✅ Formato de áudio telefônico (ulaw_8000)</li>
+          <li>✅ Heartbeat para manter conexão ativa (25s)</li>
+          <li>✅ Voz Laura (ElevenLabs) otimizada para telefone</li>
+          <li>✅ Respostas em tempo real via evento 'speak'</li>
+          <li>✅ Logs detalhados para depuração</li>
+          <li>✅ Fallback automático para TTS padrão Twilio</li>
         </ul>
       </div>
 
-      {/* Technical details card */}
+      {/* Technical details */}
       <div className="p-4 bg-blue-50 border border-blue-100 rounded">
         <h3 className="text-sm font-medium text-blue-700 mb-2 flex items-center">
-          <Mic className="mr-2 h-4 w-4" />
-          Configurações Técnicas Otimizadas:
+          <Zap className="mr-2 h-4 w-4" />
+          Configurações Técnicas Protocol:
         </h3>
         <ul className="text-sm text-blue-600 space-y-1 list-disc pl-5">
-          <li><strong>Voz:</strong> Laura (FGY2WhTYpPnrIDTdsKH5) - Superior para português brasileiro</li>
-          <li><strong>Modelo:</strong> eleven_multilingual_v2 - Mais avançado e natural</li>
-          <li><strong>Estabilidade:</strong> 0.5 - Equilíbrio ideal entre consistência e naturalidade</li>
-          <li><strong>Similaridade:</strong> 0.5 - Mantém identidade da voz sem exagero</li>
-          <li><strong>Estilo:</strong> 0.0 - Neutro para máxima clareza em ligações telefônicas</li>
-          <li><strong>Speaker Boost:</strong> Desativado - Evita distorção e chiado na linha</li>
-          <li><strong>IA:</strong> GPT-4o-mini com prompt especializado em atendimento telefônico</li>
-          <li><strong>Cache:</strong> Respostas comuns em cache para latência ultra-baixa</li>
+          <li><strong>Protocolo:</strong> Twilio ConversationRelay WebSocket correto</li>
+          <li><strong>Eventos:</strong> connected → start → transcript → speak (ciclo)</li>
+          <li><strong>Áudio:</strong> ulaw_8000 (formato telefônico obrigatório)</li>
+          <li><strong>Voz:</strong> Laura (FGY2WhTYpPnrIDTdsKH5) - otimizada para PT-BR</li>
+          <li><strong>Estabilidade:</strong> 0.35 - ideal para telefone</li>
+          <li><strong>Similaridade:</strong> 0.75 - mantém identidade vocal</li>
+          <li><strong>Velocidade:</strong> 0.95 - natural para conversa telefônica</li>
+          <li><strong>IA:</strong> GPT-4o-mini com prompt especializado em telefone</li>
         </ul>
       </div>
     </div>
