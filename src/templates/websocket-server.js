@@ -68,10 +68,66 @@ async function generateAIResponse(userText, conversationHistory = []) {
 
 // Gerenciar conexões WebSocket
 wss.on('connection', (ws, req) => {
-  const url = new URL('http://localhost' + req.url);
-  const callSid = url.searchParams.get('callSid');
+  // Corrigir extração da URL e callSid
+  let callSid = null;
+  let fullUrl = null;
   
-  logEvent('CONNECTION', { callSid, url: req.url });
+  try {
+    // Construir URL correta usando headers do host
+    const host = req.headers.host || 'localhost:8080';
+    fullUrl = new URL(req.url, `http://${host}`);
+    callSid = fullUrl.searchParams.get('callSid');
+    
+    logEvent('CONNECTION_ATTEMPT', {
+      url: req.url,
+      host: req.headers.host,
+      fullUrl: fullUrl.toString(),
+      callSid: callSid,
+      userAgent: req.headers['user-agent'],
+      origin: req.headers.origin
+    });
+  } catch (urlError) {
+    logEvent('URL_PARSE_ERROR', {
+      error: urlError.message,
+      originalUrl: req.url,
+      headers: req.headers
+    });
+  }
+  
+  // Validação e warnings para callSid
+  if (!callSid) {
+    logEvent('WARNING_NO_CALLSID', {
+      message: 'Conexão WebSocket sem callSid detectada',
+      url: req.url,
+      headers: req.headers,
+      userAgent: req.headers['user-agent']
+    });
+    // Gerar callSid temporário para debug
+    callSid = `DEBUG_${Date.now()}`;
+  } else if (!callSid.startsWith('CA')) {
+    logEvent('WARNING_INVALID_CALLSID_FORMAT', {
+      callSid: callSid,
+      expected: 'Formato CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+    });
+  }
+  
+  // Validação de origem Twilio
+  const userAgent = req.headers['user-agent'] || '';
+  const isTwilioAgent = userAgent.includes('TwilioProxy') || userAgent.includes('Twilio');
+  
+  if (!isTwilioAgent) {
+    logEvent('WARNING_NON_TWILIO_CONNECTION', {
+      callSid: callSid,
+      userAgent: userAgent,
+      message: 'Conexão pode não ser do Twilio'
+    });
+  }
+  
+  logEvent('CONNECTION_ESTABLISHED', { 
+    callSid: callSid,
+    isTwilioAgent: isTwilioAgent,
+    activeConnections: wss.clients.size
+  });
   
   let conversationHistory = [];
   let hasGreeted = false;
@@ -80,25 +136,32 @@ wss.on('connection', (ws, req) => {
   const heartbeatInterval = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) {
       ws.ping();
-      logEvent('HEARTBEAT', { callSid });
+      logEvent('HEARTBEAT_SENT', { callSid });
+    } else {
+      clearInterval(heartbeatInterval);
     }
   }, 25000);
   
   ws.on('message', async (message) => {
     try {
       const msg = JSON.parse(message);
-      logEvent('RECEIVED', { callSid, event: msg.event, data: msg });
+      logEvent('MESSAGE_RECEIVED', { 
+        callSid, 
+        event: msg.event, 
+        hasData: !!msg.data,
+        messageSize: message.length
+      });
       
       switch (msg.event) {
         case 'connected':
-          logEvent('HANDSHAKE', { callSid });
+          logEvent('HANDSHAKE_RECEIVED', { callSid });
           const response = { event: 'connected' };
           ws.send(JSON.stringify(response));
-          logEvent('SENT', { callSid, response });
+          logEvent('HANDSHAKE_SENT', { callSid, response });
           break;
           
         case 'start':
-          logEvent('CALL_START', { callSid });
+          logEvent('CALL_START', { callSid, streamSid: msg.start?.streamSid });
           if (!hasGreeted) {
             hasGreeted = true;
             const greeting = {
@@ -125,18 +188,30 @@ wss.on('connection', (ws, req) => {
             }
             
             ws.send(JSON.stringify(greeting));
-            logEvent('SENT', { callSid, greeting });
+            logEvent('GREETING_SENT', { callSid, greeting });
           }
           break;
           
         case 'media':
-          logEvent('MEDIA', { callSid, length: msg.media?.length || 0 });
+          // Log apenas a cada 50 pacotes de media para não poluir
+          if (Math.random() < 0.02) { // ~2% dos pacotes
+            logEvent('MEDIA_SAMPLE', { 
+              callSid, 
+              mediaLength: msg.media?.length || 0,
+              timestamp: msg.media?.timestamp 
+            });
+          }
           break;
           
         case 'transcript':
           if (msg.transcript?.speech) {
             const userSpeech = msg.transcript.speech.trim();
-            logEvent('TRANSCRIPT', { callSid, speech: userSpeech });
+            logEvent('TRANSCRIPT_RECEIVED', { 
+              callSid, 
+              speech: userSpeech,
+              confidence: msg.transcript.confidence,
+              isFinal: msg.transcript.is_final 
+            });
             
             if (userSpeech.length > 2) {
               conversationHistory.push({ role: 'user', content: userSpeech });
@@ -170,18 +245,22 @@ wss.on('connection', (ws, req) => {
                 }
                 
                 ws.send(JSON.stringify(speakEvent));
-                logEvent('SENT', { callSid, speakEvent });
+                logEvent('AI_RESPONSE_SENT', { callSid, response: aiResponse });
               }
             }
           }
           break;
           
         case 'mark':
-          logEvent('MARK', { callSid, mark: msg.mark });
+          logEvent('MARK_RECEIVED', { callSid, mark: msg.mark });
           break;
           
         case 'stop':
-          logEvent('CALL_END', { callSid, reason: msg.reason });
+          logEvent('CALL_END', { 
+            callSid, 
+            reason: msg.reason,
+            duration: conversationHistory.length 
+          });
           clearInterval(heartbeatInterval);
           ws.close();
           break;
@@ -191,22 +270,35 @@ wss.on('connection', (ws, req) => {
           break;
       }
     } catch (error) {
-      logEvent('MESSAGE_ERROR', { callSid, error: error.message, raw: message.toString() });
+      logEvent('MESSAGE_PARSE_ERROR', { 
+        callSid, 
+        error: error.message, 
+        rawMessage: message.toString().substring(0, 200) + '...' 
+      });
     }
   });
   
-  ws.on('close', () => {
-    logEvent('CLOSE', { callSid });
+  ws.on('close', (code, reason) => {
+    logEvent('CONNECTION_CLOSED', { 
+      callSid, 
+      code, 
+      reason: reason?.toString(),
+      activeConnections: wss.clients.size - 1
+    });
     clearInterval(heartbeatInterval);
   });
   
   ws.on('error', (error) => {
-    logEvent('ERROR', { callSid, error: error.message });
+    logEvent('WEBSOCKET_ERROR', { 
+      callSid, 
+      error: error.message,
+      stack: error.stack?.substring(0, 500)
+    });
     clearInterval(heartbeatInterval);
   });
   
   ws.on('pong', () => {
-    logEvent('PONG', { callSid });
+    logEvent('HEARTBEAT_PONG', { callSid });
   });
 });
 
@@ -216,7 +308,11 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     connections: wss.clients.size,
-    port: PORT
+    port: PORT,
+    apis: {
+      openai: !!OPENAI_API_KEY,
+      elevenlabs: !!ELEVENLABS_API_KEY
+    }
   });
 });
 
@@ -226,14 +322,38 @@ app.get('/status', (req, res) => {
     connections: wss.clients.size,
     elevenlabs: !!ELEVENLABS_API_KEY,
     openai: !!OPENAI_API_KEY,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
+});
+
+app.get('/debug', (req, res) => {
+  const connections = [];
+  wss.clients.forEach((client, index) => {
+    connections.push({
+      index,
+      readyState: client.readyState,
+      protocol: client.protocol
+    });
+  });
+  
+  res.status(200).json({
+    connections,
+    totalConnections: wss.clients.size,
+    timestamp: new Date().toISOString(),
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      PORT: PORT
+    }
   });
 });
 
 // Iniciar o servidor
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor WebSocket Voxemy iniciado na porta ${PORT}`);
+  console.log(`🚀 Servidor WebSocket Voxemy CORRIGIDO iniciado na porta ${PORT}`);
   console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, ElevenLabs=${!!ELEVENLABS_API_KEY}`);
-  console.log(`🌐 Endpoints: /health, /status`);
+  console.log(`🌐 Endpoints: /health, /status, /debug`);
   console.log(`🔌 WebSocket pronto para Twilio ConversationRelay`);
+  console.log(`🔧 Correções implementadas: URL parsing, logs detalhados, validação Twilio`);
 });
