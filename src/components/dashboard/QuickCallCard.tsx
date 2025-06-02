@@ -62,17 +62,17 @@ export function QuickCallCard() {
 
   return (
     <Card className="hover:shadow-md transition-shadow h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Phone className="h-4 w-4 text-blue-600" />
+      <CardHeader className="p-2 pb-1">
+        <CardTitle className="flex items-center gap-1.5 text-sm">
+          <Phone className="h-3.5 w-3.5 text-blue-600" />
           Chamada Rápida
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 pt-0">
-        <div className="space-y-1.5">
+      <CardContent className="space-y-2 p-2 pt-0">
+        <div className="space-y-1">
           <Label htmlFor="agent-select" className="text-xs font-medium">Selecionar Agente</Label>
           <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-            <SelectTrigger className="h-8 text-sm">
+            <SelectTrigger className="h-7 text-xs">
               <SelectValue placeholder="Escolha um agente" />
             </SelectTrigger>
             <SelectContent>
@@ -85,7 +85,7 @@ export function QuickCallCard() {
           </Select>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <Label htmlFor="phone-input" className="text-xs font-medium">Número de Telefone</Label>
           <Input
             id="phone-input"
@@ -93,23 +93,23 @@ export function QuickCallCard() {
             placeholder="(11) 99999-9999"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
-            className="w-full h-8 text-sm"
+            className="w-full h-7 text-xs"
           />
         </div>
 
         <Button 
           onClick={handleQuickCall}
           disabled={isLoading || !selectedAgent || !phoneNumber}
-          className="w-full bg-blue-600 hover:bg-blue-700 h-8 text-sm"
+          className="w-full bg-blue-600 hover:bg-blue-700 h-7 text-xs"
         >
           {isLoading ? (
             <>
-              <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               Chamando...
             </>
           ) : (
             <>
-              <Phone className="h-3 w-3 mr-2" />
+              <Phone className="h-3 w-3 mr-1" />
               Fazer Chamada Teste
             </>
           )}
