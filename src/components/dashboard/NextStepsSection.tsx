@@ -7,7 +7,7 @@ import { QuickCallCard } from "./QuickCallCard";
 export function NextStepsSection() {
   return (
     <div className="mb-8">
-      <div className="mb-6">
+      <div className="mb-4">
         <h2 className="text-2xl font-semibold mb-2 text-gray-800 dark:text-gray-200">
           Próximos Passos
         </h2>
@@ -16,7 +16,7 @@ export function NextStepsSection() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <NextStepCard
           number={1}
           title="Testar uma chamada real"
