@@ -2,6 +2,7 @@
 import React from "react";
 import { PhoneCall, Plus, Settings } from "lucide-react";
 import { NextStepCard } from "./NextStepCard";
+import { QuickCallCard } from "./QuickCallCard";
 
 export function NextStepsSection() {
   return (
@@ -10,7 +11,7 @@ export function NextStepsSection() {
         Próximos Passos
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <NextStepCard
           number={1}
           title="Testar uma chamada real"
@@ -31,6 +32,9 @@ export function NextStepsSection() {
           description="Conecte seu CRM ou outras ferramentas para sincronizar dados."
           icon={<Settings className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
         />
+
+        {/* Quick Call Card */}
+        <QuickCallCard />
       </div>
     </div>
   );

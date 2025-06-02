@@ -1,5 +1,6 @@
 
 import { AgentCard, AgentCardSkeleton, AgentCardProps } from "@/components/agents/AgentCard";
+import { AdvancedAgentTester } from "@/components/agents/AdvancedAgentTester";
 import { Plus, AlertCircle, Loader2, RefreshCcw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

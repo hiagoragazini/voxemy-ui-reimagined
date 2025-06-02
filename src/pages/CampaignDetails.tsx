@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { LeadsTable } from "@/components/campaign/LeadsTable";
 import { CampaignActions } from "@/components/campaign/CampaignActions";
 import { CampaignScheduler } from "@/components/campaign/CampaignScheduler";
+import { IACallerTab } from "@/components/campaign/IACallerTab";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Calendar, Phone, AlertCircle, ArrowLeft, ListFilter, BarChart3, Users, Settings, Clock } from "lucide-react";
@@ -339,6 +340,10 @@ export default function CampaignDetails() {
               <Users className="h-4 w-4 mr-2" />
               <span>Leads</span>
             </TabsTrigger>
+            <TabsTrigger value="ia-caller" className="flex items-center">
+              <Phone className="h-4 w-4 mr-2" />
+              <span>IA Caller</span>
+            </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center">
               <BarChart3 className="h-4 w-4 mr-2" />
               <span>Analytics</span>
@@ -354,6 +359,14 @@ export default function CampaignDetails() {
               campaignId={campaign.id} 
               agentId={campaign.agent_id || undefined}
               agentName={agent?.name} 
+            />
+          </TabsContent>
+          
+          <TabsContent value="ia-caller" className="pt-4">
+            <IACallerTab 
+              campaignId={campaign.id}
+              agentId={campaign.agent_id || undefined}
+              agentName={agent?.name}
             />
           </TabsContent>
           
