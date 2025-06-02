@@ -49,7 +49,7 @@ const Auth = () => {
           <p className="mt-2 text-muted-foreground">Entre na sua conta para continuar</p>
         </div>
         
-        <Card className="border-border/40 bg-background/95 shadow-lg backdrop-blur">
+        <Card className="border-border/40 bg-background/95 shadow-lg backdrop-blur rounded-xl">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">Bem-vindo à Voxemy</CardTitle>
             <CardDescription>
@@ -64,7 +64,7 @@ const Auth = () => {
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="login-email"
-                    className="pl-10"
+                    className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     type="email"
                     name="email"
                     placeholder="exemplo@email.com"
@@ -81,7 +81,7 @@ const Auth = () => {
                   <Label htmlFor="login-password">Senha</Label>
                   <a
                     href="#"
-                    className="text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+                    className="text-xs text-muted-foreground underline-offset-4 hover:text-blue-600 hover:underline"
                   >
                     Esqueceu a senha?
                   </a>
@@ -90,7 +90,7 @@ const Auth = () => {
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="login-password"
-                    className="pl-10 pr-10"
+                    className="pl-10 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     type={showPassword ? "text" : "password"}
                     name="password"
                     placeholder="Sua senha"
@@ -115,7 +115,7 @@ const Auth = () => {
               
               <Button
                 type="submit"
-                className="w-full bg-violet-600 hover:bg-violet-700"
+                className="w-full bg-blue-600 hover:bg-blue-700 h-11 font-medium"
                 disabled={loading}
               >
                 {loading ? "Entrando..." : "Entrar"}
@@ -125,7 +125,7 @@ const Auth = () => {
           <CardFooter className="flex flex-col space-y-4">
             <div className="text-center text-sm text-muted-foreground">
               Não tem conta?{" "}
-              <span className="text-primary">
+              <span className="text-blue-600 font-medium">
                 Selecione um plano na página inicial para se cadastrar
               </span>
             </div>

@@ -130,9 +130,9 @@ export function AgentVoiceTester({
   };
   
   return (
-    <Card className="p-4 space-y-4">
-      <div className="space-y-1">
-        <h3 className="text-lg font-medium">Testar voz: {agentName}</h3>
+    <Card className="p-6 space-y-6 rounded-xl shadow-apple">
+      <div className="space-y-2">
+        <h3 className="text-xl font-semibold text-gray-900">Testar voz: {agentName}</h3>
         <p className="text-sm text-muted-foreground">
           Digite um texto para ouvir como a voz deste agente soa
         </p>
@@ -142,14 +142,14 @@ export function AgentVoiceTester({
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Digite o texto para o agente falar..."
-        className="min-h-[100px]"
+        className="min-h-[120px] resize-none border-gray-200 focus:border-blue-500 focus:ring-blue-500"
       />
 
-      <div className="flex flex-col space-y-3">
+      <div className="flex flex-col space-y-4">
         <Button 
           onClick={handleTestVoice}
           disabled={isLoading || !text}
-          className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 h-11 font-medium"
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -160,7 +160,7 @@ export function AgentVoiceTester({
         </Button>
         
         {audioContent && (
-          <div className="flex items-center justify-center p-2 bg-slate-50 rounded-md">
+          <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg border border-blue-100">
             <AudioPlayer 
               audioData={audioContent} 
               isLoading={isLoading} 
@@ -171,7 +171,7 @@ export function AgentVoiceTester({
         <Button 
           onClick={handleMakeCall}
           variant="outline"
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 h-11 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300"
           disabled={isLoading || !text}
         >
           <Phone className="h-4 w-4" />
@@ -183,15 +183,15 @@ export function AgentVoiceTester({
         <Button 
           onClick={onClose}
           variant="ghost"
-          className="w-full"
+          className="w-full text-gray-600 hover:text-gray-800 hover:bg-gray-100"
         >
           Fechar
         </Button>
       )}
       
-      <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
-        <p>O sistema de chamadas Voxemy usa:</p>
-        <ul className="list-disc pl-5 mt-1">
+      <div className="mt-6 text-xs text-muted-foreground border-t pt-4 space-y-2">
+        <p className="font-medium text-gray-700">O sistema de chamadas Voxemy usa:</p>
+        <ul className="list-disc pl-5 space-y-1 text-gray-600">
           <li>Twilio para telefonia</li>
           <li>ElevenLabs para síntese de voz natural em português</li>
           <li>IA para processamento de linguagem natural</li>

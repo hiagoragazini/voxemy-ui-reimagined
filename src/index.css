@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 14% 12%;
 
-    --primary: 213 100% 45%; /* #0071e3 Apple blue */
+    --primary: 213 100% 40%; /* #0066CC Apple blue */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 38% 95%; /* Light blue secondary */
@@ -32,17 +32,17 @@
 
     --border: 214 32% 91%; /* Light border color */
     --input: 214 32% 91%;
-    --ring: 213 100% 45%; /* Apple blue for focus rings */
+    --ring: 213 100% 40%; /* Apple blue for focus rings */
 
     /* Sidebar specific colors */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 215 14% 12%;
-    --sidebar-primary: 213 100% 45%;
+    --sidebar-primary: 213 100% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 38% 95%;
     --sidebar-accent-foreground: 215 14% 12%;
     --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 213 100% 45%;
+    --sidebar-ring: 213 100% 40%;
 
     --radius: 0.75rem;
   }
@@ -57,7 +57,7 @@
     --popover: 215 14% 12%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 213 100% 45%;
+    --primary: 213 100% 40%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 217 19% 27%;
@@ -74,17 +74,17 @@
 
     --border: 217 19% 27%;
     --input: 217 19% 27%;
-    --ring: 213 100% 45%;
+    --ring: 213 100% 40%;
 
     /* Sidebar specific colors */
     --sidebar-background: 215 14% 12%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 213 100% 45%;
+    --sidebar-primary: 213 100% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 217 19% 27%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 217 19% 27%;
-    --sidebar-ring: 213 100% 45%;
+    --sidebar-ring: 213 100% 40%;
   }
 }
 
@@ -132,7 +132,24 @@
   }
 
   .nav-item.active {
-    @apply bg-primary-apple/10 text-primary-apple;
+    @apply bg-blue-50 text-blue-700 border-l-4 border-blue-500;
+  }
+
+  /* Blue theme utilities replacing violet/purple */
+  .btn-blue {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors;
+  }
+
+  .text-blue-gradient {
+    @apply bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent;
+  }
+
+  .border-blue-soft {
+    @apply border-blue-200 focus:border-blue-500 focus:ring-blue-500;
+  }
+
+  .bg-blue-soft {
+    @apply bg-blue-50 text-blue-700;
   }
 }
 

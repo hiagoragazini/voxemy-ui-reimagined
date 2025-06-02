@@ -41,9 +41,9 @@ export default {
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))',
-					apple: '#0071e3', // Azul Apple
-					'apple-dark': '#0051a2',
-					'apple-light': '#147ce5',
+					apple: '#0066CC', // Azul Apple - cor principal
+					'apple-dark': '#004C99',
+					'apple-light': '#3399FF',
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -79,7 +79,7 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Apple-specific colors
+				// Apple-specific colors with blue theme
 				apple: {
 					bg: '#f5f5f7',
 					text: {
@@ -93,6 +93,19 @@ export default {
 					card: 'rgba(255, 255, 255, 0.8)',
 					border: 'rgba(0, 0, 0, 0.1)'
 				},
+				// Blue color system replacing purple/violet
+				blue: {
+					50: '#E6F0FF',
+					100: '#CCE0FF',
+					200: '#99C2FF',
+					300: '#66A3FF',
+					400: '#3385FF',
+					500: '#0066CC', // Primary blue
+					600: '#0052A3',
+					700: '#003D7A',
+					800: '#002952',
+					900: '#001429',
+				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -106,6 +119,8 @@ export default {
 			boxShadow: {
 				'apple': '0 2px 12px rgba(0, 0, 0, 0.05)',
 				'apple-hover': '0 4px 16px rgba(0, 0, 0, 0.08)',
+				'blue': '0 2px 12px rgba(0, 102, 204, 0.15)',
+				'blue-hover': '0 4px 16px rgba(0, 102, 204, 0.25)',
 			},
 			keyframes: {
 				'accordion-down': {
@@ -162,7 +177,7 @@ export default {
 					'border': '1px solid rgba(0, 0, 0, 0.1)',
 				},
 				'.text-gradient-primary': {
-					'background': 'linear-gradient(to right, #0071e3, #147ce5)',
+					'background': 'linear-gradient(to right, #0066CC, #3399FF)',
 					'background-clip': 'text',
 					'-webkit-background-clip': 'text',
 					'color': 'transparent',
