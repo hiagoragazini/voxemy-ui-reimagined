@@ -62,19 +62,19 @@ export function QuickCallCard() {
 
   return (
     <Card className="hover:shadow-apple-hover transition-all duration-200 hover:-translate-y-1 flex flex-col justify-start border border-gray-200 rounded-xl shadow-apple">
-      <CardHeader className="p-4 pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-          <div className="p-2 bg-blue-50 rounded-lg">
-            <Phone className="h-5 w-5 text-blue-600" />
+      <CardHeader className="p-3 pb-1">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <div className="p-1.5 bg-blue-50 rounded-lg">
+            <Phone className="h-4 w-4 text-blue-600" />
           </div>
           Chamada Rápida
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 p-4 pt-0">
+      <CardContent className="space-y-2 p-3 pt-0">
         <div className="space-y-1">
-          <Label htmlFor="agent-select" className="text-sm font-medium text-gray-700">Selecionar Agente</Label>
+          <Label htmlFor="agent-select" className="text-xs font-medium text-gray-700">Selecionar Agente</Label>
           <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-            <SelectTrigger className="h-9 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500">
+            <SelectTrigger className="h-8 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500">
               <SelectValue placeholder="Escolha um agente" />
             </SelectTrigger>
             <SelectContent>
@@ -88,36 +88,36 @@ export function QuickCallCard() {
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="phone-input" className="text-sm font-medium text-gray-700">Número de Telefone</Label>
+          <Label htmlFor="phone-input" className="text-xs font-medium text-gray-700">Número de Telefone</Label>
           <Input
             id="phone-input"
             type="tel"
             placeholder="(11) 99999-9999"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
-            className="w-full h-9 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            className="w-full h-8 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
 
         <Button 
           onClick={handleQuickCall}
           disabled={isLoading || !selectedAgent || !phoneNumber}
-          className="w-full bg-blue-600 hover:bg-blue-700 h-9 text-sm font-medium rounded-lg shadow-sm mt-2"
+          className="w-full bg-blue-600 hover:bg-blue-700 h-8 text-xs font-medium rounded-lg shadow-sm mt-1"
         >
           {isLoading ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               Chamando...
             </>
           ) : (
             <>
-              <Phone className="h-4 w-4 mr-2" />
+              <Phone className="h-3 w-3 mr-1" />
               Fazer Chamada Teste
             </>
           )}
         </Button>
 
-        <div className="bg-blue-50 p-3 rounded-lg mt-2">
+        <div className="bg-blue-50 p-2 rounded-lg mt-1">
           <p className="text-xs text-blue-700 leading-relaxed">
             <strong>Teste rápido:</strong> Faça uma chamada de demonstração com o agente selecionado para verificar a qualidade da voz e responsividade do sistema.
           </p>
