@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -99,7 +100,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               name: data.name || '',
               description: data.description || '',
               category: data.category || 'Atendimento',
-              type: data.type || agentType, // Adicionar o tipo
+              type: data.type || agentType, // Usar o tipo do banco de dados
               voiceId: data.voice_id || VOICE_IDS.SARAH,
               status: data.status || 'active',
               instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',

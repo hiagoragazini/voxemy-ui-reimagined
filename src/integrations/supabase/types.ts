@@ -26,6 +26,7 @@ export type Database = {
           phone_number: string | null
           response_style: string | null
           status: string | null
+          type: string | null
           updated_at: string
           voice_id: string
           webhook_url: string | null
@@ -46,6 +47,7 @@ export type Database = {
           phone_number?: string | null
           response_style?: string | null
           status?: string | null
+          type?: string | null
           updated_at?: string
           voice_id: string
           webhook_url?: string | null
@@ -66,6 +68,7 @@ export type Database = {
           phone_number?: string | null
           response_style?: string | null
           status?: string | null
+          type?: string | null
           updated_at?: string
           voice_id?: string
           webhook_url?: string | null
