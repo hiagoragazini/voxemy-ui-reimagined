@@ -1,7 +1,8 @@
+
 import React, { useState, useContext, createContext } from "react";
 import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -81,9 +82,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 };
 
 function App() {
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
     <AuthProvider>
-      <QueryClient>
+      <QueryClientProvider client={queryClient}>
         <Toaster />
         <Routes>
           {/* Rota pública - Landing page */}
@@ -213,7 +216,7 @@ function App() {
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </QueryClient>
+      </QueryClientProvider>
     </AuthProvider>
   );
 }
