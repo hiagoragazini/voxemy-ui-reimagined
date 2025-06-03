@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useVoiceCall } from "@/hooks/use-voice-call";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VOICES, VOICE_IDS } from "@/constants/voices";
 
@@ -44,6 +43,8 @@ interface AgentConfigProps {
 const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const agentType = searchParams.get('type') as 'text' | 'voice' || 'text';
   const { textToSpeech, playAudio } = useVoiceCall();
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -57,6 +58,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     name: "",
     description: "",
     category: "Atendimento",
+    type: agentType, // Novo campo para tipo
     voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah como padrão
     status: "active", // Garantir que o status padrão seja active
     instructions: "",
@@ -97,6 +99,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               name: data.name || '',
               description: data.description || '',
               category: data.category || 'Atendimento',
+              type: data.type || agentType, // Adicionar o tipo
               voiceId: data.voice_id || VOICE_IDS.SARAH,
               status: data.status || 'active',
               instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',
@@ -132,6 +135,14 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
 
   const handleFormChange = (field: string, value: string) => {
     setFormState(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleBackToTypeSelection = () => {
+    if (isNew) {
+      navigate('/agents/new');
+    } else {
+      navigate('/agents');
+    }
   };
 
   const handleTestVoice = async () => {
@@ -185,13 +196,14 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     try {
       console.log(`Tentativa ${saveAttempts + 1} de salvar agente no Supabase...`);
       
-      // Preparar os dados para salvar no Supabase
+      // Preparar os dados para salvar no Supabase - incluindo o tipo
       const agentData = {
         name: formState.name,
         description: formState.description,
         category: formState.category,
+        type: formState.type, // Adicionar o tipo
         voice_id: formState.voiceId,
-        status: formState.status || 'active', // Garantir que tenha um status
+        status: formState.status || 'active',
         instructions: formState.instructions,
         response_style: formState.responseStyle,
         default_greeting: formState.defaultGreeting,
@@ -318,12 +330,35 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     <Layout>
       <div className="container mx-auto p-6">
         <div className="flex flex-col mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            {isNew && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBackToTypeSelection}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar para Seleção
+              </Button>
+            )}
+            <div className="flex items-center gap-2">
+              {agentType === 'voice' ? (
+                <span className="text-2xl">🎤</span>
+              ) : (
+                <span className="text-2xl">💬</span>
+              )}
+              <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+                {agentType === 'voice' ? 'Agente de Voz' : 'Agente de Texto'}
+              </span>
+            </div>
+          </div>
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
-            {isNew ? "Criar Novo Agente" : `Configurar Agente: ${formState.name}`}
+            {isNew ? "Configurar Novo Agente" : `Configurar Agente: ${formState.name}`}
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
             {isNew 
-              ? "Configure um novo agente virtual com suas instruções personalizadas." 
+              ? `Configure seu novo agente ${agentType === 'voice' ? 'de voz' : 'de texto'} com instruções personalizadas.` 
               : "Personalize o comportamento, voz e instruções para este agente."}
           </p>
         </div>
@@ -333,7 +368,9 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
             <TabsList className="grid grid-cols-3 mb-8">
               <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
               <TabsTrigger value="ai">Configuração de IA</TabsTrigger>
-              <TabsTrigger value="voice">Voz e Comunicação</TabsTrigger>
+              <TabsTrigger value="communication">
+                {agentType === 'voice' ? 'Voz e Comunicação' : 'WhatsApp e Comunicação'}
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="basic" className="space-y-4">
@@ -500,89 +537,143 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               </Card>
             </TabsContent>
             
-            <TabsContent value="voice" className="space-y-4">
+            <TabsContent value="communication" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Configuração de Voz e Chamadas</CardTitle>
+                  <CardTitle>
+                    {agentType === 'voice' ? 'Configuração de Voz e Chamadas' : 'Configuração do WhatsApp'}
+                  </CardTitle>
                   <CardDescription>
-                    Personalize como o agente deve soar em chamadas.
+                    {agentType === 'voice' 
+                      ? 'Personalize como o agente deve soar em chamadas.' 
+                      : 'Configure como o agente deve responder no WhatsApp.'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="voiceId">Voz do Agente</Label>
-                      <Select 
-                        value={formState.voiceId}
-                        onValueChange={(value) => handleFormChange('voiceId', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione uma voz" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {VOICES_OPTIONS.map(voice => (
-                            <SelectItem key={voice.id} value={voice.id}>{voice.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="defaultGreeting">Saudação Padrão</Label>
-                      <Textarea 
-                        id="defaultGreeting"
-                        value={formState.defaultGreeting} 
-                        onChange={(e) => handleFormChange('defaultGreeting', e.target.value)} 
-                        placeholder="Como o agente deve iniciar uma conversa"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phoneNumber">Número para Teste (Twilio)</Label>
-                      <Input 
-                        id="phoneNumber"
-                        type="tel"
-                        value={formState.phoneNumber} 
-                        onChange={(e) => handleFormChange('phoneNumber', e.target.value)} 
-                        placeholder="Ex: +5511999999999"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="webhookUrl">URL de Webhook (opcional)</Label>
-                      <Input 
-                        id="webhookUrl"
-                        type="url"
-                        value={formState.webhookUrl} 
-                        onChange={(e) => handleFormChange('webhookUrl', e.target.value)} 
-                        placeholder="https://seu-dominio.com/webhooks/calls"
-                      />
-                      <p className="text-xs text-muted-foreground">URL para receber atualizações de status das chamadas</p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="testVoice">Testar Voz</Label>
-                      <div className="flex flex-col gap-2">
-                        <Textarea 
-                          id="testVoice"
-                          value={testMessage} 
-                          onChange={(e) => setTestMessage(e.target.value)} 
-                          placeholder={`Digite um texto para testar a voz. Padrão: "Olá, eu sou ${formState.name}, um assistente virtual."`}
-                          rows={2}
-                        />
-                        <Button 
-                          type="button" 
-                          variant="outline"
-                          onClick={handleTestVoice}
-                          disabled={isTesting}
-                          className="self-start"
+                  {agentType === 'voice' ? (
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="voiceId">Voz do Agente</Label>
+                        <Select 
+                          value={formState.voiceId}
+                          onValueChange={(value) => handleFormChange('voiceId', value)}
                         >
-                          {isTesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Testar Voz
-                        </Button>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma voz" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VOICES_OPTIONS.map(voice => (
+                              <SelectItem key={voice.id} value={voice.id}>{voice.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="defaultGreeting">Saudação Padrão</Label>
+                        <Textarea 
+                          id="defaultGreeting"
+                          value={formState.defaultGreeting} 
+                          onChange={(e) => handleFormChange('defaultGreeting', e.target.value)} 
+                          placeholder="Como o agente deve iniciar uma conversa"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">Número para Teste (Twilio)</Label>
+                        <Input 
+                          id="phoneNumber"
+                          type="tel"
+                          value={formState.phoneNumber} 
+                          onChange={(e) => handleFormChange('phoneNumber', e.target.value)} 
+                          placeholder="Ex: +5511999999999"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="webhookUrl">URL de Webhook (opcional)</Label>
+                        <Input 
+                          id="webhookUrl"
+                          type="url"
+                          value={formState.webhookUrl} 
+                          onChange={(e) => handleFormChange('webhookUrl', e.target.value)} 
+                          placeholder="https://seu-dominio.com/webhooks/calls"
+                        />
+                        <p className="text-xs text-muted-foreground">URL para receber atualizações de status das chamadas</p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="testVoice">Testar Voz</Label>
+                        <div className="flex flex-col gap-2">
+                          <Textarea 
+                            id="testVoice"
+                            value={testMessage} 
+                            onChange={(e) => setTestMessage(e.target.value)} 
+                            placeholder={`Digite um texto para testar a voz. Padrão: "Olá, eu sou ${formState.name}, um assistente virtual."`}
+                            rows={2}
+                          />
+                          <Button 
+                            type="button" 
+                            variant="outline"
+                            onClick={handleTestVoice}
+                            disabled={isTesting}
+                            className="self-start"
+                          >
+                            {isTesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Testar Voz
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="defaultGreeting">Mensagem de Boas-vindas</Label>
+                        <Textarea 
+                          id="defaultGreeting"
+                          value={formState.defaultGreeting} 
+                          onChange={(e) => handleFormChange('defaultGreeting', e.target.value)} 
+                          placeholder="Como o agente deve iniciar uma conversa no WhatsApp"
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">Número do WhatsApp Business</Label>
+                        <Input 
+                          id="phoneNumber"
+                          type="tel"
+                          value={formState.phoneNumber} 
+                          onChange={(e) => handleFormChange('phoneNumber', e.target.value)} 
+                          placeholder="Ex: +5511999999999"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="webhookUrl">URL de Webhook (opcional)</Label>
+                        <Input 
+                          id="webhookUrl"
+                          type="url"
+                          value={formState.webhookUrl} 
+                          onChange={(e) => handleFormChange('webhookUrl', e.target.value)} 
+                          placeholder="https://seu-dominio.com/webhooks/whatsapp"
+                        />
+                        <p className="text-xs text-muted-foreground">URL para receber mensagens do WhatsApp</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="maxResponseLength">Comprimento Máximo de Resposta</Label>
+                        <Input 
+                          id="maxResponseLength"
+                          type="number" 
+                          value={formState.maxResponseLength} 
+                          onChange={(e) => handleFormChange('maxResponseLength', e.target.value)} 
+                          placeholder="Número máximo de caracteres por mensagem"
+                        />
+                        <p className="text-xs text-muted-foreground">Recomendado: 150-300 caracteres para WhatsApp</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

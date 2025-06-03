@@ -12,6 +12,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Agents from "./pages/Agents";
 import AgentConfig from "./pages/AgentConfig";
+import AgentTypeSelection from "./pages/AgentTypeSelection";
 import Campaigns from "./pages/Campaigns";
 import CampaignForm from "./pages/CampaignForm";
 import CampaignDetails from "./pages/CampaignDetails";
@@ -58,9 +59,17 @@ function App() {
             </ProtectedRoute>
           } />
           
+          {/* Nova rota para seleção de tipo de agente */}
           <Route path="/agents/new" element={
             <ProtectedRoute>
-              <AgentConfig />
+              <AgentTypeSelection />
+            </ProtectedRoute>
+          } />
+          
+          {/* Rota para configuração do agente com tipo */}
+          <Route path="/agents/new/config" element={
+            <ProtectedRoute>
+              <AgentConfig isNew={true} />
             </ProtectedRoute>
           } />
           

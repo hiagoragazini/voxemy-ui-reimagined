@@ -18,8 +18,8 @@ export function AgentTypeSelector({ value, onChange, className }: AgentTypeSelec
         <label className={cn(
           "radio-option block border rounded-lg p-4 cursor-pointer transition-all duration-200",
           value === 'text' 
-            ? "border-blue-500 bg-blue-50" 
-            : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+            ? "border-green-500 bg-green-50" 
+            : "border-gray-200 hover:border-green-300 hover:bg-gray-50"
         )}>
           <input
             type="radio"
@@ -34,8 +34,8 @@ export function AgentTypeSelector({ value, onChange, className }: AgentTypeSelec
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <strong className="text-base">Atendimento por Texto</strong>
-                <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                  Recomendado
+                <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
+                  Disponível
                 </span>
               </div>
               <p className="text-sm text-gray-600">
@@ -48,14 +48,16 @@ export function AgentTypeSelector({ value, onChange, className }: AgentTypeSelec
         <TooltipCustom content="Agentes de voz estão em desenvolvimento e estarão disponíveis em breve">
           <label className={cn(
             "radio-option block border rounded-lg p-4 transition-all duration-200",
-            "opacity-70 cursor-not-allowed bg-gray-50 border-dashed border-gray-300"
+            value === 'voice' 
+              ? "border-orange-500 bg-orange-50" 
+              : "opacity-70 cursor-not-allowed bg-gray-50 border-dashed border-gray-300"
           )}>
             <input
               type="radio"
               name="agentType"
               value="voice"
               checked={value === 'voice'}
-              onChange={() => {}}
+              onChange={() => onChange('voice')}
               disabled
               className="sr-only"
             />
