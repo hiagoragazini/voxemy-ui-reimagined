@@ -28,7 +28,6 @@ export function AgentTester({
           </p>
         </div>
         <ChatSimulator
-          agentId={agentId}
           agentName={agentName}
           onClose={onClose}
         />
