@@ -78,6 +78,24 @@ export function AgentCard({
     onTestCall?.(id);
   };
 
+  // Função para obter labels das métricas baseado no tipo do agente
+  const getMetricsLabels = () => {
+    if (type === "text") {
+      return {
+        interactions: "Mensagens",
+        avgTimeLabel: "Tempo médio de resposta",
+        successLabel: "Taxa de resolução"
+      };
+    }
+    return {
+      interactions: "Chamadas",
+      avgTimeLabel: "Duração média",
+      successLabel: "Taxa de conversão"
+    };
+  };
+
+  const metricsLabels = getMetricsLabels();
+
   // Função para obter a badge de status
   const getStatusBadge = () => {
     if (status === "active") {
@@ -185,18 +203,18 @@ export function AgentCard({
       </CardHeader>
       
       <CardContent className="pt-0 space-y-4">
-        {/* Métricas em grid 2x2 */}
+        {/* Métricas em grid 2x2 com labels específicos por tipo */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <p className="text-xs text-apple-text-secondary">Chamadas</p>
+            <p className="text-xs text-apple-text-secondary">{metricsLabels.interactions}</p>
             <p className="text-lg font-semibold text-apple-text-primary">{calls.toLocaleString()}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-apple-text-secondary">Média</p>
+            <p className="text-xs text-apple-text-secondary">{metricsLabels.avgTimeLabel}</p>
             <p className="text-lg font-semibold text-apple-text-primary">{avgTime}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-apple-text-secondary">Taxa sucesso</p>
+            <p className="text-xs text-apple-text-secondary">{metricsLabels.successLabel}</p>
             <div className="flex items-center gap-1">
               <p className="text-lg font-semibold text-apple-text-primary">{successRate}%</p>
               <span className="text-xs text-green-600 font-medium">{successChange}</span>

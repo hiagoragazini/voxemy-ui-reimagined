@@ -122,24 +122,42 @@ export function useAgents() {
     retryDelay: 1000,
   });
 
-  // Generate stable random values for each agent once
-  const generateStableValues = useCallback((agentId: string) => {
-    // Usar valores mais realistas para simular uso de 10 dias
+  // Generate stable random values for each agent once with type-specific metrics
+  const generateStableValues = useCallback((agentId: string, agentType: "text" | "voice") => {
     const hash = Array.from(agentId).reduce((acc, char) => acc + char.charCodeAt(0), 0);
     
-    // Gerar números mais altos para chamadas (entre 180-950)
-    const calls = 180 + (hash % 770);
+    let calls, avgTime, successRate, successChange;
     
-    // Taxa de sucesso entre 65-95% com tendência para altos
-    const successRate = 65 + (hash % 30);
-    
-    // Mudança positiva na taxa de sucesso (mostrando melhoria ao longo do tempo)
-    const successChange = `+${(2 + (hash % 8)).toFixed(1)}%`;
-    
-    // Gerar tempo médio de chamada realista
-    const avgMinutes = 1 + (hash % 4);
-    const avgSeconds = (hash % 60).toString().padStart(2, '0');
-    const avgTime = `${avgMinutes}:${avgSeconds}`;
+    if (agentType === "text") {
+      // Para agentes de texto: métricas de mensagens
+      calls = 200 + (hash % 1300); // Mensagens: 200-1500
+      
+      // Tempo de resposta em segundos (10s-3min)
+      const responseSeconds = 10 + (hash % 170); // 10-180 segundos
+      if (responseSeconds < 60) {
+        avgTime = `${responseSeconds}s`;
+      } else {
+        const minutes = Math.floor(responseSeconds / 60);
+        const seconds = responseSeconds % 60;
+        avgTime = seconds > 0 ? `${minutes}m${seconds}s` : `${minutes}m`;
+      }
+      
+      // Taxa de resolução entre 70-95%
+      successRate = 70 + (hash % 25);
+      successChange = `+${(1.5 + (hash % 6)).toFixed(1)}%`;
+    } else {
+      // Para agentes de voz: métricas de chamadas
+      calls = 50 + (hash % 750); // Chamadas: 50-800
+      
+      // Duração da chamada (1-8 minutos)
+      const avgMinutes = 1 + (hash % 7);
+      const avgSeconds = (hash % 60).toString().padStart(2, '0');
+      avgTime = `${avgMinutes}:${avgSeconds}`;
+      
+      // Taxa de conversão entre 60-90%
+      successRate = 60 + (hash % 30);
+      successChange = `+${(2 + (hash % 8)).toFixed(1)}%`;
+    }
     
     // Gerar atividade recente (principalmente hoje e ontem)
     const activities = [
@@ -166,7 +184,8 @@ export function useAgents() {
     if (agentsData && agentsData.length > 0) {
       // Transformar dados para AgentCardProps com valores estáveis
       const transformedAgents: AgentCardProps[] = agentsData.map(agent => {
-        const stableValues = generateStableValues(agent.id);
+        const agentType = (agent.type as "text" | "voice") || "voice";
+        const stableValues = generateStableValues(agent.id, agentType);
         
         return {
           id: agent.id,
@@ -174,7 +193,7 @@ export function useAgents() {
           category: agent.category,
           description: agent.description || "",
           status: agent.status as "active" | "paused" | "inactive",
-          type: agent.type as "text" | "voice" || "voice", // Default para voice se não especificado
+          type: agentType,
           calls: stableValues.calls,
           avgTime: stableValues.avgTime, 
           successRate: stableValues.successRate,
