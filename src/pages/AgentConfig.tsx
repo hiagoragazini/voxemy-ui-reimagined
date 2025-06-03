@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -95,12 +94,17 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           
           if (data) {
             console.log("Agente carregado do Supabase:", data);
+            
+            // Type-safe conversion for agent type
+            const validType: 'text' | 'voice' = 
+              data.type === 'text' || data.type === 'voice' ? data.type : agentType;
+            
             // Preencher o formulário com os dados do agente
             setFormState({
               name: data.name || '',
               description: data.description || '',
               category: data.category || 'Atendimento',
-              type: data.type || agentType, // Usar o tipo do banco de dados
+              type: validType, // Usar conversão type-safe
               voiceId: data.voice_id || VOICE_IDS.SARAH,
               status: data.status || 'active',
               instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',

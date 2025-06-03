@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -22,9 +21,10 @@ interface ExtendedCampaign extends Campaign {
   avg_call_duration?: string;
 }
 
-// Extended Agent interface with safe status handling
-interface ExtendedAgent extends Omit<Agent, 'status'> {
+// Extended Agent interface with safe status and type handling
+interface ExtendedAgent extends Omit<Agent, 'status' | 'type'> {
   status: "active" | "paused" | "inactive";
+  type: "voice" | "text";
 }
 
 export default function CampaignDetails() {
@@ -71,10 +71,11 @@ export default function CampaignDetails() {
             
           if (agentError) console.error("Error fetching agent:", agentError);
           else {
-            // Type-safe assignment for agent with status validation
+            // Type-safe assignment for agent with status and type validation
             const typedAgent: ExtendedAgent = {
               ...agentData,
-              status: (agentData.status as "active" | "paused" | "inactive") || "inactive"
+              status: (agentData.status as "active" | "paused" | "inactive") || "inactive",
+              type: (agentData.type === "voice" || agentData.type === "text") ? agentData.type : "voice"
             };
             setAgent(typedAgent);
           }
