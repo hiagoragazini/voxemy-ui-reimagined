@@ -13,6 +13,7 @@ import { useVoiceCall } from "@/hooks/use-voice-call";
 import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VOICES, VOICE_IDS } from "@/constants/voices";
+import { WhatsAppConfigTab } from "@/components/agents/WhatsAppConfigTab";
 
 // Lista expandida de vozes disponíveis
 const VOICES_OPTIONS = VOICES;
@@ -543,19 +544,15 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
             </TabsContent>
             
             <TabsContent value="communication" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    {agentType === 'voice' ? 'Configuração de Voz e Chamadas' : 'Configuração do WhatsApp'}
-                  </CardTitle>
-                  <CardDescription>
-                    {agentType === 'voice' 
-                      ? 'Personalize como o agente deve soar em chamadas.' 
-                      : 'Configure como o agente deve responder no WhatsApp.'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {agentType === 'voice' ? (
+              {agentType === 'voice' ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Configuração de Voz e Chamadas</CardTitle>
+                    <CardDescription>
+                      Personalize como o agente deve soar em chamadas.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="voiceId">Voz do Agente</Label>
@@ -630,57 +627,19 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="defaultGreeting">Mensagem de Boas-vindas</Label>
-                        <Textarea 
-                          id="defaultGreeting"
-                          value={formState.defaultGreeting} 
-                          onChange={(e) => handleFormChange('defaultGreeting', e.target.value)} 
-                          placeholder="Como o agente deve iniciar uma conversa no WhatsApp"
-                          rows={3}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="phoneNumber">Número do WhatsApp Business</Label>
-                        <Input 
-                          id="phoneNumber"
-                          type="tel"
-                          value={formState.phoneNumber} 
-                          onChange={(e) => handleFormChange('phoneNumber', e.target.value)} 
-                          placeholder="Ex: +5511999999999"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="webhookUrl">URL de Webhook (opcional)</Label>
-                        <Input 
-                          id="webhookUrl"
-                          type="url"
-                          value={formState.webhookUrl} 
-                          onChange={(e) => handleFormChange('webhookUrl', e.target.value)} 
-                          placeholder="https://seu-dominio.com/webhooks/whatsapp"
-                        />
-                        <p className="text-xs text-muted-foreground">URL para receber mensagens do WhatsApp</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="maxResponseLength">Comprimento Máximo de Resposta</Label>
-                        <Input 
-                          id="maxResponseLength"
-                          type="number" 
-                          value={formState.maxResponseLength} 
-                          onChange={(e) => handleFormChange('maxResponseLength', e.target.value)} 
-                          placeholder="Número máximo de caracteres por mensagem"
-                        />
-                        <p className="text-xs text-muted-foreground">Recomendado: 150-300 caracteres para WhatsApp</p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ) : (
+                <WhatsAppConfigTab
+                  formState={{
+                    phoneNumber: formState.phoneNumber,
+                    webhookUrl: formState.webhookUrl,
+                    defaultGreeting: formState.defaultGreeting,
+                    maxResponseLength: formState.maxResponseLength,
+                  }}
+                  onFormChange={handleFormChange}
+                />
+              )}
             </TabsContent>
           </Tabs>
           
