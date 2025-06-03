@@ -29,7 +29,6 @@ export function AgentTester({
         </div>
         <ChatSimulator
           agentName={agentName}
-          onClose={onClose}
         />
       </div>
     );
