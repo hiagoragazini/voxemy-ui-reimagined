@@ -218,16 +218,16 @@ export function useAgents() {
     }
   };
 
+  // Retornar SEMPRE um objeto válido com valores padrão
   return {
-    // Retornar agentes estabilizados em vez de agentsData diretamente
-    agents: stabilizedAgents,
-    isLoading, 
-    error,
-    isRefreshing,
-    refetch,
-    handleManualRefresh,
-    showDiagnosticsAlert,
-    setShowDiagnosticsAlert,
+    agents: stabilizedAgents || [],
+    isLoading: isLoading || false, 
+    error: error || null,
+    isRefreshing: isRefreshing || false,
+    refetch: refetch || (() => Promise.resolve()),
+    handleManualRefresh: handleManualRefresh || (() => {}),
+    showDiagnosticsAlert: showDiagnosticsAlert || false,
+    setShowDiagnosticsAlert: setShowDiagnosticsAlert || (() => {}),
     forceRefresh: () => setLastRefreshTimestamp(Date.now()),
     createDemoAgent: () => console.log("Demo agent creation not needed - using simulated agents"),
     isCreatingDemoAgent: false

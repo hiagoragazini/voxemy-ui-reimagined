@@ -23,21 +23,21 @@ export default function Agents() {
   const [hasRun, setHasRun] = useState(false);
   const [selectedAgentForVoice, setSelectedAgentForVoice] = useState<{id: string, name: string, voiceId?: string} | null>(null);
   
-  // Safe access to useAgents hook with default values
+  // Chamadas diretas dos hooks sem fallbacks condicionais
   const { 
-    agents = [], 
-    isLoading = false, 
-    isRefreshing = false, 
-    refetch = () => Promise.resolve(),
-    handleManualRefresh = () => {}, 
-    showDiagnosticsAlert = false, 
-    setShowDiagnosticsAlert = () => {},
-    forceRefresh = () => {},
-    createDemoAgent = async () => {},
-    isCreatingDemoAgent = false 
-  } = useAgents() || {};
+    agents, 
+    isLoading, 
+    isRefreshing, 
+    refetch,
+    handleManualRefresh, 
+    showDiagnosticsAlert, 
+    setShowDiagnosticsAlert,
+    forceRefresh,
+    createDemoAgent,
+    isCreatingDemoAgent 
+  } = useAgents();
   
-  const { isDiagnosing = false, handleDiagnose = async () => {} } = useAgentDiagnostics(refetch) || {};
+  const { isDiagnosing, handleDiagnose } = useAgentDiagnostics(refetch);
   
   // Check if we're coming from agent creation or edit - verificamos apenas UMA vez no carregamento
   useEffect(() => {

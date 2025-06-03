@@ -28,8 +28,9 @@ export function useAgentDiagnostics(refetch: () => Promise<any>) {
     }
   };
 
+  // Garantir que SEMPRE retorna um objeto válido
   return {
-    isDiagnosing,
-    handleDiagnose
+    isDiagnosing: isDiagnosing || false,
+    handleDiagnose: handleDiagnose || (() => Promise.resolve())
   };
 }
