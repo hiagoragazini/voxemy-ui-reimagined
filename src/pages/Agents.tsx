@@ -19,12 +19,12 @@ export default function Agents() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "text" | "voice">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "text" | "voice" | "hybrid">("all");
   const [hasRun, setHasRun] = useState(false);
   const [selectedAgentForTest, setSelectedAgentForTest] = useState<{
     id: string, 
     name: string, 
-    type: "text" | "voice",
+    type: "text" | "voice" | "hybrid",
     voiceId?: string
   } | null>(null);
   

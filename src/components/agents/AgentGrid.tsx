@@ -1,3 +1,4 @@
+
 import { AgentCard, AgentCardSkeleton, AgentCardProps } from "@/components/agents/AgentCard";
 import { AdvancedAgentTester } from "@/components/agents/AdvancedAgentTester";
 import { Plus, AlertCircle, Loader2, RefreshCcw } from "lucide-react";
@@ -32,7 +33,7 @@ export const AgentGrid = ({
   const [selectedAgentForTest, setSelectedAgentForTest] = useState<{
     id: string, 
     name: string, 
-    type: "text" | "voice",
+    type: "text" | "voice" | "hybrid",
     voiceId?: string
   } | null>(null);
 
