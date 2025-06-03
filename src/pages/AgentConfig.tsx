@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -46,7 +45,11 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const agentType = searchParams.get('type') as 'text' | 'voice' || 'text';
+  
+  // Lê o tipo da URL ou define padrão
+  const urlAgentType = searchParams.get('type') as 'text' | 'voice';
+  const agentType = urlAgentType || 'voice';
+  
   const { textToSpeech, playAudio } = useVoiceCall();
   const [isLoading, setIsLoading] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -60,18 +63,18 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     name: "",
     description: "",
     category: "Atendimento",
-    type: agentType, // Tipo baseado no parâmetro da URL
+    type: agentType,
     voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah como padrão
-    status: "active", // Garantir que o status padrão seja active
+    status: "active",
     instructions: "",
     responseStyle: "",
     defaultGreeting: "",
     maxResponseLength: "150",
     knowledge: "",
-    aiModel: "gpt-4o-mini", // Modelo padrão
-    conversationPrompt: "", // Prompt personalizado para conversação
-    webhookUrl: "", // URL para webhook de eventos da chamada
-    phoneNumber: "", // Número para testes
+    aiModel: "gpt-4o-mini",
+    conversationPrompt: "",
+    webhookUrl: "",
+    phoneNumber: "",
   });
 
   useEffect(() => {
@@ -324,30 +327,58 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     );
   }
 
-  // Determinar quais abas mostrar baseado no tipo
-  const getTabsConfig = () => {
+  // Configuração dinâmica das abas baseada no tipo
+  const getTabsForAgentType = () => {
     if (formState.type === 'text') {
-      return {
-        tabs: ["basic", "ai", "whatsapp"],
-        labels: {
-          basic: "Informações Básicas",
-          ai: "Configuração de IA", 
-          whatsapp: "WhatsApp e Comunicação"
-        }
-      };
-    } else {
-      return {
-        tabs: ["basic", "ai", "voice"],
-        labels: {
-          basic: "Informações Básicas",
-          ai: "Configuração de IA",
-          voice: "Voz e Comunicação"
-        }
-      };
+      return ['basic', 'ai', 'whatsapp'];
     }
+    return ['basic', 'ai', 'voice'];
   };
 
-  const tabsConfig = getTabsConfig();
+  const getTabLabel = (tabKey: string) => {
+    const labels = {
+      basic: 'Informações Básicas',
+      ai: 'Configuração de IA',
+      whatsapp: 'WhatsApp e Comunicação',
+      voice: 'Voz e Comunicação'
+    };
+    return labels[tabKey as keyof typeof labels] || tabKey;
+  };
+
+  const availableTabs = getTabsForAgentType();
+
+  // Se a aba ativa não está disponível para o tipo atual, volta para 'basic'
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab('basic');
+    }
+  }, [formState.type, activeTab, availableTabs]);
+
+  // Atualiza valores padrão quando o tipo muda
+  useEffect(() => {
+    if (isNew) {
+      const defaultGreeting = formState.type === 'text' 
+        ? "Olá! 👋 Sou seu assistente virtual. Como posso ajudar você hoje?"
+        : "Olá, como posso ajudar você hoje?";
+      
+      const defaultInstructions = formState.type === 'text'
+        ? "Seja cordial, use emojis ocasionalmente e mantenha as respostas concisas e úteis para WhatsApp."
+        : "Seja cordial e objetivo nas respostas.";
+
+      const defaultPrompt = formState.type === 'text' 
+        ? "Você é um assistente virtual especializado em atendimento ao cliente via WhatsApp. Seja amigável e use linguagem adequada para mensagens de texto."
+        : "Você é um assistente virtual especializado em atendimento ao cliente.";
+
+      setFormState(prev => ({
+        ...prev,
+        defaultGreeting,
+        instructions: defaultInstructions,
+        conversationPrompt: defaultPrompt,
+        responseStyle: "Formal e direto",
+        voiceId: VOICE_IDS.SARAH,
+      }));
+    }
+  }, [formState.type, isNew]);
 
   return (
     <Layout>
@@ -388,10 +419,10 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
 
         <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid grid-cols-${tabsConfig.tabs.length} mb-8`}>
-              {tabsConfig.tabs.map(tab => (
+            <TabsList className={`grid grid-cols-${availableTabs.length} mb-8`}>
+              {availableTabs.map(tab => (
                 <TabsTrigger key={tab} value={tab}>
-                  {tabsConfig.labels[tab as keyof typeof tabsConfig.labels]}
+                  {getTabLabel(tab)}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -560,7 +591,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               </Card>
             </TabsContent>
             
-            {/* Aba condicional para WhatsApp (agentes de texto) */}
+            {/* Aba WhatsApp - Só aparece para agentes de texto */}
             {formState.type === 'text' && (
               <TabsContent value="whatsapp" className="space-y-4">
                 <WhatsAppConfigTab
@@ -576,7 +607,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               </TabsContent>
             )}
 
-            {/* Aba condicional para Voz (agentes de voz) */}
+            {/* Aba Voz - Só aparece para agentes de voz */}
             {formState.type === 'voice' && (
               <TabsContent value="voice" className="space-y-4">
                 <Card>
