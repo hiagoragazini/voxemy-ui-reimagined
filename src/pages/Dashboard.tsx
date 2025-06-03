@@ -30,7 +30,7 @@ export default function Dashboard() {
             Dashboard
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
-            Acompanhe o desempenho do seu sistema de atendimento por voz em tempo real.
+            Acompanhe o desempenho do seu sistema de atendimento em tempo real.
           </p>
         </div>
         

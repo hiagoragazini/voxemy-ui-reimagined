@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +54,7 @@ export function useAgents() {
           },
           {
             id: "7d5e6f4c-3b2a-1d9e-8c7f-6b5a4d3c2b1a",
-            name: "Mariana - Atendimento ao Cliente",
+            name: "Roberta - Atendimento ao Cliente", // Mudando de Mariana para Roberta
             category: "Suporte",
             description: "Especializada em resolver dúvidas técnicas e problemas com produtos",
             status: "active",
@@ -88,7 +87,7 @@ export function useAgents() {
           },
           {
             id: "8q9w0e1r-2t3y-4u5i-6o7p-8a9s0d1f2g3h",
-            name: "Paulo - Pesquisa",
+            name: "Hiago - Pesquisa", // Mudando de Paulo para Hiago
             category: "Pesquisa",
             description: "Especializado em coletar feedback e realizar pesquisas de satisfação",
             status: "active",
@@ -122,24 +121,29 @@ export function useAgents() {
     retryDelay: 1000,
   });
 
-  // Generate stable random values for each agent once with type-specific metrics
+  // Generate stable random values for each agent once with type-specific metrics using tokens
   const generateStableValues = useCallback((agentId: string, agentType: "text" | "voice") => {
     const hash = Array.from(agentId).reduce((acc, char) => acc + char.charCodeAt(0), 0);
     
     let calls, avgTime, successRate, successChange;
     
+    // Valores específicos para agentes conhecidos com tokens
+    const specificValues: { [key: string]: { tokens: string } } = {
+      "2z3y4x5w-6v7u-8t9s-0r1q-2p3o4n5m6l7k": { tokens: "850" }, // Ana
+      "7d5e6f4c-3b2a-1d9e-8c7f-6b5a4d3c2b1a": { tokens: "1.2K" }, // Roberta
+      "8q9w0e1r-2t3y-4u5i-6o7p-8a9s0d1f2g3h": { tokens: "950" }, // Hiago
+    };
+    
     if (agentType === "text") {
       // Para agentes de texto: métricas de mensagens
       calls = 200 + (hash % 1300); // Mensagens: 200-1500
       
-      // Tempo de resposta em segundos (10s-3min)
-      const responseSeconds = 10 + (hash % 170); // 10-180 segundos
-      if (responseSeconds < 60) {
-        avgTime = `${responseSeconds}s`;
+      // Tokens médios para texto
+      if (specificValues[agentId]) {
+        avgTime = specificValues[agentId].tokens;
       } else {
-        const minutes = Math.floor(responseSeconds / 60);
-        const seconds = responseSeconds % 60;
-        avgTime = seconds > 0 ? `${minutes}m${seconds}s` : `${minutes}m`;
+        const tokenValue = 300 + (hash % 800); // 300-1100 tokens
+        avgTime = tokenValue > 1000 ? `${(tokenValue / 1000).toFixed(1)}K` : tokenValue.toString();
       }
       
       // Taxa de resolução entre 70-95%
@@ -149,10 +153,13 @@ export function useAgents() {
       // Para agentes de voz: métricas de chamadas
       calls = 50 + (hash % 750); // Chamadas: 50-800
       
-      // Duração da chamada (1-8 minutos)
-      const avgMinutes = 1 + (hash % 7);
-      const avgSeconds = (hash % 60).toString().padStart(2, '0');
-      avgTime = `${avgMinutes}:${avgSeconds}`;
+      // Tokens médios para voz
+      if (specificValues[agentId]) {
+        avgTime = specificValues[agentId].tokens;
+      } else {
+        const tokenValue = 500 + (hash % 1200); // 500-1700 tokens
+        avgTime = tokenValue > 1000 ? `${(tokenValue / 1000).toFixed(1)}K` : tokenValue.toString();
+      }
       
       // Taxa de conversão entre 60-90%
       successRate = 60 + (hash % 30);

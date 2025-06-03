@@ -6,17 +6,17 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export function StatsOverview() {
-  // Buscar estatísticas de chamadas do banco de dados
+  // Buscar estatísticas de interações do banco de dados
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       // Aqui você implementaria a lógica real para buscar as estatísticas
-      // Por enquanto, retornamos dados simulados
+      // Por enquanto, retornamos dados simulados com tokens
       return {
-        totalCalls: "254",
+        totalInteractions: "254",
         avgTokens: "1.2K",
         successRate: "78.5%",
-        callsChange: "+12%",
+        interactionsChange: "+12%",
         tokensChange: "Estável",
         successChange: "+3.2%"
       };
@@ -26,17 +26,17 @@ export function StatsOverview() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
       <StatsCard
-        title="Total de Chamadas Hoje"
-        value={stats?.totalCalls || "0"}
+        title="Total de Interações Hoje"
+        value={stats?.totalInteractions || "0"}
         change={{
-          value: `${stats?.callsChange || "0%"} em relação a ontem`,
+          value: `${stats?.interactionsChange || "0%"} em relação a ontem`,
           type: "increase"
         }}
         icon={<PhoneCall className="w-5 h-5 text-blue-700 dark:text-blue-400" />}
       />
       
       <StatsCard
-        title="Tokens Médios"
+        title="Tokens Médios por Interação"
         value={stats?.avgTokens || "0"}
         change={{
           value: `${stats?.tokensChange || "Sem dados"} em relação a ontem`,

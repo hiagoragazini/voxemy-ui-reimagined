@@ -78,18 +78,18 @@ export function AgentCard({
     onTestCall?.(id);
   };
 
-  // Função para obter labels das métricas baseado no tipo do agente
+  // Função para obter labels das métricas baseado no tipo do agente com tokens
   const getMetricsLabels = () => {
     if (type === "text") {
       return {
         interactions: "Mensagens",
-        avgTimeLabel: "Tempo médio de resposta",
+        avgTimeLabel: "Tokens médios",
         successLabel: "Taxa de resolução"
       };
     }
     return {
       interactions: "Chamadas",
-      avgTimeLabel: "Duração média",
+      avgTimeLabel: "Tokens médios",
       successLabel: "Taxa de conversão"
     };
   };
@@ -203,7 +203,7 @@ export function AgentCard({
       </CardHeader>
       
       <CardContent className="pt-0 space-y-4">
-        {/* Métricas em grid 2x2 com labels específicos por tipo */}
+        {/* Métricas em grid 2x2 com labels específicos por tipo usando tokens */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <p className="text-xs text-apple-text-secondary">{metricsLabels.interactions}</p>
@@ -226,13 +226,13 @@ export function AgentCard({
           </div>
         </div>
         
-        {/* Barra de uso da voz (apenas para agentes de voz) */}
-        {type === "voice" && voiceUsage && (
+        {/* Barra de uso de tokens (atualizada para todos os agentes) */}
+        {voiceUsage && (
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-xs text-apple-text-secondary">Uso da voz</span>
+              <span className="text-xs text-apple-text-secondary">Uso de tokens</span>
               <span className="text-xs text-apple-text-secondary">
-                {voiceUsage.current}/{voiceUsage.total} min
+                {voiceUsage.current}K/{voiceUsage.total}K
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
