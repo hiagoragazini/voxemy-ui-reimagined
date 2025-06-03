@@ -1,12 +1,14 @@
 
-import React, { useState, useContext, createContext } from "react";
-import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Agents from "./pages/Agents";
 import AgentConfig from "./pages/AgentConfig";
@@ -28,65 +30,12 @@ import ConversationRelayTest from "./pages/ConversationRelayTest";
 import CallsMonitoring from "./pages/CallsMonitoring";
 import Roadmap from "./pages/Roadmap";
 
-interface AuthContextProps {
-  user: any;
-  login: (user: any) => void;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextProps | null>(null);
-
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
-
-interface AuthProviderProps {
-  children: React.ReactNode;
-}
-
-const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState(localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : null);
-  const navigate = useNavigate();
-
-  const login = (user: any) => {
-    setUser(user);
-    localStorage.setItem('user', JSON.stringify(user));
-    navigate('/dashboard');
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user } = useAuth();
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  return <>{children}</>;
-};
-
 function App() {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
         <Toaster />
         <Routes>
           {/* Rota pública - Landing page */}
@@ -94,7 +43,7 @@ function App() {
           
           {/* Rotas de autenticação */}
           <Route path="/auth" element={<Auth />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<Navigate to="/auth" replace />} />
 
           {/* Rotas protegidas */}
           <Route path="/dashboard" element={
@@ -216,8 +165,8 @@ function App() {
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </QueryClientProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
