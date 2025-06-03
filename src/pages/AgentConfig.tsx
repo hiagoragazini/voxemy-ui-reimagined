@@ -121,7 +121,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
             
             // Type-safe conversion for agent type
             const validType: 'text' | 'voice' = 
-              data.type === 'text' || data.type === 'voice' ? data.type : agentType;
+              data.type === 'text' || data.type === 'voice' ? data.type : urlAgentType || 'text';
             
             // Preencher o formulário com os dados do agente
             setFormState({
