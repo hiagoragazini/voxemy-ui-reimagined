@@ -1,6 +1,6 @@
 
 import React from "react";
-import { PhoneCall, Clock, CheckCircle2 } from "lucide-react";
+import { PhoneCall, Zap, CheckCircle2 } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,10 +14,10 @@ export function StatsOverview() {
       // Por enquanto, retornamos dados simulados
       return {
         totalCalls: "254",
-        avgCallTime: "3:24",
+        avgTokens: "1.2K",
         successRate: "78.5%",
         callsChange: "+12%",
-        timeChange: "Estável",
+        tokensChange: "Estável",
         successChange: "+3.2%"
       };
     },
@@ -36,13 +36,13 @@ export function StatsOverview() {
       />
       
       <StatsCard
-        title="Tempo Médio de Chamada"
-        value={stats?.avgCallTime || "0:00"}
+        title="Tokens Médios"
+        value={stats?.avgTokens || "0"}
         change={{
-          value: `${stats?.timeChange || "Sem dados"} em relação a ontem`,
+          value: `${stats?.tokensChange || "Sem dados"} em relação a ontem`,
           type: "neutral"
         }}
-        icon={<Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+        icon={<Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
       />
       
       <StatsCard
