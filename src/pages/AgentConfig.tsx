@@ -14,7 +14,6 @@ import { Loader2, Save, ArrowLeft, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VOICES, VOICE_IDS } from "@/constants/voices";
 import { WhatsAppConfigTab } from "@/components/agents/WhatsAppConfigTab";
-import { AgentTypeSelector } from "@/components/agents/AgentTypeSelector";
 
 // Lista expandida de vozes disponíveis
 const VOICES_OPTIONS = VOICES;
@@ -50,7 +49,9 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   // Lê o tipo da URL
   const urlAgentType = searchParams.get('type') as 'text' | 'voice' | null;
   
+  console.log("=== DEBUG AGENT CONFIG ===");
   console.log("URL Agent Type:", urlAgentType);
+  console.log("Is New:", isNew);
   console.log("Search Params:", Object.fromEntries(searchParams.entries()));
   console.log("Current URL:", window.location.href);
   
@@ -67,7 +68,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     name: "",
     description: "",
     category: "Atendimento",
-    type: urlAgentType || 'text',
+    type: urlAgentType || 'text' as 'text' | 'voice',
     voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah como padrão
     status: "active",
     instructions: "",
@@ -81,28 +82,22 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     phoneNumber: "",
   });
 
-  // Se não tem tipo na URL e é novo agente, mostra seleção de tipo
-  const shouldShowTypeSelection = isNew && !urlAgentType;
-
-  console.log("Should show type selection:", shouldShowTypeSelection);
-  console.log("Is new:", isNew);
-  console.log("URL Agent Type:", urlAgentType);
-
-  // Função para lidar com seleção de tipo
-  const handleTypeSelection = (selectedType: 'text' | 'voice') => {
-    console.log("Tipo selecionado:", selectedType);
-    // Navega para a mesma URL mas com o parâmetro type
-    navigate(`/agents/new/config?type=${selectedType}`);
-  };
-
-  const handleContinueWithType = () => {
-    if (formState.type) {
-      navigate(`/agents/new/config?type=${formState.type}`);
+  // LÓGICA CONDICIONAL CORRIGIDA
+  // Se é novo agente E não tem tipo na URL, redireciona para seleção
+  useEffect(() => {
+    console.log("=== VERIFICANDO REDIRECIONAMENTO ===");
+    console.log("isNew:", isNew);
+    console.log("urlAgentType:", urlAgentType);
+    
+    if (isNew && !urlAgentType) {
+      console.log("Redirecionando para seleção de tipo...");
+      navigate('/agents/new');
+      return;
     }
-  };
+  }, [isNew, urlAgentType, navigate]);
 
   useEffect(() => {
-    console.log("useEffect executado. isNew:", isNew, "urlAgentType:", urlAgentType, "id:", id);
+    console.log("=== CARREGANDO DADOS DO AGENTE ===");
     
     if (!isNew && id) {
       // Carregamento real de dados do agente do Supabase
@@ -135,7 +130,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               name: data.name || '',
               description: data.description || '',
               category: data.category || 'Atendimento',
-              type: validType, // Usar conversão type-safe
+              type: validType,
               voiceId: data.voice_id || VOICE_IDS.SARAH,
               status: data.status || 'active',
               instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',
@@ -186,14 +181,6 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
 
   const handleFormChange = (field: string, value: string) => {
     setFormState(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleBackToTypeSelection = () => {
-    if (isNew) {
-      navigate('/agents/new');
-    } else {
-      navigate('/agents');
-    }
   };
 
   const handleTestVoice = async () => {
@@ -252,8 +239,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         name: formState.name,
         description: formState.description,
         category: formState.category,
-        type: formState.type, // Salvar o tipo correto
-        voice_id: formState.type === 'voice' ? formState.voiceId : null, // Só salvar voice_id para agentes de voz
+        type: formState.type,
+        voice_id: formState.type === 'voice' ? formState.voiceId : null,
         status: formState.status || 'active',
         instructions: formState.instructions,
         response_style: formState.responseStyle,
@@ -357,55 +344,13 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     );
   }
 
-  // Se deve mostrar seleção de tipo, renderiza o seletor
-  if (shouldShowTypeSelection) {
-    console.log("Renderizando seleção de tipo");
-    return (
-      <Layout>
-        <div className="container mx-auto p-6">
-          <div className="flex flex-col mb-8">
-            <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
-              Criar Novo Agente
-            </h1>
-            <p className="mt-1 text-muted-foreground max-w-3xl">
-              Escolha o tipo de agente que deseja criar para começar a configuração.
-            </p>
-          </div>
-
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-lg shadow-sm border p-8">
-              <AgentTypeSelector
-                value={formState.type}
-                onChange={(value) => setFormState(prev => ({ ...prev, type: value }))}
-                className="mb-8"
-              />
-
-              <div className="flex justify-between items-center">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/agents')}
-                  className="flex items-center gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Voltar
-                </Button>
-
-                <Button
-                  onClick={() => navigate(`/agents/new/config?type=${formState.type}`)}
-                  className="bg-violet-600 hover:bg-violet-700 flex items-center gap-2"
-                >
-                  Continuar
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
+  // Se é novo agente E não tem tipo na URL, não renderiza nada (vai redirecionar)
+  if (isNew && !urlAgentType) {
+    return null;
   }
 
-  console.log("Renderizando formulário de configuração com tipo:", formState.type);
+  console.log("=== RENDERIZANDO FORMULÁRIO ===");
+  console.log("Tipo do agente:", formState.type);
 
   // Configuração dinâmica das abas baseada no tipo
   const getTabsForAgentType = () => {
@@ -480,6 +425,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                 </TabsTrigger>
               ))}
             </TabsList>
+            
             
             <TabsContent value="basic" className="space-y-4">
               <Card>

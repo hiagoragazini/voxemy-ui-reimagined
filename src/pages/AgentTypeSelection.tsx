@@ -8,14 +8,11 @@ import { ArrowRight, ArrowLeft } from 'lucide-react';
 
 export default function AgentTypeSelection() {
   const navigate = useNavigate();
-  const [selectedType, setSelectedType] = useState<'text' | 'voice' | null>(null);
+  const [selectedType, setSelectedType] = useState<'text' | 'voice'>('text');
 
   const handleContinue = () => {
-    if (selectedType) {
-      console.log("Navegando para configuração com tipo:", selectedType);
-      // Corrigir a navegação para usar a rota correta
-      navigate(`/agents/new/config?type=${selectedType}`);
-    }
+    console.log("Navegando para configuração com tipo:", selectedType);
+    navigate(`/agents/new/config?type=${selectedType}`);
   };
 
   const handleBack = () => {
@@ -37,11 +34,8 @@ export default function AgentTypeSelection() {
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-lg shadow-sm border p-8">
             <AgentTypeSelector
-              value={selectedType || 'text'}
-              onChange={(value) => {
-                console.log("Tipo selecionado:", value);
-                setSelectedType(value);
-              }}
+              value={selectedType}
+              onChange={setSelectedType}
               className="mb-8"
             />
 
@@ -57,7 +51,6 @@ export default function AgentTypeSelection() {
 
               <Button
                 onClick={handleContinue}
-                disabled={!selectedType}
                 className="bg-violet-600 hover:bg-violet-700 flex items-center gap-2"
               >
                 Continuar

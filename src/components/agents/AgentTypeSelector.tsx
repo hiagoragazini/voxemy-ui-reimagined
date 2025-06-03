@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { TooltipCustom } from '@/components/ui/tooltip-custom';
 import { cn } from '@/lib/utils';
 
 interface AgentTypeSelectorProps {
@@ -18,8 +17,8 @@ export function AgentTypeSelector({ value, onChange, className }: AgentTypeSelec
         <label className={cn(
           "radio-option block border rounded-lg p-4 cursor-pointer transition-all duration-200",
           value === 'text' 
-            ? "border-green-500 bg-green-50" 
-            : "border-gray-200 hover:border-green-300 hover:bg-gray-50"
+            ? "border-violet-500 bg-violet-50" 
+            : "border-gray-200 hover:border-violet-300 hover:bg-gray-50"
         )}>
           <input
             type="radio"
@@ -45,45 +44,41 @@ export function AgentTypeSelector({ value, onChange, className }: AgentTypeSelec
           </div>
         </label>
         
-        <TooltipCustom content="Agentes de voz estão em desenvolvimento e estarão disponíveis em breve">
-          <label className={cn(
-            "radio-option block border rounded-lg p-4 transition-all duration-200",
-            value === 'voice' 
-              ? "border-orange-500 bg-orange-50" 
-              : "opacity-70 cursor-not-allowed bg-gray-50 border-dashed border-gray-300"
-          )}>
-            <input
-              type="radio"
-              name="agentType"
-              value="voice"
-              checked={value === 'voice'}
-              onChange={() => onChange('voice')}
-              disabled
-              className="sr-only"
-            />
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">🎤</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <strong className="text-base text-gray-600">Atendimento por Voz</strong>
-                  <span className="bg-gray-500 text-white text-xs px-2 py-1 rounded-full">
-                    Em Breve
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500">
-                  Agente realiza chamadas telefônicas com IA e voz natural
-                </p>
+        <label className={cn(
+          "radio-option block border rounded-lg p-4 cursor-pointer transition-all duration-200",
+          value === 'voice' 
+            ? "border-violet-500 bg-violet-50" 
+            : "border-gray-200 hover:border-violet-300 hover:bg-gray-50"
+        )}>
+          <input
+            type="radio"
+            name="agentType"
+            value="voice"
+            checked={value === 'voice'}
+            onChange={() => onChange('voice')}
+            className="sr-only"
+          />
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">🎤</span>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <strong className="text-base">Atendimento por Voz</strong>
+                <span className="bg-violet-600 text-white text-xs px-2 py-1 rounded-full">
+                  Disponível
+                </span>
               </div>
+              <p className="text-sm text-gray-600">
+                Agente realiza chamadas telefônicas com IA e voz natural
+              </p>
             </div>
-          </label>
-        </TooltipCustom>
+          </div>
+        </label>
       </div>
       
       <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded">
         <p className="text-sm text-blue-800">
-          <strong>Nota:</strong> Agentes de voz estão em desenvolvimento. 
-          Por enquanto, recomendamos criar agentes de texto via WhatsApp 
-          para começar a automatizar seu atendimento imediatamente.
+          <strong>Dica:</strong> Escolha o tipo de agente baseado em como seus clientes preferem se comunicar. 
+          Agentes de texto são ideais para WhatsApp, enquanto agentes de voz são perfeitos para chamadas telefônicas.
         </p>
       </div>
     </div>
