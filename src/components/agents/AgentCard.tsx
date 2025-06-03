@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Edit, Phone, Smartphone, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TooltipCustom } from "@/components/ui/tooltip-custom";
 
 export interface AgentCardProps {
   id: string;
@@ -14,6 +15,7 @@ export interface AgentCardProps {
   category: string;
   description?: string;
   status: "active" | "paused" | "inactive";
+  type?: "text" | "voice"; // Novo campo para tipo de agente
   voiceId?: string;
   calls?: number;
   avgTime?: string;
@@ -62,6 +64,7 @@ export const AgentCard = ({
   category,
   description,
   status,
+  type = "text", // Default para texto
   voiceId,
   calls = 0,
   avgTime = "0:00",
@@ -77,6 +80,7 @@ export const AgentCard = ({
   onTestCall,
 }: AgentCardProps) => {
   const [isActive, setIsActive] = useState(status === "active");
+  const isVoiceAgent = type === "voice";
 
   const handleStatusChange = (isChecked: boolean) => {
     setIsActive(isChecked);
@@ -106,7 +110,8 @@ export const AgentCard = ({
   return (
     <Card className={cn(
       "border hover:shadow-md hover:border-blue-800/20 transition-all duration-300 relative",
-      status === "inactive" && "opacity-70"
+      status === "inactive" && "opacity-70",
+      isVoiceAgent && "bg-gray-50 border-dashed border-gray-300"
     )}>
       <CardHeader className="flex flex-row items-start justify-between pb-1 space-y-0">
         <div className="flex items-center gap-2">
@@ -115,12 +120,27 @@ export const AgentCard = ({
           </div>
           <div>
             <h3 className="font-medium text-base">{name}</h3>
-            <p className="text-muted-foreground text-xs">{category}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground text-xs">{category}</p>
+              {/* Badge de tipo de agente */}
+              {isVoiceAgent ? (
+                <TooltipCustom content="Agentes de voz estão em desenvolvimento e estarão disponíveis em breve">
+                  <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-200 border-0 text-xs">
+                    🎤 Voz <span className="ml-1 bg-gray-500 text-white px-1 rounded">Em Breve</span>
+                  </Badge>
+                </TooltipCustom>
+              ) : (
+                <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0 text-xs">
+                  💬 WhatsApp <span className="ml-1 bg-green-600 text-white px-1 rounded">Ativo</span>
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
         <Switch 
-          checked={isActive}
+          checked={isActive && !isVoiceAgent}
           onCheckedChange={handleStatusChange}
+          disabled={isVoiceAgent}
           className="data-[state=checked]:bg-blue-600"
         />
       </CardHeader>
@@ -131,7 +151,7 @@ export const AgentCard = ({
           </p>
         )}
 
-        {voiceUsage && (
+        {voiceUsage && !isVoiceAgent && (
           <div>
             <div className="flex justify-between mb-1 text-xs">
               <span className="text-muted-foreground">Uso mensal da voz</span>
@@ -148,51 +168,66 @@ export const AgentCard = ({
 
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Chamadas</p>
-            <p className="font-semibold">{calls}</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {isVoiceAgent ? "Chamadas" : "Mensagens"}
+            </p>
+            <p className="font-semibold">{isVoiceAgent ? "--" : calls}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">Média</p>
-            <p className="font-semibold">{avgTime}</p>
+            <p className="font-semibold">{isVoiceAgent ? "--" : avgTime}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">Taxa sucesso</p>
             <div className="flex items-center">
-              <p className="font-semibold">{successRate}%</p>
-              {successChange.startsWith('+') && (
+              <p className="font-semibold">{isVoiceAgent ? "--" : `${successRate}%`}</p>
+              {!isVoiceAgent && successChange.startsWith('+') && (
                 <span className="text-xs text-green-600 ml-1">{successChange}</span>
               )}
-              {successChange.startsWith('-') && (
+              {!isVoiceAgent && successChange.startsWith('-') && (
                 <span className="text-xs text-red-600 ml-1">{successChange}</span>
               )}
             </div>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">Atividade</p>
-            <p className="font-semibold text-sm">{lastActivity}</p>
+            <p className="font-semibold text-sm">{isVoiceAgent ? "--" : lastActivity}</p>
           </div>
         </div>
       </CardContent>
       <CardFooter className="pt-0 flex justify-between">
         <div className="flex gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs h-8"
-            onClick={handleEditClick}
-          >
-            <Edit className="h-3.5 w-3.5 mr-1" />
-            Editar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs h-8"
-            onClick={handleTestCall}
-          >
-            <Phone className="h-3.5 w-3.5 mr-1" />
-            Ligar
-          </Button>
+          {isVoiceAgent ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-8"
+              disabled
+            >
+              Em Desenvolvimento
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-8"
+                onClick={handleEditClick}
+              >
+                <Edit className="h-3.5 w-3.5 mr-1" />
+                Editar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-8"
+                onClick={handleTestCall}
+              >
+                <Phone className="h-3.5 w-3.5 mr-1" />
+                Testar
+              </Button>
+            </>
+          )}
         </div>
       </CardFooter>
     </Card>

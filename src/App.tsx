@@ -1,93 +1,221 @@
+import React, { useState, useContext, createContext } from "react";
+import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
+import { QueryClient } from "@tanstack/react-query";
 
-import './App.css'
-import {
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { useContext } from 'react';
-import Dashboard from './pages/Dashboard';
-import Agents from './pages/Agents';
-import Campaigns from './pages/Campaigns';
-import CampaignDetails from './pages/CampaignDetails';
-import Settings from './pages/Settings';
-import TwilioTestPage from './pages/TwilioTest';
-import TwilioManualTestPage from './pages/TwilioManualTest';
-import ConversationRelayTestPage from './pages/ConversationRelayTest';
-import Leads from './pages/Leads';
-import Reports from './pages/Reports';
-import Index from './pages/Index';
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Agents from "./pages/Agents";
+import AgentConfig from "./pages/AgentConfig";
+import Campaigns from "./pages/Campaigns";
+import CampaignForm from "./pages/CampaignForm";
+import CampaignDetails from "./pages/CampaignDetails";
+import Leads from "./pages/Leads";
+import LeadImport from "./pages/LeadImport";
+import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
+import Reports from "./pages/Reports";
+import NotFound from "./pages/NotFound";
 
-function App() {
-  return <AppRoutes />;
+// Test pages
+import TwilioTest from "./pages/TwilioTest";
+import TwilioManualTest from "./pages/TwilioManualTest";
+import AudioTester from "./pages/AudioTester";
+import ConversationRelayTest from "./pages/ConversationRelayTest";
+import CallsMonitoring from "./pages/CallsMonitoring";
+import Roadmap from "./pages/Roadmap";
+
+interface AuthContextProps {
+  user: any;
+  login: (user: any) => void;
+  logout: () => void;
 }
 
-export default App
+const AuthContext = createContext<AuthContextProps | null>(null);
 
-function AppRoutes() {
-  // Temporary authentication check until proper auth context is implemented
-  const isAuthenticated = true; // For now, always consider user as authenticated
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
 
-  const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-    if (!isAuthenticated) {
-      return <Navigate to="/" />;
-    }
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
 
-    return children;
+const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState(localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : null);
+  const navigate = useNavigate();
+
+  const login = (user: any) => {
+    setUser(user);
+    localStorage.setItem('user', JSON.stringify(user));
+    navigate('/dashboard');
   };
 
-  const routes = [
-    {
-      path: "/",
-      element: <Index />
-    },
-    {
-      path: "/dashboard",
-      element: <ProtectedRoute><Dashboard /></ProtectedRoute>
-    },
-    {
-      path: "/conversation-relay-test",
-      element: <ProtectedRoute><ConversationRelayTestPage /></ProtectedRoute>
-    },
-    {
-      path: "/agents",
-      element: <ProtectedRoute><Agents /></ProtectedRoute>
-    },
-    {
-      path: "/campaigns",
-      element: <ProtectedRoute><Campaigns /></ProtectedRoute>
-    },
-    {
-      path: "/campaigns/:id",
-      element: <ProtectedRoute><CampaignDetails /></ProtectedRoute>
-    },
-    {
-      path: "/leads",
-      element: <ProtectedRoute><Leads /></ProtectedRoute>
-    },
-    {
-      path: "/reports",
-      element: <ProtectedRoute><Reports /></ProtectedRoute>
-    },
-    {
-      path: "/settings",
-      element: <ProtectedRoute><Settings /></ProtectedRoute>
-    },
-    {
-      path: "/twiliotest",
-      element: <ProtectedRoute><TwilioTestPage /></ProtectedRoute>
-    },
-    {
-      path: "/twiliomanualtest",
-      element: <ProtectedRoute><TwilioManualTestPage /></ProtectedRoute>
-    }
-  ];
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
 
   return (
-    <Routes>
-      {routes.map((route, index) => (
-        <Route key={index} path={route.path} element={route.element} />
-      ))}
-    </Routes>
+    <AuthContext.Provider value={{ user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return <>{children}</>;
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <QueryClient>
+        <Toaster />
+        <Routes>
+          {/* Rota pública - Landing page */}
+          <Route path="/" element={<Index />} />
+          
+          {/* Rotas de autenticação */}
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/login" element={<Login />} />
+
+          {/* Rotas protegidas */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/agents" element={
+            <ProtectedRoute>
+              <Agents />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/agents/new" element={
+            <ProtectedRoute>
+              <AgentConfig />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/agents/:id/edit" element={
+            <ProtectedRoute>
+              <AgentConfig />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/campaigns" element={
+            <ProtectedRoute>
+              <Campaigns />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/campaigns/new" element={
+            <ProtectedRoute>
+              <CampaignForm />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/campaigns/:id" element={
+            <ProtectedRoute>
+              <CampaignDetails />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/campaigns/:id/edit" element={
+            <ProtectedRoute>
+              <CampaignForm />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/leads" element={
+            <ProtectedRoute>
+              <Leads />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/leads/import" element={
+            <ProtectedRoute>
+              <LeadImport />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/analytics" element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/reports" element={
+            <ProtectedRoute>
+              <Reports />
+            </ProtectedRoute>
+          } />
+
+          {/* Nova rota para Roadmap */}
+          <Route path="/roadmap" element={
+            <ProtectedRoute>
+              <Roadmap />
+            </ProtectedRoute>
+          } />
+
+          {/* Páginas de teste */}
+          <Route path="/twilio-test" element={
+            <ProtectedRoute>
+              <TwilioTest />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/twilio-manual-test" element={
+            <ProtectedRoute>
+              <TwilioManualTest />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/audio-tester" element={
+            <ProtectedRoute>
+              <AudioTester />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/conversation-relay-test" element={
+            <ProtectedRoute>
+              <ConversationRelayTest />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/calls-monitoring" element={
+            <ProtectedRoute>
+              <CallsMonitoring />
+            </ProtectedRoute>
+          } />
+
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </QueryClient>
+    </AuthProvider>
   );
 }
+
+export default App;

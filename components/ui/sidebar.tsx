@@ -12,11 +12,13 @@ import {
   Settings, 
   Menu,
   ChevronLeft,
-  Phone as PhoneIcon
+  Phone as PhoneIcon,
+  Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { TooltipCustom } from "@/components/ui/tooltip-custom";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -35,12 +37,15 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
     { 
       name: "Agentes", 
       href: "/agentes", 
-      icon: Users 
+      icon: Users,
+      counter: "1/2",
+      tooltip: "1 tipo de agente disponível (Texto)\n1 tipo em desenvolvimento (Voz)"
     },
     { 
       name: "Campanhas", 
       href: "/campanhas", 
-      icon: Phone 
+      icon: Phone,
+      badge: "Parcial"
     },
     { 
       name: "Analytics", 
@@ -95,12 +100,12 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
           <nav className="space-y-1 px-2">
             {menuItems.map((item) => {
               const isActive = pathname === item.href;
-              return (
+              const menuContent = (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors",
+                    "flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors relative",
                     isActive
                       ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
                       : "text-gray-500 hover:text-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400",
@@ -108,14 +113,47 @@ export const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
                   )}
                 >
                   <item.icon className="h-5 w-5" />
-                  {!collapsed && <span className="text-base">{item.name}</span>}
+                  {!collapsed && (
+                    <>
+                      <span className="text-base flex-1">{item.name}</span>
+                      {item.counter && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                          {item.counter}
+                        </span>
+                      )}
+                      {item.badge && (
+                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
+                          {item.badge}
+                        </span>
+                      )}
+                    </>
+                  )}
                 </Link>
               );
+
+              return item.tooltip && !collapsed ? (
+                <TooltipCustom key={item.href} content={item.tooltip}>
+                  {menuContent}
+                </TooltipCustom>
+              ) : menuContent;
             })}
           </nav>
         </div>
         
+        {/* Footer com link para roadmap */}
         <div className="border-t border-border/40 p-4">
+          {!collapsed && (
+            <div className="mb-3">
+              <Link
+                href="/roadmap"
+                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                <Calendar className="h-4 w-4" />
+                <span>Ver Roadmap</span>
+              </Link>
+            </div>
+          )}
+          
           <div
             className={cn(
               "rounded-md bg-blue-50 py-3 dark:bg-blue-900/20",
