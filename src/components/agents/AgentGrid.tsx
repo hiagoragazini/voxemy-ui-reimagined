@@ -1,4 +1,3 @@
-
 import { AgentCard, AgentCardSkeleton, AgentCardProps } from "@/components/agents/AgentCard";
 import { AdvancedAgentTester } from "@/components/agents/AdvancedAgentTester";
 import { Plus, AlertCircle, Loader2, RefreshCcw } from "lucide-react";
@@ -6,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { CampaignCallTester } from "@/components/campaign/CampaignCallTester";
+import { AgentTester } from "@/components/agents/AgentTester";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface AgentGridProps {
@@ -30,7 +29,12 @@ export const AgentGrid = ({
   onTestCall,
   onRefresh
 }: AgentGridProps) => {
-  const [showCallTester, setShowCallTester] = useState<string | null>(null);
+  const [selectedAgentForTest, setSelectedAgentForTest] = useState<{
+    id: string, 
+    name: string, 
+    type: "text" | "voice",
+    voiceId?: string
+  } | null>(null);
 
   const handleStatusChange = (id: string, isActive: boolean) => {
     console.log(`Status do agente ${id} alterado para ${isActive ? 'ativo' : 'inativo'}`);
@@ -42,8 +46,16 @@ export const AgentGrid = ({
     }
   };
   
-  const handleTestCall = (agentId: string) => {
-    setShowCallTester(agentId);
+  const handleTestAgent = (agentId: string) => {
+    const agent = agents.find(a => a.id === agentId);
+    if (agent) {
+      setSelectedAgentForTest({
+        id: agent.id,
+        name: agent.name,
+        type: agent.type || "voice",
+        voiceId: agent.voiceId
+      });
+    }
     if (onTestCall) {
       onTestCall(agentId);
     }
@@ -76,30 +88,6 @@ export const AgentGrid = ({
       return agent;
     });
   }, [agents]); // Recompute only when agents array reference changes
-
-  // Find selected agent for call testing
-  const selectedAgent = useMemo(() => {
-    if (!showCallTester) return null;
-    return processedAgents.find(agent => agent.id === showCallTester);
-  }, [showCallTester, processedAgents]);
-
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 4xl:grid-cols-7">
-        <div className="col-span-full flex justify-center items-center mb-6">
-          <div className="flex items-center gap-2 bg-secondary/50 px-4 py-2 rounded-lg">
-            <Loader2 className="h-5 w-5 text-primary-apple animate-spin" />
-            <span className="text-apple-text-primary font-medium">Carregando agentes...</span>
-          </div>
-        </div>
-        {Array(6)
-          .fill(null)
-          .map((_, index) => (
-            <AgentCardSkeleton key={index} />
-          ))}
-      </div>
-    );
-  }
 
   // Se não houver agentes, mostre uma mensagem
   if (agents.length === 0) {
@@ -165,7 +153,7 @@ export const AgentGrid = ({
             onStatusChange={handleStatusChange}
             onEditClick={onAgentEditClick}
             onTestVoice={onTestVoice}
-            onTestCall={() => handleTestCall(agent.id)}
+            onTestCall={() => handleTestAgent(agent.id)}
           />
         ))}
         
@@ -182,18 +170,19 @@ export const AgentGrid = ({
         </Card>
       </div>
 
-      {/* Dialog for call testing */}
+      {/* Dialog for agent testing */}
       <Dialog 
-        open={showCallTester !== null} 
-        onOpenChange={(open) => !open && setShowCallTester(null)}
+        open={selectedAgentForTest !== null} 
+        onOpenChange={(open) => !open && setSelectedAgentForTest(null)}
       >
         <DialogContent className="sm:max-w-[450px]">
-          {selectedAgent && (
-            <CampaignCallTester
-              agentId={selectedAgent.id}
-              agentName={selectedAgent.name}
-              agentVoiceId={selectedAgent.voiceId}
-              onClose={() => setShowCallTester(null)}
+          {selectedAgentForTest && (
+            <AgentTester
+              agentId={selectedAgentForTest.id}
+              agentName={selectedAgentForTest.name}
+              agentType={selectedAgentForTest.type}
+              voiceId={selectedAgentForTest.voiceId}
+              onClose={() => setSelectedAgentForTest(null)}
             />
           )}
         </DialogContent>

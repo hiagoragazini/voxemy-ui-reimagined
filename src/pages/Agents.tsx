@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { AgentVoiceTester } from "@/components/agents/AgentVoiceTester";
+import { AgentTester } from "@/components/agents/AgentTester";
 
 export default function Agents() {
   const navigate = useNavigate();
@@ -21,7 +21,12 @@ export default function Agents() {
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "text" | "voice">("all");
   const [hasRun, setHasRun] = useState(false);
-  const [selectedAgentForVoice, setSelectedAgentForVoice] = useState<{id: string, name: string, voiceId?: string} | null>(null);
+  const [selectedAgentForTest, setSelectedAgentForTest] = useState<{
+    id: string, 
+    name: string, 
+    type: "text" | "voice",
+    voiceId?: string
+  } | null>(null);
   
   // Chamadas diretas dos hooks sem fallbacks condicionais
   const { 
@@ -105,9 +110,10 @@ export default function Agents() {
   const handleTestVoice = (id: string) => {
     const agent = agents.find(a => a.id === id);
     if (agent) {
-      setSelectedAgentForVoice({
+      setSelectedAgentForTest({
         id: agent.id,
         name: agent.name,
+        type: "voice",
         voiceId: agent.voiceId
       });
     }
@@ -116,7 +122,12 @@ export default function Agents() {
   const handleTestCall = (id: string) => {
     const agent = agents.find(a => a.id === id);
     if (agent) {
-      toast.info(`Para fazer uma chamada, vá para a página de Campanhas`);
+      setSelectedAgentForTest({
+        id: agent.id,
+        name: agent.name,
+        type: agent.type || "voice",
+        voiceId: agent.voiceId
+      });
     }
   };
 
@@ -232,18 +243,19 @@ export default function Agents() {
         />
       </div>
       
-      {/* Dialog for voice testing */}
+      {/* Dialog for agent testing */}
       <Dialog
-        open={!!selectedAgentForVoice}
-        onOpenChange={(open) => !open && setSelectedAgentForVoice(null)}
+        open={!!selectedAgentForTest}
+        onOpenChange={(open) => !open && setSelectedAgentForTest(null)}
       >
         <DialogContent className="sm:max-w-[450px]">
-          {selectedAgentForVoice && (
-            <AgentVoiceTester
-              agentId={selectedAgentForVoice.id}
-              agentName={selectedAgentForVoice.name}
-              voiceId={selectedAgentForVoice.voiceId}
-              onClose={() => setSelectedAgentForVoice(null)}
+          {selectedAgentForTest && (
+            <AgentTester
+              agentId={selectedAgentForTest.id}
+              agentName={selectedAgentForTest.name}
+              agentType={selectedAgentForTest.type}
+              voiceId={selectedAgentForTest.voiceId}
+              onClose={() => setSelectedAgentForTest(null)}
             />
           )}
         </DialogContent>

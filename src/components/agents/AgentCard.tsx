@@ -146,8 +146,17 @@ export function AgentCard({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleTestCall} className="flex items-center">
-                <Phone className="mr-2 h-4 w-4" />
-                {type === "text" ? "Testar chat" : "Testar chamada"}
+                {type === "text" ? (
+                  <>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Testar Chat
+                  </>
+                ) : (
+                  <>
+                    <Phone className="mr-2 h-4 w-4" />
+                    Testar Chamada
+                  </>
+                )}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
