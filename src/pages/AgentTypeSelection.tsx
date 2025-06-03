@@ -12,6 +12,7 @@ export default function AgentTypeSelection() {
 
   const handleContinue = () => {
     if (selectedType) {
+      console.log("Navegando para configuração com tipo:", selectedType);
       // Redireciona para o formulário de configuração com o tipo selecionado
       navigate(`/agents/new/config?type=${selectedType}`);
     }
@@ -37,7 +38,10 @@ export default function AgentTypeSelection() {
           <div className="bg-white rounded-lg shadow-sm border p-8">
             <AgentTypeSelector
               value={selectedType || 'text'}
-              onChange={(value) => setSelectedType(value)}
+              onChange={(value) => {
+                console.log("Tipo selecionado:", value);
+                setSelectedType(value);
+              }}
               className="mb-8"
             />
 

@@ -10,10 +10,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useVoiceCall } from "@/hooks/use-voice-call";
-import { Loader2, Save, ArrowLeft } from "lucide-react";
+import { Loader2, Save, ArrowLeft, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VOICES, VOICE_IDS } from "@/constants/voices";
 import { WhatsAppConfigTab } from "@/components/agents/WhatsAppConfigTab";
+import { AgentTypeSelector } from "@/components/agents/AgentTypeSelector";
 
 // Lista expandida de vozes disponíveis
 const VOICES_OPTIONS = VOICES;
@@ -46,9 +47,11 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  // Lê o tipo da URL ou define padrão
-  const urlAgentType = searchParams.get('type') as 'text' | 'voice';
-  const agentType = urlAgentType || 'voice';
+  // Lê o tipo da URL ou mostra seleção
+  const urlAgentType = searchParams.get('type') as 'text' | 'voice' | null;
+  
+  console.log("URL Agent Type:", urlAgentType);
+  console.log("Search Params:", Object.fromEntries(searchParams.entries()));
   
   const { textToSpeech, playAudio } = useVoiceCall();
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +66,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     name: "",
     description: "",
     category: "Atendimento",
-    type: agentType,
+    type: urlAgentType || 'text',
     voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah como padrão
     status: "active",
     instructions: "",
@@ -76,6 +79,22 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     webhookUrl: "",
     phoneNumber: "",
   });
+
+  // Se não tem tipo na URL e é novo agente, mostra seleção de tipo
+  const shouldShowTypeSelection = isNew && !urlAgentType;
+
+  // Função para lidar com seleção de tipo
+  const handleTypeSelection = (selectedType: 'text' | 'voice') => {
+    console.log("Tipo selecionado:", selectedType);
+    // Navega para a mesma URL mas com o parâmetro type
+    navigate(`/agents/new/config?type=${selectedType}`);
+  };
+
+  const handleContinueWithType = () => {
+    if (formState.type) {
+      navigate(`/agents/new/config?type=${formState.type}`);
+    }
+  };
 
   useEffect(() => {
     if (!isNew && id) {
@@ -129,30 +148,34 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       };
       
       fetchAgent();
-    } else {
-      // Valores padrão baseados no tipo selecionado
-      const defaultGreeting = agentType === 'text' 
+    } else if (urlAgentType) {
+      // Configurar valores padrão baseados no tipo da URL
+      console.log("Configurando valores padrão para tipo:", urlAgentType);
+      
+      const defaultGreeting = urlAgentType === 'text' 
         ? "Olá! 👋 Sou seu assistente virtual. Como posso ajudar você hoje?"
         : "Olá, como posso ajudar você hoje?";
       
-      const defaultInstructions = agentType === 'text'
+      const defaultInstructions = urlAgentType === 'text'
         ? "Seja cordial, use emojis ocasionalmente e mantenha as respostas concisas e úteis para WhatsApp."
         : "Seja cordial e objetivo nas respostas.";
 
-      setFormState({
-        ...formState,
-        type: agentType,
+      const defaultPrompt = urlAgentType === 'text' 
+        ? "Você é um assistente virtual especializado em atendimento ao cliente via WhatsApp. Seja amigável e use linguagem adequada para mensagens de texto."
+        : "Você é um assistente virtual especializado em atendimento ao cliente.";
+
+      setFormState(prev => ({
+        ...prev,
+        type: urlAgentType,
         defaultGreeting,
         instructions: defaultInstructions,
-        conversationPrompt: agentType === 'text' 
-          ? "Você é um assistente virtual especializado em atendimento ao cliente via WhatsApp. Seja amigável e use linguagem adequada para mensagens de texto."
-          : "Você é um assistente virtual especializado em atendimento ao cliente.",
+        conversationPrompt: defaultPrompt,
         responseStyle: "Formal e direto",
         status: "active",
         voiceId: VOICE_IDS.SARAH,
-      });
+      }));
     }
-  }, [id, isNew, agentType]);
+  }, [id, isNew, urlAgentType]);
 
   const handleFormChange = (field: string, value: string) => {
     setFormState(prev => ({ ...prev, [field]: value }));
@@ -327,6 +350,53 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     );
   }
 
+  // Se deve mostrar seleção de tipo, renderiza o seletor
+  if (shouldShowTypeSelection) {
+    return (
+      <Layout>
+        <div className="container mx-auto p-6">
+          <div className="flex flex-col mb-8">
+            <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
+              Criar Novo Agente
+            </h1>
+            <p className="mt-1 text-muted-foreground max-w-3xl">
+              Escolha o tipo de agente que deseja criar para começar a configuração.
+            </p>
+          </div>
+
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white rounded-lg shadow-sm border p-8">
+              <AgentTypeSelector
+                value={formState.type}
+                onChange={(value) => setFormState(prev => ({ ...prev, type: value }))}
+                className="mb-8"
+              />
+
+              <div className="flex justify-between items-center">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/agents')}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
+
+                <Button
+                  onClick={handleContinueWithType}
+                  className="bg-violet-600 hover:bg-violet-700 flex items-center gap-2"
+                >
+                  Continuar
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   // Configuração dinâmica das abas baseada no tipo
   const getTabsForAgentType = () => {
     if (formState.type === 'text') {
@@ -354,32 +424,6 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     }
   }, [formState.type, activeTab, availableTabs]);
 
-  // Atualiza valores padrão quando o tipo muda
-  useEffect(() => {
-    if (isNew) {
-      const defaultGreeting = formState.type === 'text' 
-        ? "Olá! 👋 Sou seu assistente virtual. Como posso ajudar você hoje?"
-        : "Olá, como posso ajudar você hoje?";
-      
-      const defaultInstructions = formState.type === 'text'
-        ? "Seja cordial, use emojis ocasionalmente e mantenha as respostas concisas e úteis para WhatsApp."
-        : "Seja cordial e objetivo nas respostas.";
-
-      const defaultPrompt = formState.type === 'text' 
-        ? "Você é um assistente virtual especializado em atendimento ao cliente via WhatsApp. Seja amigável e use linguagem adequada para mensagens de texto."
-        : "Você é um assistente virtual especializado em atendimento ao cliente.";
-
-      setFormState(prev => ({
-        ...prev,
-        defaultGreeting,
-        instructions: defaultInstructions,
-        conversationPrompt: defaultPrompt,
-        responseStyle: "Formal e direto",
-        voiceId: VOICE_IDS.SARAH,
-      }));
-    }
-  }, [formState.type, isNew]);
-
   return (
     <Layout>
       <div className="container mx-auto p-6">
@@ -389,7 +433,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleBackToTypeSelection}
+                onClick={() => navigate('/agents/new')}
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
