@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -20,6 +19,7 @@ export default function Agents() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"all" | "active" | "paused" | "inactive">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "text" | "voice">("all");
   const [hasRun, setHasRun] = useState(false);
   const [selectedAgentForVoice, setSelectedAgentForVoice] = useState<{id: string, name: string, voiceId?: string} | null>(null);
   
@@ -124,10 +124,11 @@ export default function Agents() {
     navigate(`/agents/${id}/edit`);
   };
 
-  // Filter agents based on selected filter
+  // Filter agents based on selected filters (status AND type)
   const filteredAgents = agents.filter(agent => {
-    if (filter === "all") return true;
-    return agent.status === filter;
+    const statusMatch = filter === "all" || agent.status === filter;
+    const typeMatch = typeFilter === "all" || agent.type === typeFilter;
+    return statusMatch && typeMatch;
   });
 
   // Verificação inicial - executada apenas uma vez
@@ -171,10 +172,10 @@ export default function Agents() {
       <div className="px-6 py-8 md:px-8 lg:px-12 xl:px-16">
         <div className="flex flex-col mb-10">
           <h1 className="text-4xl font-bold text-blue-700">
-            Seus Agentes de Voz
+            Seus Agentes
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
-            Gerencie sua equipe de atendentes virtuais e configure-os para diferentes campanhas.
+            Gerencie sua equipe de assistentes virtuais e configure-os para diferentes campanhas.
           </p>
         </div>
 
@@ -191,6 +192,8 @@ export default function Agents() {
           <AgentFilters
             filter={filter}
             setFilter={setFilter}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
             agents={agents}
             onRefresh={handleManualRefresh}
             isRefreshing={isRefreshing}

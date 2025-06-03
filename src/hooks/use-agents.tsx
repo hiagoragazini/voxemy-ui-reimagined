@@ -48,6 +48,7 @@ export function useAgents() {
             category: "Comercial",
             description: "Especializado em qualificação de leads e agendamento de demonstrações para software empresarial",
             status: "active",
+            type: "voice", // Agente de voz
             voice_id: VOICE_IDS.ROGER,
             created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
@@ -58,6 +59,7 @@ export function useAgents() {
             category: "Suporte",
             description: "Especializada em resolver dúvidas técnicas e problemas com produtos",
             status: "active",
+            type: "text", // Agente de texto
             voice_id: VOICE_IDS.SARAH,
             created_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
@@ -68,6 +70,7 @@ export function useAgents() {
             category: "Reengajamento",
             description: "Focado em reativar clientes inativos e reduzir cancelamentos",
             status: "active",
+            type: "voice", // Agente de voz
             voice_id: VOICE_IDS.THOMAS,
             created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
@@ -78,6 +81,7 @@ export function useAgents() {
             category: "Comercial",
             description: "Especializada em follow-up após reuniões para fechamento de vendas",
             status: "paused",
+            type: "text", // Agente de texto
             voice_id: VOICE_IDS.ARIA,
             created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
@@ -88,6 +92,7 @@ export function useAgents() {
             category: "Pesquisa",
             description: "Especializado em coletar feedback e realizar pesquisas de satisfação",
             status: "active",
+            type: "voice", // Agente de voz
             voice_id: VOICE_IDS.ROGER,
             created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
@@ -169,6 +174,7 @@ export function useAgents() {
           category: agent.category,
           description: agent.description || "",
           status: agent.status as "active" | "paused" | "inactive",
+          type: agent.type as "text" | "voice" || "voice", // Default para voice se não especificado
           calls: stableValues.calls,
           avgTime: stableValues.avgTime, 
           successRate: stableValues.successRate,
