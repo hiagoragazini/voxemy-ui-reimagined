@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -59,7 +60,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     name: "",
     description: "",
     category: "Atendimento",
-    type: agentType, // Novo campo para tipo
+    type: agentType, // Tipo baseado no parâmetro da URL
     voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah como padrão
     status: "active", // Garantir que o status padrão seja active
     instructions: "",
@@ -126,18 +127,29 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       
       fetchAgent();
     } else {
-      // Valores padrão para um novo agente
+      // Valores padrão baseados no tipo selecionado
+      const defaultGreeting = agentType === 'text' 
+        ? "Olá! 👋 Sou seu assistente virtual. Como posso ajudar você hoje?"
+        : "Olá, como posso ajudar você hoje?";
+      
+      const defaultInstructions = agentType === 'text'
+        ? "Seja cordial, use emojis ocasionalmente e mantenha as respostas concisas e úteis para WhatsApp."
+        : "Seja cordial e objetivo nas respostas.";
+
       setFormState({
         ...formState,
-        defaultGreeting: "Olá, como posso ajudar você hoje?",
-        instructions: "Seja cordial e objetivo nas respostas.",
-        conversationPrompt: "Você é um assistente virtual especializado em atendimento ao cliente.",
+        type: agentType,
+        defaultGreeting,
+        instructions: defaultInstructions,
+        conversationPrompt: agentType === 'text' 
+          ? "Você é um assistente virtual especializado em atendimento ao cliente via WhatsApp. Seja amigável e use linguagem adequada para mensagens de texto."
+          : "Você é um assistente virtual especializado em atendimento ao cliente.",
         responseStyle: "Formal e direto",
-        status: "active", // Garantir que o status padrão seja active
-        voiceId: VOICE_IDS.SARAH, // Garantir que tenha uma voz padrão
+        status: "active",
+        voiceId: VOICE_IDS.SARAH,
       });
     }
-  }, [id, isNew]);
+  }, [id, isNew, agentType]);
 
   const handleFormChange = (field: string, value: string) => {
     setFormState(prev => ({ ...prev, [field]: value }));
@@ -181,8 +193,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       toast.error("Categoria é obrigatória");
       return false;
     }
-    if (!formState.voiceId) {
-      toast.error("Voz do agente é obrigatória");
+    if (formState.type === 'voice' && !formState.voiceId) {
+      toast.error("Voz do agente é obrigatória para agentes de voz");
       return false;
     }
     return true;
@@ -207,8 +219,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         name: formState.name,
         description: formState.description,
         category: formState.category,
-        type: formState.type, // Adicionar o tipo
-        voice_id: formState.voiceId,
+        type: formState.type, // Salvar o tipo correto
+        voice_id: formState.type === 'voice' ? formState.voiceId : null, // Só salvar voice_id para agentes de voz
         status: formState.status || 'active',
         instructions: formState.instructions,
         response_style: formState.responseStyle,
@@ -226,7 +238,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       let agentId = id;
       
       if (isNew) {
-        // Inserir novo agente - CORREÇÃO: Usar uma única operação e capturar o retorno corretamente
+        // Inserir novo agente
         const { data, error } = await supabase
           .from('agents')
           .insert(agentData)
@@ -265,9 +277,10 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         return;
       }
       
-      toast.success(isNew ? 'Agente criado com sucesso!' : 'Agente atualizado com sucesso!');
+      const agentTypeText = formState.type === 'text' ? 'de texto' : 'de voz';
+      toast.success(isNew ? `Agente ${agentTypeText} criado com sucesso!` : `Agente ${agentTypeText} atualizado com sucesso!`);
       
-      // Verificar se o agente realmente foi criado com uma consulta de confirmação
+      // Verificar se o agente realmente foi criado
       if (isNew && agentId) {
         const { data: verifyData, error: verifyError } = await supabase
           .from('agents')
@@ -284,31 +297,10 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         }
       }
       
-      // Verificações adicionais para garantir que o agente foi salvo
-      const verifyAgentSaved = async () => {
-        try {
-          console.log("Verificando se o agente foi salvo corretamente...");
-          const { data: allAgents } = await supabase.from('agents').select('*');
-          console.log(`Verificação encontrou ${allAgents?.length || 0} agentes no total`);
-          
-          if (allAgents) {
-            // Registrar todos os agentes para depuração
-            allAgents.forEach(agent => {
-              console.log(`Agente encontrado: ${agent.id} - ${agent.name}`);
-            });
-          }
-          
-          // Aguardar um breve momento para garantir que a inserção foi processada
-          setTimeout(() => {
-            // Redirecionar para a página de agentes com parâmetros de URL para indicar o sucesso
-            navigate(`/agents?${isNew ? 'created=true' : 'updated=true'}${agentId ? `&id=${agentId}` : ''}`);
-          }, 1000);
-        } catch (err) {
-          console.error("Erro na verificação final:", err);
-        }
-      };
-      
-      verifyAgentSaved();
+      // Navegar de volta para a lista de agentes
+      setTimeout(() => {
+        navigate(`/agents?${isNew ? 'created=true' : 'updated=true'}${agentId ? `&id=${agentId}` : ''}`);
+      }, 1000);
       
     } catch (error: any) {
       console.error('Exceção ao salvar agente:', error);
@@ -332,6 +324,31 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     );
   }
 
+  // Determinar quais abas mostrar baseado no tipo
+  const getTabsConfig = () => {
+    if (formState.type === 'text') {
+      return {
+        tabs: ["basic", "ai", "whatsapp"],
+        labels: {
+          basic: "Informações Básicas",
+          ai: "Configuração de IA", 
+          whatsapp: "WhatsApp e Comunicação"
+        }
+      };
+    } else {
+      return {
+        tabs: ["basic", "ai", "voice"],
+        labels: {
+          basic: "Informações Básicas",
+          ai: "Configuração de IA",
+          voice: "Voz e Comunicação"
+        }
+      };
+    }
+  };
+
+  const tabsConfig = getTabsConfig();
+
   return (
     <Layout>
       <div className="container mx-auto p-6">
@@ -349,13 +366,13 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               </Button>
             )}
             <div className="flex items-center gap-2">
-              {agentType === 'voice' ? (
+              {formState.type === 'voice' ? (
                 <span className="text-2xl">🎤</span>
               ) : (
                 <span className="text-2xl">💬</span>
               )}
               <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-                {agentType === 'voice' ? 'Agente de Voz' : 'Agente de Texto'}
+                {formState.type === 'voice' ? 'Agente de Voz' : 'Agente de Texto'}
               </span>
             </div>
           </div>
@@ -364,19 +381,19 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
             {isNew 
-              ? `Configure seu novo agente ${agentType === 'voice' ? 'de voz' : 'de texto'} com instruções personalizadas.` 
+              ? `Configure seu novo agente ${formState.type === 'voice' ? 'de voz' : 'de texto'} com instruções personalizadas.` 
               : "Personalize o comportamento, voz e instruções para este agente."}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-3 mb-8">
-              <TabsTrigger value="basic">Informações Básicas</TabsTrigger>
-              <TabsTrigger value="ai">Configuração de IA</TabsTrigger>
-              <TabsTrigger value="communication">
-                {agentType === 'voice' ? 'Voz e Comunicação' : 'WhatsApp e Comunicação'}
-              </TabsTrigger>
+            <TabsList className={`grid grid-cols-${tabsConfig.tabs.length} mb-8`}>
+              {tabsConfig.tabs.map(tab => (
+                <TabsTrigger key={tab} value={tab}>
+                  {tabsConfig.labels[tab as keyof typeof tabsConfig.labels]}
+                </TabsTrigger>
+              ))}
             </TabsList>
             
             <TabsContent value="basic" className="space-y-4">
@@ -395,7 +412,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                         id="name"
                         value={formState.name} 
                         onChange={(e) => handleFormChange('name', e.target.value)} 
-                        placeholder="Ex: Sofia Atendimento"
+                        placeholder={formState.type === 'text' ? "Ex: Sofia WhatsApp" : "Ex: Sofia Atendimento"}
                         required
                       />
                     </div>
@@ -543,8 +560,25 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               </Card>
             </TabsContent>
             
-            <TabsContent value="communication" className="space-y-4">
-              {agentType === 'voice' ? (
+            {/* Aba condicional para WhatsApp (agentes de texto) */}
+            {formState.type === 'text' && (
+              <TabsContent value="whatsapp" className="space-y-4">
+                <WhatsAppConfigTab
+                  formState={{
+                    phoneNumber: formState.phoneNumber,
+                    webhookUrl: formState.webhookUrl,
+                    defaultGreeting: formState.defaultGreeting,
+                    maxResponseLength: formState.maxResponseLength,
+                  }}
+                  onFormChange={handleFormChange}
+                  agentName={formState.name || "Agente"}
+                />
+              </TabsContent>
+            )}
+
+            {/* Aba condicional para Voz (agentes de voz) */}
+            {formState.type === 'voice' && (
+              <TabsContent value="voice" className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle>Configuração de Voz e Chamadas</CardTitle>
@@ -629,19 +663,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                     </div>
                   </CardContent>
                 </Card>
-              ) : (
-                <WhatsAppConfigTab
-                  formState={{
-                    phoneNumber: formState.phoneNumber,
-                    webhookUrl: formState.webhookUrl,
-                    defaultGreeting: formState.defaultGreeting,
-                    maxResponseLength: formState.maxResponseLength,
-                  }}
-                  onFormChange={handleFormChange}
-                  agentName={formState.name || "Agente"}
-                />
-              )}
-            </TabsContent>
+              </TabsContent>
+            )}
           </Tabs>
           
           {saveError && (
