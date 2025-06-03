@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -171,7 +170,6 @@ export function AgentCard({
             <Switch 
               checked={isActive} 
               onCheckedChange={handleStatusToggle}
-              size="sm"
             />
           </div>
         </div>
