@@ -638,6 +638,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                     maxResponseLength: formState.maxResponseLength,
                   }}
                   onFormChange={handleFormChange}
+                  agentName={formState.name || "Agente"}
                 />
               )}
             </TabsContent>
