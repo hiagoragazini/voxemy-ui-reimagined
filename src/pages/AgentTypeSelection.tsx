@@ -8,7 +8,7 @@ import { ArrowRight, ArrowLeft } from 'lucide-react';
 
 export default function AgentTypeSelection() {
   const navigate = useNavigate();
-  const [selectedType, setSelectedType] = useState<'text' | 'voice'>('text');
+  const [selectedType, setSelectedType] = useState<'text' | 'voice' | 'hybrid'>('text');
 
   const handleContinue = () => {
     console.log("Navegando para configuração com tipo:", selectedType);

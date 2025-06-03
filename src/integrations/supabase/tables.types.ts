@@ -30,7 +30,7 @@ export type Agent = {
   conversation_prompt: string | null;
   webhook_url: string | null;
   phone_number: string | null;
-  type: "voice" | "text";
+  type: "voice" | "text" | "hybrid";
 }
 
 export type Campaign = {

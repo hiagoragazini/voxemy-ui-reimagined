@@ -1,14 +1,14 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Filter, UserCheck, UserX, Clock, RefreshCcw, MessageSquare, Mic } from "lucide-react";
+import { Filter, UserCheck, UserX, Clock, RefreshCcw, MessageSquare, Mic, ArrowLeftRight } from "lucide-react";
 import { AgentCardProps } from "@/components/agents/AgentCard";
 
 interface AgentFiltersProps {
   filter: "all" | "active" | "paused" | "inactive";
   setFilter: (filter: "all" | "active" | "paused" | "inactive") => void;
-  typeFilter: "all" | "text" | "voice";
-  setTypeFilter: (filter: "all" | "text" | "voice") => void;
+  typeFilter: "all" | "text" | "voice" | "hybrid";
+  setTypeFilter: (filter: "all" | "text" | "voice" | "hybrid") => void;
   agents: AgentCardProps[];
   onRefresh: () => void;
   isRefreshing: boolean;
@@ -31,7 +31,7 @@ export function AgentFilters({
     return agents.filter(agent => agent.status === filterType).length;
   };
 
-  const getTypeFilterCount = (agentType: "text" | "voice") => {
+  const getTypeFilterCount = (agentType: "text" | "voice" | "hybrid") => {
     return agents.filter(agent => agent.type === agentType).length;
   };
 
@@ -96,6 +96,15 @@ export function AgentFilters({
       >
         <Mic className="h-4 w-4 text-blue-500" />
         <span>Voz ({getTypeFilterCount("voice")})</span>
+      </Button>
+      <Button 
+        variant={typeFilter === "hybrid" ? "default" : "outline"} 
+        size="sm"
+        onClick={() => setTypeFilter("hybrid")}
+        className="flex items-center gap-1.5"
+      >
+        <ArrowLeftRight className="h-4 w-4 text-orange-500" />
+        <span>Híbrido ({getTypeFilterCount("hybrid")})</span>
       </Button>
       
       <div className="flex gap-2">

@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,18 +48,18 @@ export function useAgents() {
             category: "Comercial",
             description: "Especializado em qualificação de leads e agendamento de demonstrações para software empresarial",
             status: "active",
-            type: "voice", // Agente de voz
+            type: "voice",
             voice_id: VOICE_IDS.ROGER,
             created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
           },
           {
             id: "7d5e6f4c-3b2a-1d9e-8c7f-6b5a4d3c2b1a",
-            name: "Roberta - Atendimento ao Cliente", // Mudando de Mariana para Roberta
+            name: "Roberta - Atendimento ao Cliente",
             category: "Suporte",
             description: "Especializada em resolver dúvidas técnicas e problemas com produtos",
             status: "active",
-            type: "text", // Agente de texto
+            type: "text",
             voice_id: VOICE_IDS.SARAH,
             created_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
@@ -69,7 +70,7 @@ export function useAgents() {
             category: "Reengajamento",
             description: "Focado em reativar clientes inativos e reduzir cancelamentos",
             status: "active",
-            type: "voice", // Agente de voz
+            type: "voice",
             voice_id: VOICE_IDS.THOMAS,
             created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
@@ -80,21 +81,32 @@ export function useAgents() {
             category: "Comercial",
             description: "Especializada em follow-up após reuniões para fechamento de vendas",
             status: "paused",
-            type: "text", // Agente de texto
+            type: "text",
             voice_id: VOICE_IDS.ARIA,
             created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
           },
           {
             id: "8q9w0e1r-2t3y-4u5i-6o7p-8a9s0d1f2g3h",
-            name: "Hiago - Pesquisa", // Mudando de Paulo para Hiago
+            name: "Hiago - Pesquisa",
             category: "Pesquisa",
             description: "Especializado em coletar feedback e realizar pesquisas de satisfação",
             status: "active",
-            type: "voice", // Agente de voz
+            type: "voice",
             voice_id: VOICE_IDS.ROGER,
             created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            id: "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+            name: "Marina - Suporte Híbrido",
+            category: "Suporte",
+            description: "Atende clientes via WhatsApp e chamadas telefônicas com suporte completo",
+            status: "active",
+            type: "hybrid",
+            voice_id: VOICE_IDS.SARAH,
+            created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
           }
         ];
 
@@ -122,19 +134,50 @@ export function useAgents() {
   });
 
   // Generate stable random values for each agent once with type-specific metrics using tokens
-  const generateStableValues = useCallback((agentId: string, agentType: "text" | "voice") => {
+  const generateStableValues = useCallback((agentId: string, agentType: "text" | "voice" | "hybrid") => {
     const hash = Array.from(agentId).reduce((acc, char) => acc + char.charCodeAt(0), 0);
     
-    let calls, avgTime, successRate, successChange;
+    let calls, avgTime, successRate, successChange, whatsappMessages, voiceCalls, textTokens, voiceTokens;
     
-    // Valores específicos para agentes conhecidos com tokens
-    const specificValues: { [key: string]: { tokens: string } } = {
+    // Valores específicos para agentes conhecidos
+    const specificValues: { [key: string]: any } = {
       "2z3y4x5w-6v7u-8t9s-0r1q-2p3o4n5m6l7k": { tokens: "850" }, // Ana
       "7d5e6f4c-3b2a-1d9e-8c7f-6b5a4d3c2b1a": { tokens: "1.2K" }, // Roberta
       "8q9w0e1r-2t3y-4u5i-6o7p-8a9s0d1f2g3h": { tokens: "950" }, // Hiago
+      "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p": { // Marina - Híbrido
+        whatsappMessages: 420,
+        voiceCalls: 180,
+        textTokens: "850",
+        voiceTokens: "1.1K",
+        totalTokens: "1.95K"
+      }
     };
     
-    if (agentType === "text") {
+    if (agentType === "hybrid") {
+      // Para agentes híbridos: métricas combinadas
+      if (specificValues[agentId]) {
+        const specific = specificValues[agentId];
+        whatsappMessages = specific.whatsappMessages;
+        voiceCalls = specific.voiceCalls;
+        textTokens = specific.textTokens;
+        voiceTokens = specific.voiceTokens;
+        avgTime = specific.totalTokens;
+      } else {
+        whatsappMessages = 300 + (hash % 500); // 300-800 mensagens
+        voiceCalls = 100 + (hash % 300); // 100-400 chamadas
+        const textTokenVal = 400 + (hash % 600); // 400-1000 tokens texto
+        const voiceTokenVal = 600 + (hash % 800); // 600-1400 tokens voz
+        textTokens = textTokenVal > 1000 ? `${(textTokenVal / 1000).toFixed(1)}K` : textTokenVal.toString();
+        voiceTokens = voiceTokenVal > 1000 ? `${(voiceTokenVal / 1000).toFixed(1)}K` : voiceTokenVal.toString();
+        const totalTokenVal = textTokenVal + voiceTokenVal;
+        avgTime = totalTokenVal > 1000 ? `${(totalTokenVal / 1000).toFixed(1)}K` : totalTokenVal.toString();
+      }
+      
+      calls = whatsappMessages + voiceCalls; // Total de interações
+      successRate = 75 + (hash % 20); // 75-95% taxa de sucesso
+      successChange = `+${(1.8 + (hash % 7)).toFixed(1)}%`;
+      
+    } else if (agentType === "text") {
       // Para agentes de texto: métricas de mensagens
       calls = 200 + (hash % 1300); // Mensagens: 200-1500
       
@@ -182,7 +225,11 @@ export function useAgents() {
       avgTime,
       successRate,
       successChange,
-      lastActivity
+      lastActivity,
+      whatsappMessages,
+      voiceCalls,
+      textTokens,
+      voiceTokens
     };
   }, []);
 
@@ -191,7 +238,7 @@ export function useAgents() {
     if (agentsData && agentsData.length > 0) {
       // Transformar dados para AgentCardProps com valores estáveis
       const transformedAgents: AgentCardProps[] = agentsData.map(agent => {
-        const agentType = (agent.type as "text" | "voice") || "voice";
+        const agentType = (agent.type as "text" | "voice" | "hybrid") || "voice";
         const stableValues = generateStableValues(agent.id, agentType);
         
         return {
@@ -209,6 +256,11 @@ export function useAgents() {
           avatarLetter: agent.name.charAt(0),
           avatarColor: getAvatarColor(agent.name),
           voiceId: agent.voice_id || VOICE_IDS.ROGER,
+          // Adicionar métricas específicas para agentes híbridos
+          whatsappMessages: stableValues.whatsappMessages,
+          voiceCalls: stableValues.voiceCalls,
+          textTokens: stableValues.textTokens,
+          voiceTokens: stableValues.voiceTokens,
         };
       });
 

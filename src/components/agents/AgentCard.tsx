@@ -1,9 +1,10 @@
+
 import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Mic, Phone, MessageSquare } from "lucide-react";
+import { MoreVertical, Edit, Mic, Phone, MessageSquare, ArrowLeftRight } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +20,7 @@ export interface AgentCardProps {
   category: string;
   description: string;
   status: "active" | "paused" | "inactive";
-  type?: "text" | "voice"; // Adicionar campo type
+  type?: "text" | "voice" | "hybrid";
   calls: number;
   avgTime: string;
   successRate: number;
@@ -32,6 +33,11 @@ export interface AgentCardProps {
     current: number;
     total: number;
   };
+  // Métricas específicas para agentes híbridos
+  whatsappMessages?: number;
+  voiceCalls?: number;
+  textTokens?: string;
+  voiceTokens?: string;
   onStatusChange?: (id: string, isActive: boolean) => void;
   onEditClick?: (id: string) => void;
   onTestVoice?: (id: string) => void;
@@ -44,7 +50,7 @@ export function AgentCard({
   category, 
   description, 
   status, 
-  type = "voice", // Default para voice
+  type = "voice",
   calls, 
   avgTime, 
   successRate, 
@@ -53,6 +59,10 @@ export function AgentCard({
   avatarLetter, 
   avatarColor, 
   voiceUsage,
+  whatsappMessages,
+  voiceCalls,
+  textTokens,
+  voiceTokens,
   onStatusChange,
   onEditClick,
   onTestVoice,
@@ -78,13 +88,20 @@ export function AgentCard({
     onTestCall?.(id);
   };
 
-  // Função para obter labels das métricas baseado no tipo do agente com tokens
+  // Função para obter labels das métricas baseado no tipo do agente
   const getMetricsLabels = () => {
     if (type === "text") {
       return {
         interactions: "Mensagens",
         avgTimeLabel: "Tokens médios",
         successLabel: "Taxa de resolução"
+      };
+    }
+    if (type === "hybrid") {
+      return {
+        interactions: "Interações totais",
+        avgTimeLabel: "Tokens totais",
+        successLabel: "Taxa de sucesso"
       };
     }
     return {
@@ -117,11 +134,82 @@ export function AgentCard({
         </Badge>
       );
     }
+    if (type === "hybrid") {
+      return (
+        <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 border-0 flex items-center gap-1">
+          <ArrowLeftRight className="h-3 w-3" />
+          Híbrido
+        </Badge>
+      );
+    }
     return (
       <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-0 flex items-center gap-1">
         <Mic className="h-3 w-3" />
         Voz
       </Badge>
+    );
+  };
+
+  // Renderizar métricas baseado no tipo
+  const renderMetrics = () => {
+    if (type === "hybrid") {
+      // Layout especial 2x3 para agentes híbridos
+      return (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <p className="text-xs text-apple-text-secondary">Mensagens WhatsApp</p>
+            <p className="text-lg font-semibold text-apple-text-primary">{whatsappMessages?.toLocaleString() || '0'}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-apple-text-secondary">Chamadas de voz</p>
+            <p className="text-lg font-semibold text-apple-text-primary">{voiceCalls?.toLocaleString() || '0'}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-apple-text-secondary">Tokens texto</p>
+            <p className="text-lg font-semibold text-apple-text-primary">{textTokens || '0'}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-apple-text-secondary">Tokens voz</p>
+            <p className="text-lg font-semibold text-apple-text-primary">{voiceTokens || '0'}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-apple-text-secondary">{metricsLabels.successLabel}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-lg font-semibold text-apple-text-primary">{successRate}%</p>
+              <span className="text-xs text-green-600 font-medium">{successChange}</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-apple-text-secondary">Último uso</p>
+            <p className="text-xs text-apple-text-primary font-medium">{lastActivity}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Layout padrão 2x2 para agentes de texto e voz
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <p className="text-xs text-apple-text-secondary">{metricsLabels.interactions}</p>
+          <p className="text-lg font-semibold text-apple-text-primary">{calls.toLocaleString()}</p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-apple-text-secondary">{metricsLabels.avgTimeLabel}</p>
+          <p className="text-lg font-semibold text-apple-text-primary">{avgTime}</p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-apple-text-secondary">{metricsLabels.successLabel}</p>
+          <div className="flex items-center gap-1">
+            <p className="text-lg font-semibold text-apple-text-primary">{successRate}%</p>
+            <span className="text-xs text-green-600 font-medium">{successChange}</span>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-apple-text-secondary">Último uso</p>
+          <p className="text-xs text-apple-text-primary font-medium">{lastActivity}</p>
+        </div>
+      </div>
     );
   };
 
@@ -156,7 +244,7 @@ export function AgentCard({
                 <Edit className="mr-2 h-4 w-4" />
                 Editar agente
               </DropdownMenuItem>
-              {type === "voice" && onTestVoice && (
+              {(type === "voice" || type === "hybrid") && onTestVoice && (
                 <DropdownMenuItem onClick={handleTestVoice} className="flex items-center">
                   <Mic className="mr-2 h-4 w-4" />
                   Testar voz
@@ -168,6 +256,11 @@ export function AgentCard({
                   <>
                     <MessageSquare className="mr-2 h-4 w-4" />
                     Testar Chat
+                  </>
+                ) : type === "hybrid" ? (
+                  <>
+                    <ArrowLeftRight className="mr-2 h-4 w-4" />
+                    Testar Híbrido
                   </>
                 ) : (
                   <>
@@ -203,34 +296,16 @@ export function AgentCard({
       </CardHeader>
       
       <CardContent className="pt-0 space-y-4">
-        {/* Métricas em grid 2x2 com labels específicos por tipo usando tokens */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <p className="text-xs text-apple-text-secondary">{metricsLabels.interactions}</p>
-            <p className="text-lg font-semibold text-apple-text-primary">{calls.toLocaleString()}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-apple-text-secondary">{metricsLabels.avgTimeLabel}</p>
-            <p className="text-lg font-semibold text-apple-text-primary">{avgTime}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-apple-text-secondary">{metricsLabels.successLabel}</p>
-            <div className="flex items-center gap-1">
-              <p className="text-lg font-semibold text-apple-text-primary">{successRate}%</p>
-              <span className="text-xs text-green-600 font-medium">{successChange}</span>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-apple-text-secondary">Último uso</p>
-            <p className="text-xs text-apple-text-primary font-medium">{lastActivity}</p>
-          </div>
-        </div>
+        {/* Métricas dinâmicas baseadas no tipo */}
+        {renderMetrics()}
         
-        {/* Barra de uso de tokens (atualizada para todos os agentes) */}
+        {/* Barra de uso de tokens */}
         {voiceUsage && (
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-xs text-apple-text-secondary">Uso de tokens</span>
+              <span className="text-xs text-apple-text-secondary">
+                {type === "hybrid" ? "Uso de tokens combinado" : "Uso de tokens"}
+              </span>
               <span className="text-xs text-apple-text-secondary">
                 {voiceUsage.current}K/{voiceUsage.total}K
               </span>
