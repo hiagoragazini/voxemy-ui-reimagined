@@ -13,7 +13,7 @@ export default function AgentTypeSelection() {
   const handleContinue = () => {
     if (selectedType) {
       console.log("Navegando para configuração com tipo:", selectedType);
-      // Redireciona para o formulário de configuração com o tipo selecionado
+      // Corrigir a navegação para usar a rota correta
       navigate(`/agents/new/config?type=${selectedType}`);
     }
   };

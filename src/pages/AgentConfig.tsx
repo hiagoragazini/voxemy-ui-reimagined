@@ -47,11 +47,12 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  // Lê o tipo da URL ou mostra seleção
+  // Lê o tipo da URL
   const urlAgentType = searchParams.get('type') as 'text' | 'voice' | null;
   
   console.log("URL Agent Type:", urlAgentType);
   console.log("Search Params:", Object.fromEntries(searchParams.entries()));
+  console.log("Current URL:", window.location.href);
   
   const { textToSpeech, playAudio } = useVoiceCall();
   const [isLoading, setIsLoading] = useState(false);
@@ -83,6 +84,10 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   // Se não tem tipo na URL e é novo agente, mostra seleção de tipo
   const shouldShowTypeSelection = isNew && !urlAgentType;
 
+  console.log("Should show type selection:", shouldShowTypeSelection);
+  console.log("Is new:", isNew);
+  console.log("URL Agent Type:", urlAgentType);
+
   // Função para lidar com seleção de tipo
   const handleTypeSelection = (selectedType: 'text' | 'voice') => {
     console.log("Tipo selecionado:", selectedType);
@@ -97,6 +102,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   };
 
   useEffect(() => {
+    console.log("useEffect executado. isNew:", isNew, "urlAgentType:", urlAgentType, "id:", id);
+    
     if (!isNew && id) {
       // Carregamento real de dados do agente do Supabase
       setIsLoading(true);
@@ -352,6 +359,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
 
   // Se deve mostrar seleção de tipo, renderiza o seletor
   if (shouldShowTypeSelection) {
+    console.log("Renderizando seleção de tipo");
     return (
       <Layout>
         <div className="container mx-auto p-6">
@@ -383,7 +391,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                 </Button>
 
                 <Button
-                  onClick={handleContinueWithType}
+                  onClick={() => navigate(`/agents/new/config?type=${formState.type}`)}
                   className="bg-violet-600 hover:bg-violet-700 flex items-center gap-2"
                 >
                   Continuar
@@ -396,6 +404,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       </Layout>
     );
   }
+
+  console.log("Renderizando formulário de configuração com tipo:", formState.type);
 
   // Configuração dinâmica das abas baseada no tipo
   const getTabsForAgentType = () => {
