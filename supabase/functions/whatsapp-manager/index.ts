@@ -13,38 +13,61 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const url = new URL(req.url);
-    const agentId = url.pathname.split('/')[2]; // /whatsapp-manager/agentId/action
-    const action = url.pathname.split('/')[3];
+    console.log('WhatsApp Manager called with method:', req.method);
+    
+    const { action, agentId } = await req.json();
+    console.log('Request body:', { action, agentId });
 
     if (!agentId) {
+      console.error('Missing agentId in request');
       return new Response(JSON.stringify({ error: 'Agent ID is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
 
+    console.log('Evolution API URL:', evolutionApiUrl);
+    console.log('Evolution API Key exists:', !!evolutionApiKey);
+
     if (!evolutionApiUrl || !evolutionApiKey) {
-      return new Response(JSON.stringify({ error: 'Evolution API not configured' }), {
+      console.error('Evolution API not configured');
+      return new Response(JSON.stringify({ error: 'Evolution API not configured. Please add EVOLUTION_API_URL and EVOLUTION_API_KEY to Supabase secrets.' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
+    const instanceName = `agent_${agentId}`;
+    console.log('Using instance name:', instanceName);
+
     switch (action) {
       case 'connect':
-        if (req.method === 'POST') {
-          const instanceName = `agent_${agentId}`;
+        try {
+          console.log('Starting connect process for agent:', agentId);
           
-          // Create Evolution API instance
+          // First try to delete existing instance (cleanup)
+          try {
+            const deleteResponse = await fetch(`${evolutionApiUrl}/instance/delete/${instanceName}`, {
+              method: 'DELETE',
+              headers: {
+                'apikey': evolutionApiKey
+              }
+            });
+            console.log('Delete existing instance response:', deleteResponse.status);
+          } catch (deleteError) {
+            console.log('No existing instance to delete, continuing...');
+          }
+
+          // Create new instance
+          console.log('Creating new Evolution API instance...');
           const createResponse = await fetch(`${evolutionApiUrl}/instance/create`, {
             method: 'POST',
             headers: {
@@ -62,131 +85,254 @@ serve(async (req) => {
             })
           });
 
-          const createResult = await createResponse.json();
-          
+          const createResponseText = await createResponse.text();
+          console.log('Create response status:', createResponse.status);
+          console.log('Create response body:', createResponseText);
+
           if (!createResponse.ok) {
-            throw new Error(`Failed to create instance: ${createResult.message}`);
+            throw new Error(`Failed to create instance: ${createResponseText}`);
           }
 
-          // Update or create connection record
+          let createResult;
+          try {
+            createResult = JSON.parse(createResponseText);
+          } catch (parseError) {
+            console.error('Failed to parse create response as JSON:', parseError);
+            createResult = { success: true };
+          }
+
+          // Wait a moment for instance to initialize
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Get QR code
+          console.log('Fetching QR code...');
+          const qrResponse = await fetch(`${evolutionApiUrl}/instance/connect/${instanceName}`, {
+            method: 'GET',
+            headers: {
+              'apikey': evolutionApiKey
+            }
+          });
+
+          console.log('QR response status:', qrResponse.status);
+          
+          let qrCode = null;
+          if (qrResponse.ok) {
+            const qrResponseText = await qrResponse.text();
+            console.log('QR response body:', qrResponseText);
+            
+            try {
+              const qrData = JSON.parse(qrResponseText);
+              qrCode = qrData.base64 || qrData.qrcode?.base64 || qrData.qr;
+              console.log('Extracted QR code length:', qrCode ? qrCode.length : 0);
+            } catch (qrParseError) {
+              console.error('Failed to parse QR response:', qrParseError);
+            }
+          }
+
+          // Update database
+          console.log('Updating database...');
           const { error: upsertError } = await supabase
             .from('whatsapp_connections')
             .upsert({
               agent_id: agentId,
               instance_id: instanceName,
-              status: 'connecting'
+              status: 'connecting',
+              qr_code: qrCode
             }, {
               onConflict: 'agent_id'
             });
 
           if (upsertError) {
-            console.error('Database error:', upsertError);
+            console.error('Database upsert error:', upsertError);
+          } else {
+            console.log('Database updated successfully');
           }
 
           return new Response(JSON.stringify({
             status: 'connecting',
             instanceId: instanceName,
-            qrCode: createResult.qrcode?.base64
+            qrCode: qrCode,
+            message: qrCode ? 'QR Code generated successfully' : 'Instance created, QR Code generation in progress'
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
+
+        } catch (error) {
+          console.error('Connect error:', error);
+          return new Response(JSON.stringify({ 
+            error: error.message,
+            details: 'Failed to connect WhatsApp. Check Evolution API configuration.'
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
-        break;
 
       case 'disconnect':
-        if (req.method === 'POST') {
+        try {
+          console.log('Starting disconnect process for agent:', agentId);
+          
           const { data: connection } = await supabase
             .from('whatsapp_connections')
             .select('instance_id')
             .eq('agent_id', agentId)
             .single();
 
+          console.log('Found connection:', connection);
+
           if (connection?.instance_id) {
-            await fetch(`${evolutionApiUrl}/instance/delete/${connection.instance_id}`, {
+            const deleteResponse = await fetch(`${evolutionApiUrl}/instance/delete/${connection.instance_id}`, {
               method: 'DELETE',
               headers: {
                 'apikey': evolutionApiKey
               }
             });
+            
+            console.log('Delete response status:', deleteResponse.status);
+            
+            if (!deleteResponse.ok) {
+              const deleteErrorText = await deleteResponse.text();
+              console.error('Failed to delete instance:', deleteErrorText);
+            }
           }
 
           await supabase
             .from('whatsapp_connections')
-            .update({ status: 'disconnected' })
+            .update({ 
+              status: 'disconnected',
+              qr_code: null,
+              phone_number: null 
+            })
             .eq('agent_id', agentId);
 
-          return new Response(JSON.stringify({ status: 'disconnected' }), {
+          console.log('Disconnect completed successfully');
+
+          return new Response(JSON.stringify({ 
+            status: 'disconnected',
+            message: 'WhatsApp disconnected successfully'
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+
+        } catch (error) {
+          console.error('Disconnect error:', error);
+          return new Response(JSON.stringify({ 
+            error: error.message,
+            details: 'Failed to disconnect WhatsApp'
+          }), {
+            status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
-        break;
 
       case 'status':
-        if (req.method === 'GET') {
+        try {
+          console.log('Checking status for agent:', agentId);
+          
           const { data: connection } = await supabase
             .from('whatsapp_connections')
             .select('*')
             .eq('agent_id', agentId)
             .single();
 
+          console.log('Database connection:', connection);
+
           if (!connection) {
+            console.log('No connection found in database');
             return new Response(JSON.stringify({ 
               status: 'disconnected',
-              connected: false 
+              connected: false,
+              message: 'No WhatsApp connection found'
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           }
 
-          // Check actual status from Evolution API
+          // Check real status from Evolution API if we have an instance
           if (connection.instance_id) {
             try {
+              console.log('Checking Evolution API status for instance:', connection.instance_id);
+              
               const statusResponse = await fetch(`${evolutionApiUrl}/instance/connectionState/${connection.instance_id}`, {
                 headers: {
                   'apikey': evolutionApiKey
                 }
               });
               
+              console.log('Status response status:', statusResponse.status);
+              
               if (statusResponse.ok) {
-                const statusData = await statusResponse.json();
-                const isConnected = statusData.instance?.state === 'open';
+                const statusResponseText = await statusResponse.text();
+                console.log('Status response body:', statusResponseText);
                 
-                // Update database if status changed
-                if ((isConnected && connection.status !== 'connected') || 
-                    (!isConnected && connection.status === 'connected')) {
-                  await supabase
-                    .from('whatsapp_connections')
-                    .update({ 
-                      status: isConnected ? 'connected' : 'disconnected',
-                      last_connected_at: isConnected ? new Date().toISOString() : connection.last_connected_at
-                    })
-                    .eq('agent_id', agentId);
-                }
+                try {
+                  const statusData = JSON.parse(statusResponseText);
+                  const isConnected = statusData.instance?.state === 'open';
+                  console.log('Connection state from API:', statusData.instance?.state);
+                  
+                  let phoneNumber = connection.phone_number;
+                  if (isConnected && statusData.instance?.owner) {
+                    phoneNumber = statusData.instance.owner;
+                  }
 
-                return new Response(JSON.stringify({
-                  ...connection,
-                  status: isConnected ? 'connected' : 'disconnected',
-                  connected: isConnected
-                }), {
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                });
+                  // Update database if status changed
+                  if ((isConnected && connection.status !== 'connected') || 
+                      (!isConnected && connection.status === 'connected') ||
+                      phoneNumber !== connection.phone_number) {
+                    
+                    console.log('Updating connection status in database');
+                    await supabase
+                      .from('whatsapp_connections')
+                      .update({ 
+                        status: isConnected ? 'connected' : 'disconnected',
+                        phone_number: phoneNumber,
+                        last_connected_at: isConnected ? new Date().toISOString() : connection.last_connected_at,
+                        qr_code: isConnected ? null : connection.qr_code
+                      })
+                      .eq('agent_id', agentId);
+                  }
+
+                  return new Response(JSON.stringify({
+                    ...connection,
+                    status: isConnected ? 'connected' : 'disconnected',
+                    phone_number: phoneNumber,
+                    connected: isConnected,
+                    message: isConnected ? 'WhatsApp connected' : 'WhatsApp disconnected'
+                  }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                  });
+                } catch (statusParseError) {
+                  console.error('Failed to parse status response:', statusParseError);
+                }
               }
-            } catch (error) {
-              console.error('Error checking Evolution API status:', error);
+            } catch (statusError) {
+              console.error('Error checking Evolution API status:', statusError);
             }
           }
 
           return new Response(JSON.stringify({
             ...connection,
-            connected: connection.status === 'connected'
+            connected: connection.status === 'connected',
+            message: `Status: ${connection.status}`
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
+
+        } catch (error) {
+          console.error('Status error:', error);
+          return new Response(JSON.stringify({ 
+            error: error.message,
+            details: 'Failed to check WhatsApp status'
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
-        break;
 
       case 'qrcode':
-        if (req.method === 'GET') {
+        try {
+          console.log('Refreshing QR code for agent:', agentId);
+          
           const { data: connection } = await supabase
             .from('whatsapp_connections')
             .select('instance_id')
@@ -194,42 +340,80 @@ serve(async (req) => {
             .single();
 
           if (connection?.instance_id) {
-            try {
-              const qrResponse = await fetch(`${evolutionApiUrl}/instance/connect/${connection.instance_id}`, {
-                headers: {
-                  'apikey': evolutionApiKey
-                }
-              });
-
-              if (qrResponse.ok) {
-                const qrData = await qrResponse.json();
-                return new Response(JSON.stringify({
-                  qrCode: qrData.base64
-                }), {
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                });
+            const qrResponse = await fetch(`${evolutionApiUrl}/instance/connect/${connection.instance_id}`, {
+              headers: {
+                'apikey': evolutionApiKey
               }
-            } catch (error) {
-              console.error('Error getting QR code:', error);
+            });
+
+            console.log('QR refresh response status:', qrResponse.status);
+
+            if (qrResponse.ok) {
+              const qrResponseText = await qrResponse.text();
+              console.log('QR refresh response body:', qrResponseText);
+              
+              try {
+                const qrData = JSON.parse(qrResponseText);
+                const qrCode = qrData.base64 || qrData.qrcode?.base64 || qrData.qr;
+                
+                if (qrCode) {
+                  // Update QR code in database
+                  await supabase
+                    .from('whatsapp_connections')
+                    .update({ qr_code: qrCode })
+                    .eq('agent_id', agentId);
+
+                  console.log('QR code updated successfully');
+
+                  return new Response(JSON.stringify({
+                    qrCode: qrCode,
+                    message: 'QR code refreshed successfully'
+                  }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                  });
+                }
+              } catch (qrParseError) {
+                console.error('Failed to parse QR refresh response:', qrParseError);
+              }
             }
           }
 
-          return new Response(JSON.stringify({ error: 'QR code not available' }), {
+          return new Response(JSON.stringify({ 
+            error: 'QR code not available',
+            message: 'Unable to generate QR code. Try connecting again.'
+          }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
-        }
-        break;
-    }
 
-    return new Response(JSON.stringify({ error: 'Invalid action or method' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+        } catch (error) {
+          console.error('QR code error:', error);
+          return new Response(JSON.stringify({ 
+            error: error.message,
+            details: 'Failed to refresh QR code'
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+      default:
+        console.error('Invalid action:', action);
+        return new Response(JSON.stringify({ 
+          error: 'Invalid action',
+          validActions: ['connect', 'disconnect', 'status', 'qrcode']
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
 
   } catch (error) {
     console.error('WhatsApp manager error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: 'Unexpected error in WhatsApp manager'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

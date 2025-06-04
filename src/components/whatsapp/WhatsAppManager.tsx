@@ -4,21 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Smartphone, QrCode, Wifi, WifiOff, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Loader2, Smartphone, QrCode, Wifi, WifiOff, RefreshCw, RotateCcw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { MessageLogs } from './MessageLogs';
-
-interface WhatsAppConnection {
-  id: string;
-  agent_id: string;
-  instance_id: string | null;
-  phone_number: string | null;
-  status: 'connecting' | 'connected' | 'disconnected' | 'error';
-  last_connected_at: string | null;
-  created_at: string;
-}
+import { useWhatsAppConnection } from '@/hooks/use-whatsapp-connection';
 
 interface WhatsAppManagerProps {
   agentId: string;
@@ -26,96 +16,53 @@ interface WhatsAppManagerProps {
 }
 
 export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
-  const [connection, setConnection] = useState<WhatsAppConnection | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const {
+    connection,
+    isLoading,
+    isConnecting,
+    qrCode,
+    connect,
+    disconnect,
+    refreshQrCode,
+    refresh
+  } = useWhatsAppConnection(agentId);
+
   const [showQR, setShowQR] = useState(false);
-  const [qrCode, setQrCode] = useState<string | null>(null);
-
-  const fetchConnectionStatus = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-manager', {
-        body: { action: 'status', agentId }
-      });
-
-      if (error) throw error;
-
-      setConnection(data);
-    } catch (error) {
-      console.error('Error fetching WhatsApp status:', error);
-      toast.error('Erro ao verificar status do WhatsApp');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleConnect = async () => {
-    setIsConnecting(true);
     setShowQR(false);
     
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-manager', {
-        body: { action: 'connect', agentId }
-      });
-
-      if (error) throw error;
-
-      if (data.qrCode) {
-        setQrCode(data.qrCode);
-        setShowQR(true);
-      }
-
-      setConnection(prev => prev ? { ...prev, status: 'connecting' } : null);
-      toast.success('Conectando ao WhatsApp...');
-      
-      // Poll for connection status
-      const pollInterval = setInterval(async () => {
-        await fetchConnectionStatus();
-        
-        if (connection?.status === 'connected') {
-          clearInterval(pollInterval);
-          setShowQR(false);
-          setIsConnecting(false);
-          toast.success('WhatsApp conectado com sucesso!');
-        }
-      }, 3000);
-
-      // Stop polling after 2 minutes
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        setIsConnecting(false);
-      }, 120000);
-      
+      await connect();
+      setShowQR(true);
     } catch (error) {
-      console.error('Error connecting WhatsApp:', error);
-      toast.error('Erro ao conectar WhatsApp');
-      setIsConnecting(false);
+      console.error('Connection failed:', error);
     }
   };
 
   const handleDisconnect = async () => {
     try {
-      const { error } = await supabase.functions.invoke('whatsapp-manager', {
-        body: { action: 'disconnect', agentId }
-      });
-
-      if (error) throw error;
-
-      setConnection(prev => prev ? { ...prev, status: 'disconnected' } : null);
+      await disconnect();
       setShowQR(false);
-      toast.success('WhatsApp desconectado');
     } catch (error) {
-      console.error('Error disconnecting WhatsApp:', error);
-      toast.error('Erro ao desconectar WhatsApp');
+      console.error('Disconnect failed:', error);
+    }
+  };
+
+  const handleRefreshQR = async () => {
+    try {
+      await refreshQrCode();
+    } catch (error) {
+      console.error('QR refresh failed:', error);
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'connected': return 'bg-green-500';
-      case 'connecting': return 'bg-yellow-500';
-      case 'error': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      case 'connected': return 'bg-green-500 hover:bg-green-600';
+      case 'connecting': return 'bg-yellow-500 hover:bg-yellow-600';
+      case 'error': return 'bg-red-500 hover:bg-red-600';
+      default: return 'bg-gray-500 hover:bg-gray-600';
     }
   };
 
@@ -128,9 +75,14 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
     }
   };
 
+  // Update showQR based on connection state
   useEffect(() => {
-    fetchConnectionStatus();
-  }, [agentId]);
+    if (connection?.status === 'connected') {
+      setShowQR(false);
+    } else if (connection?.status === 'connecting' && qrCode) {
+      setShowQR(true);
+    }
+  }, [connection?.status, qrCode]);
 
   if (isLoading) {
     return (
@@ -179,7 +131,7 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={fetchConnectionStatus}
+                onClick={refresh}
                 disabled={isConnecting}
               >
                 <RefreshCw className="h-4 w-4" />
@@ -215,17 +167,53 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
             </Alert>
           )}
 
+          {!connection?.status || connection.status === 'disconnected' ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Configuração necessária:</strong> Para usar o WhatsApp, você precisa configurar as variáveis de ambiente EVOLUTION_API_URL e EVOLUTION_API_KEY no Supabase.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
           {showQR && qrCode && (
             <div className="border rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <QrCode className="h-5 w-5" />
-                <h3 className="font-medium">Escaneie o QR Code</h3>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <QrCode className="h-5 w-5" />
+                  <h3 className="font-medium">Escaneie o QR Code</h3>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshQR}
+                  disabled={isConnecting}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
               </div>
               <QRCodeDisplay qrCode={qrCode} />
-              <p className="text-sm text-muted-foreground mt-2">
-                Abra o WhatsApp no seu celular, vá em "Aparelhos conectados" e escaneie este código.
-              </p>
+              <div className="mt-3 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  1. Abra o WhatsApp no seu celular
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  2. Vá em "Aparelhos conectados" ou "WhatsApp Web"
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  3. Toque em "Conectar um aparelho" e escaneie este código
+                </p>
+              </div>
             </div>
+          )}
+
+          {connection?.status === 'connecting' && !qrCode && (
+            <Alert>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertDescription>
+                Preparando conexão WhatsApp... Aguarde o QR Code aparecer.
+              </AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
