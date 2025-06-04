@@ -47,7 +47,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   const [searchParams] = useSearchParams();
   
   // Lê o tipo da URL
-  const urlAgentType = searchParams.get('type') as 'text' | 'voice' | null;
+  const urlAgentType = searchParams.get('type') as 'text' | 'voice' | 'hybrid' | null;
   
   console.log("=== DEBUG AGENT CONFIG ===");
   console.log("URL Agent Type:", urlAgentType);
@@ -68,8 +68,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     name: "",
     description: "",
     category: "Atendimento",
-    type: urlAgentType || 'text' as 'text' | 'voice',
-    voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah como padrão
+    type: urlAgentType || 'text' as 'text' | 'voice' | 'hybrid',
+    voiceId: "",
     status: "active",
     instructions: "",
     responseStyle: "",
@@ -121,9 +121,11 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           if (data) {
             console.log("Agente carregado do Supabase:", data);
             
-            // Type-safe conversion for agent type
-            const validType: 'text' | 'voice' = 
-              data.type === 'text' || data.type === 'voice' ? data.type : urlAgentType || 'text';
+            // Type-safe conversion for agent type - include hybrid
+            const validType: 'text' | 'voice' | 'hybrid' = 
+              data.type === 'text' || data.type === 'voice' || data.type === 'hybrid' 
+                ? data.type 
+                : urlAgentType || 'text';
             
             // Preencher o formulário com os dados do agente
             setFormState({
@@ -131,7 +133,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               description: data.description || '',
               category: data.category || 'Atendimento',
               type: validType,
-              voiceId: data.voice_id || VOICE_IDS.SARAH,
+              voiceId: data.voice_id || '', // Can be null for text agents
               status: data.status || 'active',
               instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',
               responseStyle: data.response_style || 'Formal e detalhado',
@@ -166,6 +168,11 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         ? "Você é um assistente virtual especializado em atendimento ao cliente via WhatsApp. Seja amigável e use linguagem adequada para mensagens de texto."
         : "Você é um assistente virtual especializado em atendimento ao cliente.";
 
+      // Set default voice_id only for voice and hybrid agents
+      const defaultVoiceId = (urlAgentType === 'voice' || urlAgentType === 'hybrid') 
+        ? VOICE_IDS.SARAH 
+        : '';
+
       setFormState(prev => ({
         ...prev,
         type: urlAgentType,
@@ -174,7 +181,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         conversationPrompt: defaultPrompt,
         responseStyle: "Formal e direto",
         status: "active",
-        voiceId: VOICE_IDS.SARAH,
+        voiceId: defaultVoiceId,
       }));
     }
   }, [id, isNew, urlAgentType]);
@@ -213,8 +220,9 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       toast.error("Categoria é obrigatória");
       return false;
     }
-    if (formState.type === 'voice' && !formState.voiceId) {
-      toast.error("Voz do agente é obrigatória para agentes de voz");
+    // Voice ID is only required for voice and hybrid agents
+    if ((formState.type === 'voice' || formState.type === 'hybrid') && !formState.voiceId) {
+      toast.error("Voz do agente é obrigatória para agentes de voz e híbridos");
       return false;
     }
     return true;
@@ -234,13 +242,14 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     try {
       console.log(`Tentativa ${saveAttempts + 1} de salvar agente no Supabase...`);
       
-      // Preparar os dados para salvar no Supabase - incluindo o tipo
+      // Preparar os dados para salvar no Supabase - incluindo o tipo e voice_id correto
       const agentData = {
         name: formState.name,
         description: formState.description,
         category: formState.category,
         type: formState.type,
-        voice_id: formState.type === 'voice' ? formState.voiceId : null,
+        // Set voice_id to null for text agents, value for voice/hybrid agents
+        voice_id: formState.type === 'text' ? null : formState.voiceId || null,
         status: formState.status || 'active',
         instructions: formState.instructions,
         response_style: formState.responseStyle,
@@ -297,7 +306,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         return;
       }
       
-      const agentTypeText = formState.type === 'text' ? 'de texto' : 'de voz';
+      const agentTypeText = formState.type === 'text' ? 'de texto' : formState.type === 'voice' ? 'de voz' : 'híbrido';
       toast.success(isNew ? `Agente ${agentTypeText} criado com sucesso!` : `Agente ${agentTypeText} atualizado com sucesso!`);
       
       // Verificar se o agente realmente foi criado
@@ -356,8 +365,12 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   const getTabsForAgentType = () => {
     if (formState.type === 'text') {
       return ['basic', 'ai', 'whatsapp'];
+    } else if (formState.type === 'voice') {
+      return ['basic', 'ai', 'voice'];
+    } else if (formState.type === 'hybrid') {
+      return ['basic', 'ai', 'whatsapp', 'voice'];
     }
-    return ['basic', 'ai', 'voice'];
+    return ['basic', 'ai'];
   };
 
   const getTabLabel = (tabKey: string) => {
@@ -398,11 +411,15 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
             <div className="flex items-center gap-2">
               {formState.type === 'voice' ? (
                 <span className="text-2xl">🎤</span>
+              ) : formState.type === 'hybrid' ? (
+                <span className="text-2xl">🔄</span>
               ) : (
                 <span className="text-2xl">💬</span>
               )}
               <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-                {formState.type === 'voice' ? 'Agente de Voz' : 'Agente de Texto'}
+                {formState.type === 'voice' ? 'Agente de Voz' : 
+                 formState.type === 'hybrid' ? 'Agente Híbrido' : 
+                 'Agente de Texto'}
               </span>
             </div>
           </div>
@@ -411,7 +428,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
             {isNew 
-              ? `Configure seu novo agente ${formState.type === 'voice' ? 'de voz' : 'de texto'} com instruções personalizadas.` 
+              ? `Configure seu novo agente ${formState.type === 'voice' ? 'de voz' : formState.type === 'hybrid' ? 'híbrido' : 'de texto'} com instruções personalizadas.` 
               : "Personalize o comportamento, voz e instruções para este agente."}
           </p>
         </div>
@@ -425,7 +442,6 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                 </TabsTrigger>
               ))}
             </TabsList>
-            
             
             <TabsContent value="basic" className="space-y-4">
               <Card>
@@ -591,8 +607,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               </Card>
             </TabsContent>
             
-            {/* Aba WhatsApp - Só aparece para agentes de texto */}
-            {formState.type === 'text' && (
+            {/* Aba WhatsApp - Aparece para agentes de texto e híbridos */}
+            {(formState.type === 'text' || formState.type === 'hybrid') && (
               <TabsContent value="whatsapp" className="space-y-4">
                 <WhatsAppConfigTab
                   formState={{
@@ -610,8 +626,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
               </TabsContent>
             )}
 
-            {/* Aba Voz - Só aparece para agentes de voz */}
-            {formState.type === 'voice' && (
+            {/* Aba Voz - Aparece para agentes de voz e híbridos */}
+            {(formState.type === 'voice' || formState.type === 'hybrid') && (
               <TabsContent value="voice" className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -686,7 +702,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                             type="button" 
                             variant="outline"
                             onClick={handleTestVoice}
-                            disabled={isTesting}
+                            disabled={isTesting || !formState.voiceId}
                             className="self-start"
                           >
                             {isTesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
