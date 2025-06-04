@@ -60,7 +60,7 @@ export function useAgents() {
             description: "Especializada em resolver dúvidas técnicas e problemas com produtos",
             status: "active",
             type: "text",
-            voice_id: VOICE_IDS.SARAH,
+            voice_id: null, // Text agents don't need voice_id
             created_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
           },
@@ -82,7 +82,7 @@ export function useAgents() {
             description: "Especializada em follow-up após reuniões para fechamento de vendas",
             status: "paused",
             type: "text",
-            voice_id: VOICE_IDS.ARIA,
+            voice_id: null, // Text agents don't need voice_id
             created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
           },
@@ -104,7 +104,7 @@ export function useAgents() {
             description: "Atende clientes via WhatsApp e chamadas telefônicas com suporte completo",
             status: "active",
             type: "hybrid",
-            voice_id: VOICE_IDS.SARAH,
+            voice_id: VOICE_IDS.SARAH, // Hybrid agents need voice_id for voice features
             created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
             updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
           }
@@ -255,7 +255,7 @@ export function useAgents() {
           lastActivity: stableValues.lastActivity,
           avatarLetter: agent.name.charAt(0),
           avatarColor: getAvatarColor(agent.name),
-          voiceId: agent.voice_id || VOICE_IDS.ROGER,
+          voiceId: agent.voice_id, // Can be null for text agents
           // Adicionar métricas específicas para agentes híbridos
           whatsappMessages: stableValues.whatsappMessages,
           voiceCalls: stableValues.voiceCalls,

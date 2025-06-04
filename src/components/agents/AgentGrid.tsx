@@ -34,7 +34,7 @@ export const AgentGrid = ({
     id: string, 
     name: string, 
     type: "text" | "voice" | "hybrid",
-    voiceId?: string
+    voiceId?: string | null
   } | null>(null);
 
   const handleStatusChange = (id: string, isActive: boolean) => {

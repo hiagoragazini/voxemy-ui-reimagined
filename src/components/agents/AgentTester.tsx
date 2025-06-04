@@ -8,7 +8,7 @@ interface AgentTesterProps {
   agentId: string;
   agentName: string;
   agentType: "text" | "voice" | "hybrid";
-  voiceId?: string;
+  voiceId?: string | null;
   onClose?: () => void;
 }
 

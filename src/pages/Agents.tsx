@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -25,7 +26,7 @@ export default function Agents() {
     id: string, 
     name: string, 
     type: "text" | "voice" | "hybrid",
-    voiceId?: string
+    voiceId?: string | null
   } | null>(null);
   
   // Chamadas diretas dos hooks sem fallbacks condicionais
@@ -97,7 +98,7 @@ export default function Agents() {
       // Clean up URL params
       navigate('/agents', { replace: true });
     }
-  }, [location.search, navigate, queryClient, forceRefresh]); // Add required dependencies
+  }, [location.search, navigate, queryClient, forceRefresh]);
   
   const handleCreateAgent = () => {
     navigate("/agents/new");
@@ -176,7 +177,7 @@ export default function Agents() {
     };
     
     initialCheck();
-  }, [hasRun, isCreatingDemoAgent, createDemoAgent, queryClient, forceRefresh]); // Add required dependencies
+  }, [hasRun, isCreatingDemoAgent, createDemoAgent, queryClient, forceRefresh]);
 
   return (
     <Layout>

@@ -28,7 +28,7 @@ export type Database = {
           status: string | null
           type: string | null
           updated_at: string
-          voice_id: string
+          voice_id: string | null
           webhook_url: string | null
         }
         Insert: {
@@ -49,7 +49,7 @@ export type Database = {
           status?: string | null
           type?: string | null
           updated_at?: string
-          voice_id: string
+          voice_id?: string | null
           webhook_url?: string | null
         }
         Update: {
@@ -70,7 +70,7 @@ export type Database = {
           status?: string | null
           type?: string | null
           updated_at?: string
-          voice_id?: string
+          voice_id?: string | null
           webhook_url?: string | null
         }
         Relationships: []

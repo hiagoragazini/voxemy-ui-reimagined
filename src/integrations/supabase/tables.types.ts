@@ -18,7 +18,7 @@ export type Agent = {
   description: string;
   category: string;
   status: "active" | "paused" | "inactive";
-  voice_id: string;
+  voice_id: string | null;
   created_at: string;
   updated_at: string;
   instructions: string | null;
