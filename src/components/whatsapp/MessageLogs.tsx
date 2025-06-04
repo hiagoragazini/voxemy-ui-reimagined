@@ -5,18 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageSquare, ArrowUpRight, ArrowDownLeft, Clock, Check, CheckCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/types';
 
-interface WhatsAppMessage {
-  id: string;
-  whatsapp_message_id: string | null;
-  from_number: string;
-  to_number: string;
-  message_text: string | null;
-  message_type: string;
-  direction: 'inbound' | 'outbound';
-  status: string;
-  created_at: string;
-}
+type WhatsAppMessage = Tables<'whatsapp_messages'>;
 
 interface MessageLogsProps {
   agentId: string;
