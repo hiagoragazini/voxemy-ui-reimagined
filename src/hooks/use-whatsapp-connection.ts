@@ -41,6 +41,8 @@ export function useWhatsAppConnection(agentId: string) {
       // Update QR code if available
       if (data?.qr_code) {
         setQrCode(data.qr_code);
+      } else {
+        setQrCode(null);
       }
       
     } catch (error) {
@@ -69,16 +71,24 @@ export function useWhatsAppConnection(agentId: string) {
 
       console.log('Connect response:', data);
 
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       // Update connection state
       setConnection(prev => prev ? { 
         ...prev, 
-        status: 'connecting',
-        qr_code: data.qrCode 
+        status: data.status || 'connecting',
+        qr_code: data.qrCode || null
       } : null);
       
       if (data.qrCode) {
         setQrCode(data.qrCode);
         toast.success('QR Code gerado! Escaneie para conectar.');
+      } else if (data.status === 'error') {
+        toast.error('Erro ao gerar QR Code. Verifique a configuração da Evolution API.');
+        setIsConnecting(false);
+        return data;
       }
 
       // Poll for connection status every 3 seconds
@@ -101,6 +111,10 @@ export function useWhatsAppConnection(agentId: string) {
               ...prev,
               qr_code: statusData.data.qr_code
             } : null);
+          } else if (statusData.data?.status === 'error') {
+            clearInterval(pollInterval);
+            setIsConnecting(false);
+            toast.error('Erro na conexão WhatsApp');
           }
         } catch (error) {
           console.error('Error polling status:', error);
@@ -117,9 +131,9 @@ export function useWhatsAppConnection(agentId: string) {
       }, 120000);
       
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error connecting WhatsApp:', error);
-      toast.error('Erro ao conectar WhatsApp: ' + error.message);
+      toast.error('Erro ao conectar WhatsApp: ' + (error.message || 'Erro desconhecido'));
       setIsConnecting(false);
       throw error;
     }
@@ -129,11 +143,15 @@ export function useWhatsAppConnection(agentId: string) {
     try {
       console.log('Disconnecting WhatsApp for agent:', agentId);
       
-      const { error } = await supabase.functions.invoke('whatsapp-manager', {
+      const { data, error } = await supabase.functions.invoke('whatsapp-manager', {
         body: { action: 'disconnect', agentId }
       });
 
       if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
       setConnection(prev => prev ? { 
         ...prev, 
@@ -143,15 +161,18 @@ export function useWhatsAppConnection(agentId: string) {
       } : null);
       setQrCode(null);
       toast.success('WhatsApp desconectado');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error disconnecting WhatsApp:', error);
-      toast.error('Erro ao desconectar WhatsApp: ' + error.message);
+      toast.error('Erro ao desconectar WhatsApp: ' + (error.message || 'Erro desconhecido'));
       throw error;
     }
   };
 
   const refreshQrCode = async () => {
-    if (!connection?.instance_id) return;
+    if (!connection?.instance_id) {
+      toast.error('Nenhuma instância ativa para atualizar QR Code');
+      return;
+    }
     
     try {
       const { data, error } = await supabase.functions.invoke('whatsapp-manager', {
@@ -160,6 +181,10 @@ export function useWhatsAppConnection(agentId: string) {
 
       if (error) throw error;
 
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       if (data?.qrCode) {
         setQrCode(data.qrCode);
         setConnection(prev => prev ? {
@@ -167,10 +192,12 @@ export function useWhatsAppConnection(agentId: string) {
           qr_code: data.qrCode
         } : null);
         toast.success('QR Code atualizado!');
+      } else {
+        toast.error('QR Code não disponível no momento');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error refreshing QR code:', error);
-      toast.error('Erro ao atualizar QR Code');
+      toast.error('Erro ao atualizar QR Code: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
@@ -195,6 +222,8 @@ export function useWhatsAppConnection(agentId: string) {
             setConnection(newConnection);
             if (newConnection.qr_code) {
               setQrCode(newConnection.qr_code);
+            } else if (newConnection.status === 'connected') {
+              setQrCode(null);
             }
           }
         }
