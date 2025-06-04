@@ -38,6 +38,10 @@ const AI_MODELS = [
   { id: "eleven_multilingual_v2", name: "Eleven Labs Multilingual V2 (Voz)" },
 ];
 
+// Type definitions for better type safety
+type AgentStatus = "active" | "paused" | "inactive";
+type AgentType = "text" | "voice" | "hybrid";
+
 interface AgentConfigProps {
   isNew?: boolean;
 }
@@ -100,7 +104,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   }
 
   // Get agent type from URL for new agents only
-  const urlAgentType = isNew ? searchParams.get('type') as 'text' | 'voice' | 'hybrid' | null : null;
+  const urlAgentType = isNew ? searchParams.get('type') as AgentType | null : null;
   
   console.log("URL Agent Type (new only):", urlAgentType);
 
@@ -128,9 +132,9 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       name: "",
       description: "",
       category: "Atendimento",
-      type: defaultType as 'text' | 'voice' | 'hybrid',
+      type: defaultType as AgentType,
       voiceId: "",
-      status: "active" as const,
+      status: "active" as AgentStatus,
       instructions: "Este agente deve ser polido e direto nas respostas.",
       responseStyle: "Formal e detalhado",
       defaultGreeting: "Olá, como posso ajudar você hoje?",
@@ -144,6 +148,22 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   };
 
   const [formState, setFormState] = useState(getInitialFormState);
+
+  // Helper function to safely cast status
+  const getValidStatus = (status: string | null | undefined): AgentStatus => {
+    if (status === "active" || status === "paused" || status === "inactive") {
+      return status;
+    }
+    return "active";
+  };
+
+  // Helper function to safely cast agent type
+  const getValidAgentType = (type: string | null | undefined): AgentType => {
+    if (type === "text" || type === "voice" || type === "hybrid") {
+      return type;
+    }
+    return "text";
+  };
 
   // EFFECT 1: Load existing agent data (edit mode only)
   useEffect(() => {
@@ -172,11 +192,9 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           
           console.log("Agente carregado:", data);
           
-          // SAFE TYPE CONVERSION
-          const validType: 'text' | 'voice' | 'hybrid' = 
-            ['text', 'voice', 'hybrid'].includes(data.type) 
-              ? data.type as 'text' | 'voice' | 'hybrid'
-              : 'text';
+          // SAFE TYPE CONVERSION with proper type checking
+          const validType = getValidAgentType(data.type);
+          const validStatus = getValidStatus(data.status);
           
           // UPDATE FORM STATE WITH LOADED DATA
           setFormState({
@@ -185,7 +203,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
             category: data.category || 'Atendimento',
             type: validType,
             voiceId: data.voice_id || '',
-            status: data.status || 'active',
+            status: validStatus,
             instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',
             responseStyle: data.response_style || 'Formal e detalhado',
             defaultGreeting: data.default_greeting || 'Olá, como posso ajudar você hoje?',
@@ -355,7 +373,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         category: formState.category,
         type: formState.type,
         voice_id: formState.type === 'text' ? null : formState.voiceId || null,
-        status: formState.status || 'active',
+        status: formState.status,
         instructions: formState.instructions,
         response_style: formState.responseStyle,
         default_greeting: formState.defaultGreeting,
@@ -559,7 +577,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                       <Label htmlFor="status">Status</Label>
                       <Select 
                         value={formState.status}
-                        onValueChange={(value) => handleFormChange('status', value as any)}
+                        onValueChange={(value) => handleFormChange('status', value as AgentStatus)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um status" />
