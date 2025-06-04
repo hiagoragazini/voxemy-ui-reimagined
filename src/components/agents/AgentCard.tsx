@@ -1,10 +1,9 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit, Mic, Phone, MessageSquare, ArrowLeftRight } from "lucide-react";
+import { MoreVertical, Edit, Mic, Phone, MessageSquare, ArrowLeftRight, Trash2, Copy, PlayCircle, PauseCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { DeleteAgentDialog } from "./DeleteAgentDialog";
+import { useAgentOperations } from "@/hooks/use-agent-operations";
 
 export interface AgentCardProps {
   id: string;
@@ -42,6 +43,7 @@ export interface AgentCardProps {
   onEditClick?: (id: string) => void;
   onTestVoice?: (id: string) => void;
   onTestCall?: (id: string) => void;
+  onRefresh?: () => void;
 }
 
 export function AgentCard({ 
@@ -66,14 +68,23 @@ export function AgentCard({
   onStatusChange,
   onEditClick,
   onTestVoice,
-  onTestCall
+  onTestCall,
+  onRefresh
 }: AgentCardProps) {
   const isActive = status === "active";
   const isPaused = status === "paused";
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   
-  const handleStatusToggle = () => {
-    const newStatus = isActive ? false : true;
-    onStatusChange?.(id, newStatus);
+  const { deleteAgent, duplicateAgent, toggleAgentStatus, isDeleting, isDuplicating } = useAgentOperations();
+  
+  const handleStatusToggle = async () => {
+    const newStatus = await toggleAgentStatus(id, status, name);
+    if (newStatus !== status && onStatusChange) {
+      onStatusChange(id, newStatus === 'active');
+    }
+    if (onRefresh) {
+      onRefresh();
+    }
   };
 
   const handleEditClick = () => {
@@ -86,6 +97,29 @@ export function AgentCard({
 
   const handleTestCall = () => {
     onTestCall?.(id);
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    const success = await deleteAgent(id, name);
+    if (success && onRefresh) {
+      onRefresh();
+    }
+    setShowDeleteDialog(false);
+  };
+
+  const handleDuplicate = async () => {
+    await duplicateAgent(id);
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
+
+  const handleMenuStatusToggle = async () => {
+    await handleStatusToggle();
   };
 
   // Função para obter labels das métricas baseado no tipo do agente
@@ -214,112 +248,173 @@ export function AgentCard({
   };
 
   return (
-    <Card className="h-full hover:shadow-apple-hover transition-all duration-200 hover:scale-[1.01] border-gray-100 rounded-xl overflow-hidden">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <Avatar className={`h-12 w-12 ${avatarColor} border-2 border-white shadow-sm`}>
-              <AvatarFallback className="text-lg font-semibold text-apple-text-primary bg-transparent">
-                {avatarLetter}
-              </AvatarFallback>
-            </Avatar>
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-apple-text-primary line-clamp-1">{name}</h3>
-              <p className="text-sm text-apple-text-secondary">{category}</p>
+    <>
+      <Card className="h-full hover:shadow-apple-hover transition-all duration-200 hover:scale-[1.01] border-gray-100 rounded-xl overflow-hidden">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-3">
+              <Avatar className={`h-12 w-12 ${avatarColor} border-2 border-white shadow-sm`}>
+                <AvatarFallback className="text-lg font-semibold text-apple-text-primary bg-transparent">
+                  {avatarLetter}
+                </AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold text-apple-text-primary line-clamp-1">{name}</h3>
+                <p className="text-sm text-apple-text-secondary">{category}</p>
+              </div>
             </div>
-          </div>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0 hover:bg-gray-100 rounded-lg"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={handleEditClick} className="flex items-center">
-                <Edit className="mr-2 h-4 w-4" />
-                Editar agente
-              </DropdownMenuItem>
-              {(type === "voice" || type === "hybrid") && onTestVoice && (
-                <DropdownMenuItem onClick={handleTestVoice} className="flex items-center">
-                  <Mic className="mr-2 h-4 w-4" />
-                  Testar voz
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 hover:bg-gray-100 rounded-lg"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={handleEditClick} className="flex items-center">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar agente
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleTestCall} className="flex items-center">
-                {type === "text" ? (
-                  <>
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Testar Chat
-                  </>
-                ) : type === "hybrid" ? (
-                  <>
-                    <ArrowLeftRight className="mr-2 h-4 w-4" />
-                    Testar Híbrido
-                  </>
-                ) : (
-                  <>
-                    <Phone className="mr-2 h-4 w-4" />
-                    Testar Chamada
-                  </>
+                
+                <DropdownMenuItem onClick={handleDuplicate} className="flex items-center" disabled={isDuplicating}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicar agente
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                {(type === "voice" || type === "hybrid") && onTestVoice && (
+                  <DropdownMenuItem onClick={handleTestVoice} className="flex items-center">
+                    <Mic className="mr-2 h-4 w-4" />
+                    Testar voz
+                  </DropdownMenuItem>
                 )}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        
-        <p className="text-sm text-apple-text-secondary line-clamp-2 leading-relaxed mt-2">
-          {description}
-        </p>
-        
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex gap-2">
-            {getStatusBadge()}
-            {getTypeBadge()}
+                
+                <DropdownMenuItem onClick={handleTestCall} className="flex items-center">
+                  {type === "text" ? (
+                    <>
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Testar Chat
+                    </>
+                  ) : type === "hybrid" ? (
+                    <>
+                      <ArrowLeftRight className="mr-2 h-4 w-4" />
+                      Testar Híbrido
+                    </>
+                  ) : (
+                    <>
+                      <Phone className="mr-2 h-4 w-4" />
+                      Testar Chamada
+                    </>
+                  )}
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={handleMenuStatusToggle} className="flex items-center">
+                  {isActive ? (
+                    <>
+                      <PauseCircle className="mr-2 h-4 w-4" />
+                      Pausar agente
+                    </>
+                  ) : (
+                    <>
+                      <PlayCircle className="mr-2 h-4 w-4" />
+                      Ativar agente
+                    </>
+                  )}
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={handleDeleteClick} className="flex items-center text-red-600 hover:text-red-700">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir agente
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <span className="text-xs text-apple-text-secondary">
-              {isActive ? "Ativo" : isPaused ? "Pausado" : "Inativo"}
-            </span>
-            <Switch 
-              checked={isActive} 
-              onCheckedChange={handleStatusToggle}
-            />
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="pt-0 space-y-4">
-        {/* Métricas dinâmicas baseadas no tipo */}
-        {renderMetrics()}
-        
-        {/* Barra de uso de tokens */}
-        {voiceUsage && (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-apple-text-secondary">
-                {type === "hybrid" ? "Uso de tokens combinado" : "Uso de tokens"}
-              </span>
-              <span className="text-xs text-apple-text-secondary">
-                {voiceUsage.current}K/{voiceUsage.total}K
-              </span>
+          <p className="text-sm text-apple-text-secondary line-clamp-2 leading-relaxed mt-2">
+            {description}
+          </p>
+          
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex gap-2">
+              {getStatusBadge()}
+              {getTypeBadge()}
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-primary-apple h-2 rounded-full transition-all duration-300" 
-                style={{ width: `${(voiceUsage.current / voiceUsage.total) * 100}%` }}
+            
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-apple-text-secondary">
+                {isActive ? "Ativo" : isPaused ? "Pausado" : "Inativo"}
+              </span>
+              <Switch 
+                checked={isActive} 
+                onCheckedChange={handleStatusToggle}
               />
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        
+        <CardContent className="pt-0 space-y-4">
+          {renderMetrics()}
+          
+          {voiceUsage && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-apple-text-secondary">
+                  {type === "hybrid" ? "Uso de tokens combinado" : "Uso de tokens"}
+                </span>
+                <span className="text-xs text-apple-text-secondary">
+                  {voiceUsage.current}K/{voiceUsage.total}K
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-primary-apple h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${(voiceUsage.current / voiceUsage.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+          
+          {/* Direct action buttons */}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEditClick}
+              className="flex items-center gap-1 text-xs"
+            >
+              <Edit className="h-3 w-3" />
+              Editar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteClick}
+              className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+            >
+              <Trash2 className="h-3 w-3" />
+              Excluir
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <DeleteAgentDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        agentName={name}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
+    </>
   );
 }
 
@@ -368,6 +463,11 @@ export function AgentCardSkeleton() {
             <div className="h-3 bg-gray-200 rounded w-12"></div>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2"></div>
+        </div>
+        
+        <div className="flex items-center justify-end gap-2 pt-2 border-t">
+          <div className="h-8 bg-gray-200 rounded w-16"></div>
+          <div className="h-8 bg-gray-200 rounded w-16"></div>
         </div>
       </CardContent>
     </Card>

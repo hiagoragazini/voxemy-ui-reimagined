@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
@@ -100,6 +99,36 @@ export default function Agents() {
     }
   }, [location.search, navigate, queryClient, forceRefresh]);
   
+  useEffect(() => {
+    if (hasRun) return;
+    
+    console.log("Agent component mounted, verificando agentes...");
+    setHasRun(true);
+    
+    const initialCheck = async () => {
+      try {
+        const { data: directAgentsData } = await supabase
+          .from('agents')
+          .select('*');
+          
+        if (directAgentsData && directAgentsData.length > 0) {
+          console.log(`Verificação direta encontrou ${directAgentsData.length} agentes:`, 
+            directAgentsData.map(a => a.name).join(', '));
+            
+          queryClient.invalidateQueries({ queryKey: ['agents'] });
+          forceRefresh();
+        } else if (!isCreatingDemoAgent) {
+          console.log("Nenhum agente encontrado, criando agente demo...");
+          createDemoAgent();
+        }
+      } catch (err) {
+        console.error("Erro na verificação inicial de agentes:", err);
+      }
+    };
+    
+    initialCheck();
+  }, [hasRun, isCreatingDemoAgent, createDemoAgent, queryClient, forceRefresh]);
+  
   const handleCreateAgent = () => {
     navigate("/agents/new");
   };
@@ -142,42 +171,6 @@ export default function Agents() {
     const typeMatch = typeFilter === "all" || agent.type === typeFilter;
     return statusMatch && typeMatch;
   });
-
-  // Verificação inicial - executada apenas uma vez
-  useEffect(() => {
-    // Evitar múltiplas verificações iniciais
-    if (hasRun) return;
-    
-    console.log("Agent component mounted, verificando agentes...");
-    setHasRun(true);
-    
-    // Verificação direta no banco se existem agentes
-    const initialCheck = async () => {
-      try {
-        // Verificar diretamente no banco se existem agentes
-        const { data: directAgentsData } = await supabase
-          .from('agents')
-          .select('*');
-          
-        if (directAgentsData && directAgentsData.length > 0) {
-          console.log(`Verificação direta encontrou ${directAgentsData.length} agentes:`, 
-            directAgentsData.map(a => a.name).join(', '));
-            
-          // Força um refresh do React Query
-          queryClient.invalidateQueries({ queryKey: ['agents'] });
-          forceRefresh();
-        } else if (!isCreatingDemoAgent) {
-          // Se não encontrou agentes, vamos criar um demo
-          console.log("Nenhum agente encontrado, criando agente demo...");
-          createDemoAgent();
-        }
-      } catch (err) {
-        console.error("Erro na verificação inicial de agentes:", err);
-      }
-    };
-    
-    initialCheck();
-  }, [hasRun, isCreatingDemoAgent, createDemoAgent, queryClient, forceRefresh]);
 
   return (
     <Layout>
