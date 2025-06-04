@@ -1,7 +1,8 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
+import { whatsappManager } from '@/lib/whatsapp-manager';
 
 interface WhatsAppConnection {
   id: string;
@@ -14,192 +15,329 @@ interface WhatsAppConnection {
   qr_code: string | null;
 }
 
-export function useWhatsAppConnection(agentId: string) {
+interface UseWhatsAppConnectionReturn {
+  connection: WhatsAppConnection | null;
+  isLoading: boolean;
+  error: string | null;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
+  sendMessage: (to: string, message: string) => Promise<boolean>;
+  refreshConnection: () => Promise<void>;
+  isConnected: boolean;
+  isConnecting: boolean;
+  hasError: boolean;
+  refreshQrCode: () => Promise<void>;
+}
+
+export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionReturn {
   const [connection, setConnection] = useState<WhatsAppConnection | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { toast } = useToast();
+  const isMountedRef = useRef(true);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchConnectionStatus = async () => {
-    if (!agentId) return;
+  // Clear all intervals
+  const clearAllIntervals = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    if (healthCheckIntervalRef.current) {
+      clearInterval(healthCheckIntervalRef.current);
+      healthCheckIntervalRef.current = null;
+    }
+  }, []);
+
+  // Safe setState that checks if component is mounted
+  const safeSetConnection = useCallback((conn: WhatsAppConnection | null) => {
+    if (isMountedRef.current) {
+      setConnection(conn);
+    }
+  }, []);
+
+  const safeSetError = useCallback((err: string | null) => {
+    if (isMountedRef.current) {
+      setError(err);
+    }
+  }, []);
+
+  const safeSetLoading = useCallback((loading: boolean) => {
+    if (isMountedRef.current) {
+      setIsLoading(loading);
+    }
+  }, []);
+
+  // Fetch connection status
+  const fetchConnectionStatus = useCallback(async () => {
+    if (!agentId || !isMountedRef.current) return;
     
     try {
       console.log('Fetching connection status for agent:', agentId);
       
-      const { data, error } = await supabase.functions.invoke('whatsapp-manager', {
-        body: { action: 'status', agentId }
-      });
+      const { data, error } = await supabase
+        .from('whatsapp_connections')
+        .select('*')
+        .eq('agent_id', agentId)
+        .single();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error fetching status:', error);
         throw error;
       }
 
       console.log('Connection status response:', data);
-      setConnection(data);
-      
-      // Update QR code if available
-      if (data?.qr_code) {
-        setQrCode(data.qr_code);
-      } else {
-        setQrCode(null);
-      }
+      safeSetConnection(data);
+      safeSetError(null);
       
     } catch (error) {
       console.error('Error fetching WhatsApp status:', error);
-      toast.error('Erro ao verificar status do WhatsApp');
+      safeSetError('Erro ao verificar status do WhatsApp');
+      if (isMountedRef.current) {
+        toast({
+          title: "Erro",
+          description: "Erro ao verificar status do WhatsApp",
+          variant: "destructive"
+        });
+      }
     } finally {
-      setIsLoading(false);
+      safeSetLoading(false);
     }
-  };
+  }, [agentId, safeSetConnection, safeSetError, safeSetLoading, toast]);
 
-  const connect = async () => {
-    setIsConnecting(true);
-    setQrCode(null);
+  // Connect function
+  const connect = useCallback(async () => {
+    if (!agentId || !isMountedRef.current) return;
+    
+    clearAllIntervals();
+    safeSetError(null);
     
     try {
       console.log('Initiating WhatsApp connection for agent:', agentId);
       
-      const { data, error } = await supabase.functions.invoke('whatsapp-manager', {
-        body: { action: 'connect', agentId }
-      });
-
-      if (error) {
-        console.error('Connection error:', error);
-        throw error;
+      if (isMountedRef.current) {
+        toast({
+          title: "Conectando",
+          description: "Iniciando conexão WhatsApp...",
+        });
       }
 
-      console.log('Connect response:', data);
+      const result = await whatsappManager.createConnection(agentId);
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (!result) {
+        throw new Error('Falha ao criar conexão');
       }
 
-      // Update connection state
-      setConnection(prev => prev ? { 
-        ...prev, 
-        status: data.status || 'connecting',
-        qr_code: data.qrCode || null
-      } : null);
-      
-      if (data.qrCode) {
-        setQrCode(data.qrCode);
-        toast.success('QR Code gerado! Escaneie para conectar.');
-      } else if (data.status === 'error') {
-        toast.error('Erro ao gerar QR Code. Verifique a configuração da Evolution API.');
-        setIsConnecting(false);
-        return data;
-      }
+      if (!isMountedRef.current) return;
 
-      // Poll for connection status every 3 seconds
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusData = await supabase.functions.invoke('whatsapp-manager', {
-            body: { action: 'status', agentId }
+      const dbConnection: WhatsAppConnection = {
+        id: result.id,
+        agent_id: result.agentId,
+        instance_id: result.instanceId,
+        phone_number: result.phoneNumber || null,
+        status: result.status as any,
+        last_connected_at: result.status === 'connected' ? new Date().toISOString() : null,
+        created_at: new Date().toISOString(),
+        qr_code: result.qrCode || null
+      };
+
+      safeSetConnection(dbConnection);
+
+      if (result.status === 'connecting') {
+        if (isMountedRef.current) {
+          toast({
+            title: "QR Code",
+            description: "QR Code gerado! Escaneie para conectar.",
           });
-          
-          if (statusData.data?.status === 'connected') {
-            clearInterval(pollInterval);
-            setIsConnecting(false);
-            setQrCode(null);
-            setConnection(statusData.data);
-            toast.success('WhatsApp conectado com sucesso!');
-          } else if (statusData.data?.qr_code && statusData.data.qr_code !== qrCode) {
-            // QR code updated
-            setQrCode(statusData.data.qr_code);
-            setConnection(prev => prev ? {
-              ...prev,
-              qr_code: statusData.data.qr_code
-            } : null);
-          } else if (statusData.data?.status === 'error') {
-            clearInterval(pollInterval);
-            setIsConnecting(false);
-            toast.error('Erro na conexão WhatsApp');
-          }
-        } catch (error) {
-          console.error('Error polling status:', error);
         }
-      }, 3000);
+        startPolling();
+      } else if (result.status === 'connected') {
+        if (isMountedRef.current) {
+          toast({
+            title: "Conectado",
+            description: "WhatsApp conectado com sucesso!",
+          });
+        }
+      } else if (result.status === 'error') {
+        throw new Error(result.errorMessage || 'Erro desconhecido');
+      }
 
-      // Stop polling after 2 minutes
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (isConnecting) {
-          setIsConnecting(false);
-          toast.error('Tempo limite para conexão. Tente novamente.');
-        }
-      }, 120000);
-      
-      return data;
     } catch (error: any) {
       console.error('Error connecting WhatsApp:', error);
-      toast.error('Erro ao conectar WhatsApp: ' + (error.message || 'Erro desconhecido'));
-      setIsConnecting(false);
-      throw error;
+      safeSetError(error.message || 'Erro desconhecido');
+      if (isMountedRef.current) {
+        toast({
+          title: "Erro",
+          description: `Erro ao conectar WhatsApp: ${error.message}`,
+          variant: "destructive"
+        });
+      }
     }
-  };
+  }, [agentId, clearAllIntervals, safeSetConnection, safeSetError, toast]);
 
-  const disconnect = async () => {
+  // Disconnect function
+  const disconnect = useCallback(async () => {
+    if (!agentId || !isMountedRef.current) return;
+    
+    clearAllIntervals();
+    
     try {
       console.log('Disconnecting WhatsApp for agent:', agentId);
       
-      const { data, error } = await supabase.functions.invoke('whatsapp-manager', {
-        body: { action: 'disconnect', agentId }
-      });
+      const success = await whatsappManager.disconnectAgent(agentId);
 
-      if (error) throw error;
-
-      if (data.error) {
-        throw new Error(data.error);
+      if (success) {
+        safeSetConnection(prev => prev ? { 
+          ...prev, 
+          status: 'disconnected',
+          phone_number: null,
+          qr_code: null
+        } : null);
+        
+        if (isMountedRef.current) {
+          toast({
+            title: "Desconectado",
+            description: "WhatsApp desconectado com sucesso",
+          });
+        }
+      } else {
+        throw new Error('Falha ao desconectar');
       }
 
-      setConnection(prev => prev ? { 
-        ...prev, 
-        status: 'disconnected',
-        phone_number: null,
-        qr_code: null
-      } : null);
-      setQrCode(null);
-      toast.success('WhatsApp desconectado');
     } catch (error: any) {
       console.error('Error disconnecting WhatsApp:', error);
-      toast.error('Erro ao desconectar WhatsApp: ' + (error.message || 'Erro desconhecido'));
-      throw error;
+      safeSetError(error.message || 'Erro desconhecido');
+      if (isMountedRef.current) {
+        toast({
+          title: "Erro",
+          description: `Erro ao desconectar WhatsApp: ${error.message}`,
+          variant: "destructive"
+        });
+      }
     }
-  };
+  }, [agentId, clearAllIntervals, safeSetConnection, safeSetError, toast]);
 
-  const refreshQrCode = async () => {
-    if (!connection?.instance_id) {
-      toast.error('Nenhuma instância ativa para atualizar QR Code');
+  // Send message function
+  const sendMessage = useCallback(async (to: string, message: string): Promise<boolean> => {
+    if (!agentId) return false;
+    
+    try {
+      const success = await whatsappManager.sendMessage(agentId, to, message);
+      
+      if (success && isMountedRef.current) {
+        toast({
+          title: "Mensagem enviada",
+          description: "Mensagem enviada com sucesso",
+        });
+      }
+      
+      return success;
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      if (isMountedRef.current) {
+        toast({
+          title: "Erro",
+          description: `Erro ao enviar mensagem: ${error.message}`,
+          variant: "destructive"
+        });
+      }
+      return false;
+    }
+  }, [agentId, toast]);
+
+  // Refresh QR Code function
+  const refreshQrCode = useCallback(async () => {
+    if (!connection?.instance_id || !isMountedRef.current) {
+      if (isMountedRef.current) {
+        toast({
+          title: "Erro",
+          description: "Nenhuma instância ativa para atualizar QR Code",
+          variant: "destructive"
+        });
+      }
       return;
     }
     
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-manager', {
-        body: { action: 'qrcode', agentId }
-      });
-
-      if (error) throw error;
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      if (data?.qrCode) {
-        setQrCode(data.qrCode);
-        setConnection(prev => prev ? {
-          ...prev,
-          qr_code: data.qrCode
-        } : null);
-        toast.success('QR Code atualizado!');
-      } else {
-        toast.error('QR Code não disponível no momento');
-      }
+      // Force refresh from manager
+      await connect();
     } catch (error: any) {
       console.error('Error refreshing QR code:', error);
-      toast.error('Erro ao atualizar QR Code: ' + (error.message || 'Erro desconhecido'));
+      if (isMountedRef.current) {
+        toast({
+          title: "Erro",
+          description: `Erro ao atualizar QR Code: ${error.message}`,
+          variant: "destructive"
+        });
+      }
     }
-  };
+  }, [connection?.instance_id, connect, toast]);
+
+  // Smart polling - only when connecting
+  const startPolling = useCallback(() => {
+    if (pollingIntervalRef.current) return;
+    
+    let attempts = 0;
+    const maxAttempts = 60; // 10 minutes with 10-second intervals
+
+    pollingIntervalRef.current = setInterval(async () => {
+      attempts++;
+      
+      if (!isMountedRef.current || attempts >= maxAttempts) {
+        clearAllIntervals();
+        if (isMountedRef.current && attempts >= maxAttempts) {
+          toast({
+            title: "Timeout",
+            description: "Tempo limite para conexão. Tente novamente.",
+            variant: "destructive"
+          });
+        }
+        return;
+      }
+
+      try {
+        await fetchConnectionStatus();
+        
+        if (connection?.status === 'connected' || connection?.status === 'error') {
+          clearAllIntervals();
+        }
+      } catch (error) {
+        console.error('Error polling status:', error);
+      }
+    }, 10000); // 10 seconds
+  }, [clearAllIntervals, connection?.status, fetchConnectionStatus, toast]);
+
+  // Health check for connected instances
+  const startHealthCheck = useCallback(() => {
+    if (!connection || connection.status !== 'connected') return;
+    
+    healthCheckIntervalRef.current = setInterval(async () => {
+      if (!isMountedRef.current) {
+        clearAllIntervals();
+        return;
+      }
+
+      try {
+        const healthStatus = await whatsappManager.healthCheck();
+        const isHealthy = healthStatus[agentId];
+        
+        if (!isHealthy && connection?.status === 'connected') {
+          safeSetConnection(prev => prev ? { ...prev, status: 'disconnected' } : null);
+          if (isMountedRef.current) {
+            toast({
+              title: "Desconectado",
+              description: "Conexão WhatsApp foi perdida",
+              variant: "destructive"
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Health check error:', error);
+      }
+    }, 60000); // 1 minute
+  }, [agentId, connection, safeSetConnection, toast, clearAllIntervals]);
 
   // Set up real-time subscription for connection updates
   useEffect(() => {
@@ -217,14 +355,9 @@ export function useWhatsAppConnection(agentId: string) {
         },
         (payload) => {
           console.log('Real-time connection update:', payload);
-          if (payload.new) {
+          if (payload.new && isMountedRef.current) {
             const newConnection = payload.new as WhatsAppConnection;
-            setConnection(newConnection);
-            if (newConnection.qr_code) {
-              setQrCode(newConnection.qr_code);
-            } else if (newConnection.status === 'connected') {
-              setQrCode(null);
-            }
+            safeSetConnection(newConnection);
           }
         }
       )
@@ -233,22 +366,59 @@ export function useWhatsAppConnection(agentId: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [agentId]);
+  }, [agentId, safeSetConnection]);
 
+  // Initial fetch
   useEffect(() => {
     if (agentId) {
       fetchConnectionStatus();
     }
-  }, [agentId]);
+  }, [agentId, fetchConnectionStatus]);
+
+  // Start health check when connected
+  useEffect(() => {
+    if (connection?.status === 'connected') {
+      startHealthCheck();
+    } else {
+      if (healthCheckIntervalRef.current) {
+        clearInterval(healthCheckIntervalRef.current);
+        healthCheckIntervalRef.current = null;
+      }
+    }
+  }, [connection?.status, startHealthCheck]);
+
+  // Cleanup on unmount or agentId change
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      clearAllIntervals();
+    };
+  }, [clearAllIntervals]);
+
+  // Update isMountedRef when component mounts
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Derived states
+  const isConnected = connection?.status === 'connected';
+  const isConnecting = connection?.status === 'connecting';
+  const hasError = connection?.status === 'error';
 
   return {
     connection,
     isLoading,
-    isConnecting,
-    qrCode,
+    error,
     connect,
     disconnect,
-    refreshQrCode,
-    refresh: fetchConnectionStatus
+    sendMessage,
+    refreshConnection: fetchConnectionStatus,
+    isConnected,
+    isConnecting,
+    hasError,
+    refreshQrCode
   };
 }

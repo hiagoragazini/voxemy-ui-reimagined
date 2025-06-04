@@ -4,8 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Smartphone, QrCode, Wifi, WifiOff, RefreshCw, RotateCcw, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { Loader2, Smartphone, QrCode, Wifi, WifiOff, RefreshCw, RotateCcw, AlertCircle, CheckCircle } from 'lucide-react';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { MessageLogs } from './MessageLogs';
 import { useWhatsAppConnection } from '@/hooks/use-whatsapp-connection';
@@ -19,42 +18,31 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
   const {
     connection,
     isLoading,
-    isConnecting,
-    qrCode,
+    error,
     connect,
     disconnect,
-    refreshQrCode,
-    refresh
+    sendMessage,
+    refreshConnection,
+    isConnected,
+    isConnecting,
+    hasError,
+    refreshQrCode
   } = useWhatsAppConnection(agentId);
 
   const [showQR, setShowQR] = useState(false);
 
   const handleConnect = async () => {
     setShowQR(false);
-    
-    try {
-      await connect();
-      setShowQR(true);
-    } catch (error) {
-      console.error('Connection failed:', error);
-    }
+    await connect();
   };
 
   const handleDisconnect = async () => {
-    try {
-      await disconnect();
-      setShowQR(false);
-    } catch (error) {
-      console.error('Disconnect failed:', error);
-    }
+    setShowQR(false);
+    await disconnect();
   };
 
   const handleRefreshQR = async () => {
-    try {
-      await refreshQrCode();
-    } catch (error) {
-      console.error('QR refresh failed:', error);
-    }
+    await refreshQrCode();
   };
 
   const getStatusColor = (status: string) => {
@@ -75,21 +63,28 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
     }
   };
 
+  const getStatusIcon = () => {
+    if (isConnected) return <CheckCircle className="h-5 w-5 text-green-500" />;
+    if (isConnecting) return <Loader2 className="h-5 w-5 text-yellow-500 animate-spin" />;
+    if (hasError) return <AlertCircle className="h-5 w-5 text-red-500" />;
+    return <WifiOff className="h-5 w-5 text-gray-500" />;
+  };
+
   // Update showQR based on connection state
   useEffect(() => {
-    if (connection?.status === 'connected') {
+    if (isConnected) {
       setShowQR(false);
-    } else if (connection?.status === 'connecting' && qrCode) {
+    } else if (isConnecting && connection?.qr_code) {
       setShowQR(true);
     }
-  }, [connection?.status, qrCode]);
+  }, [isConnected, isConnecting, connection?.qr_code]);
 
   if (isLoading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-6">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="ml-2">Verificando status do WhatsApp...</span>
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          <span>Verificando status do WhatsApp...</span>
         </CardContent>
       </Card>
     );
@@ -110,11 +105,7 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {connection?.status === 'connected' ? (
-                <Wifi className="h-5 w-5 text-green-500" />
-              ) : (
-                <WifiOff className="h-5 w-5 text-gray-500" />
-              )}
+              {getStatusIcon()}
               <div>
                 <Badge className={getStatusColor(connection?.status || 'disconnected')}>
                   {getStatusText(connection?.status || 'disconnected')}
@@ -131,13 +122,13 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={refresh}
+                onClick={refreshConnection}
                 disabled={isConnecting}
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
               
-              {connection?.status === 'connected' ? (
+              {isConnected ? (
                 <Button
                   variant="destructive"
                   onClick={handleDisconnect}
@@ -167,16 +158,25 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
             </Alert>
           )}
 
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {!connection?.status || connection.status === 'disconnected' ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>Configuração necessária:</strong> Para usar o WhatsApp, você precisa configurar as variáveis de ambiente EVOLUTION_API_URL e EVOLUTION_API_KEY no Supabase.
+                <strong>Configuração necessária:</strong> Para usar o WhatsApp em produção, configure as variáveis EVOLUTION_API_URL e EVOLUTION_API_KEY no Supabase.
               </AlertDescription>
             </Alert>
           ) : null}
 
-          {showQR && qrCode && (
+          {showQR && connection?.qr_code && (
             <div className="border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
                   <RotateCcw className="h-4 w-4" />
                 </Button>
               </div>
-              <QRCodeDisplay qrCode={qrCode} />
+              <QRCodeDisplay qrCode={connection.qr_code} />
               <div className="mt-3 space-y-2">
                 <p className="text-sm text-muted-foreground">
                   1. Abra o WhatsApp no seu celular
@@ -207,7 +207,7 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
             </div>
           )}
 
-          {connection?.status === 'connecting' && !qrCode && (
+          {isConnecting && !connection?.qr_code && (
             <Alert>
               <Loader2 className="h-4 w-4 animate-spin" />
               <AlertDescription>
@@ -218,7 +218,7 @@ export function WhatsAppManager({ agentId, agentName }: WhatsAppManagerProps) {
         </CardContent>
       </Card>
 
-      {connection?.status === 'connected' && (
+      {isConnected && (
         <MessageLogs agentId={agentId} />
       )}
     </div>
