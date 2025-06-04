@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/dashboard/Layout";
 import { Button } from "@/components/ui/button";
@@ -51,81 +51,50 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  console.log("=== AGENT CONFIG DEBUG ===");
-  console.log("Is New:", isNew);
-  console.log("Agent ID:", id);
-  console.log("URL Params:", Object.fromEntries(searchParams.entries()));
-
-  // EARLY VALIDATION - Check ID for edit mode
-  if (!isNew && !id) {
-    console.error("ID do agente é necessário para edição");
-    return (
-      <Layout>
-        <div className="container mx-auto p-6">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Erro de Navegação</AlertTitle>
-            <AlertDescription>
-              ID do agente não fornecido. 
-              <Button onClick={() => navigate('/agents')} variant="outline" className="ml-4">
-                Voltar para Lista
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
-      </Layout>
-    );
-  }
-
-  // EARLY VALIDATION - UUID format for edit mode
-  const isValidUUID = (uuid: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(uuid);
-  };
-
-  if (!isNew && id && !isValidUUID(id)) {
-    console.error("ID do agente inválido:", id);
-    return (
-      <Layout>
-        <div className="container mx-auto p-6">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>ID Inválido</AlertTitle>
-            <AlertDescription>
-              O ID do agente fornecido não é válido.
-              <Button onClick={() => navigate('/agents')} variant="outline" className="ml-4">
-                Voltar para Lista
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Get agent type from URL for new agents only
-  const urlAgentType = isNew ? searchParams.get('type') as AgentType | null : null;
-  
-  console.log("URL Agent Type (new only):", urlAgentType);
-
-  // EARLY VALIDATION - Type required for new agents
-  if (isNew && !urlAgentType) {
-    console.log("Redirecionando para seleção de tipo - tipo não fornecido");
-    navigate('/agents/new');
-    return null;
-  }
-
-  // STATE MANAGEMENT
+  // ALL HOOKS MUST BE DECLARED FIRST - NO EARLY RETURNS BEFORE HOOKS
   const { textToSpeech, playAudio } = useVoiceCall();
-  const [isLoading, setIsLoading] = useState(!isNew); // Loading true for existing agents
+  
+  // STATE MANAGEMENT - ALL HOOKS AT THE TOP
+  const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
   const [testMessage, setTestMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  // SAFE INITIAL FORM STATE
-  const getInitialFormState = () => {
+  // Get agent type from URL for new agents only
+  const urlAgentType = isNew ? searchParams.get('type') as AgentType | null : null;
+  
+  console.log("=== AGENT CONFIG DEBUG ===");
+  console.log("Is New:", isNew);
+  console.log("Agent ID:", id);
+  console.log("URL Agent Type (new only):", urlAgentType);
+
+  // Helper function to safely cast status
+  const getValidStatus = (status: string | null | undefined): AgentStatus => {
+    if (status === "active" || status === "paused" || status === "inactive") {
+      return status;
+    }
+    return "active";
+  };
+
+  // Helper function to safely cast agent type
+  const getValidAgentType = (type: string | null | undefined): AgentType => {
+    if (type === "text" || type === "voice" || type === "hybrid") {
+      return type;
+    }
+    return "text";
+  };
+
+  // UUID validation helper
+  const isValidUUID = useCallback((uuid: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }, []);
+
+  // SAFE INITIAL FORM STATE FUNCTION
+  const getInitialFormState = useCallback(() => {
     const defaultType = isNew ? (urlAgentType || 'text') : 'text';
     
     return {
@@ -145,29 +114,38 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       webhookUrl: "",
       phoneNumber: "",
     };
-  };
+  }, [isNew, urlAgentType]);
 
   const [formState, setFormState] = useState(getInitialFormState);
 
-  // Helper function to safely cast status
-  const getValidStatus = (status: string | null | undefined): AgentStatus => {
-    if (status === "active" || status === "paused" || status === "inactive") {
-      return status;
+  // VALIDATION LOGIC - MOVED TO USEEFFECT
+  useEffect(() => {
+    // Validate ID for edit mode
+    if (!isNew && !id) {
+      setValidationError("ID do agente é necessário para edição");
+      return;
     }
-    return "active";
-  };
 
-  // Helper function to safely cast agent type
-  const getValidAgentType = (type: string | null | undefined): AgentType => {
-    if (type === "text" || type === "voice" || type === "hybrid") {
-      return type;
+    // Validate UUID format for edit mode
+    if (!isNew && id && !isValidUUID(id)) {
+      setValidationError("O ID do agente fornecido não é válido");
+      return;
     }
-    return "text";
-  };
+
+    // Validate type for new agents
+    if (isNew && !urlAgentType) {
+      // Redirect to type selection
+      navigate('/agents/new');
+      return;
+    }
+
+    // Clear validation errors if all checks pass
+    setValidationError(null);
+  }, [isNew, id, urlAgentType, isValidUUID, navigate]);
 
   // EFFECT 1: Load existing agent data (edit mode only)
   useEffect(() => {
-    if (!isNew && id && isValidUUID(id)) {
+    if (!isNew && id && isValidUUID(id) && !validationError) {
       console.log("Carregando dados do agente:", id);
       setIsLoading(true);
       setError(null);
@@ -234,11 +212,11 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       
       fetchAgent();
     }
-  }, [id, isNew, navigate]);
+  }, [id, isNew, isValidUUID, validationError, navigate]);
 
   // EFFECT 2: Set defaults for new agents
   useEffect(() => {
-    if (isNew && urlAgentType) {
+    if (isNew && urlAgentType && !validationError) {
       console.log("Configurando valores padrão para novo agente:", urlAgentType);
       
       const defaultGreeting = urlAgentType === 'text' 
@@ -267,7 +245,58 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         voiceId: defaultVoiceId,
       }));
     }
-  }, [isNew, urlAgentType]);
+  }, [isNew, urlAgentType, validationError]);
+
+  // TAB CONFIGURATION
+  const getTabsForAgentType = useCallback(() => {
+    if (formState.type === 'text') {
+      return ['basic', 'ai', 'whatsapp'];
+    } else if (formState.type === 'voice') {
+      return ['basic', 'ai', 'voice'];
+    } else if (formState.type === 'hybrid') {
+      return ['basic', 'ai', 'whatsapp', 'voice'];
+    }
+    return ['basic', 'ai'];
+  }, [formState.type]);
+
+  const getTabLabel = useCallback((tabKey: string) => {
+    const labels = {
+      basic: 'Informações Básicas',
+      ai: 'Configuração de IA',
+      whatsapp: 'WhatsApp e Comunicação',
+      voice: 'Voz e Comunicação'
+    };
+    return labels[tabKey as keyof typeof labels] || tabKey;
+  }, []);
+
+  const availableTabs = getTabsForAgentType();
+
+  // Auto-correct active tab if not available
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab('basic');
+    }
+  }, [formState.type, activeTab, availableTabs]);
+
+  // RENDER VALIDATION ERRORS FIRST
+  if (validationError) {
+    return (
+      <Layout>
+        <div className="container mx-auto p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro de Navegação</AlertTitle>
+            <AlertDescription>
+              {validationError}
+              <Button onClick={() => navigate('/agents')} variant="outline" className="ml-4">
+                Voltar para Lista
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Layout>
+    );
+  }
 
   // LOADING STATE
   if (isLoading) {
@@ -426,37 +455,6 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       setIsSaving(false);
     }
   };
-
-  // TAB CONFIGURATION
-  const getTabsForAgentType = () => {
-    if (formState.type === 'text') {
-      return ['basic', 'ai', 'whatsapp'];
-    } else if (formState.type === 'voice') {
-      return ['basic', 'ai', 'voice'];
-    } else if (formState.type === 'hybrid') {
-      return ['basic', 'ai', 'whatsapp', 'voice'];
-    }
-    return ['basic', 'ai'];
-  };
-
-  const getTabLabel = (tabKey: string) => {
-    const labels = {
-      basic: 'Informações Básicas',
-      ai: 'Configuração de IA',
-      whatsapp: 'WhatsApp e Comunicação',
-      voice: 'Voz e Comunicação'
-    };
-    return labels[tabKey as keyof typeof labels] || tabKey;
-  };
-
-  const availableTabs = getTabsForAgentType();
-
-  // Auto-correct active tab if not available
-  useEffect(() => {
-    if (!availableTabs.includes(activeTab)) {
-      setActiveTab('basic');
-    }
-  }, [formState.type, activeTab, availableTabs]);
 
   console.log("=== RENDERIZANDO FORMULÁRIO ===");
   console.log("Tipo do agente:", formState.type);
