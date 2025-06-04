@@ -1,32 +1,119 @@
 
 project_id = "nklbbeavnbwvvatqimxw"
 
-[functions.text-to-speech]
-verify_jwt = true
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
 
-[functions.tts-twillio-handler]
-verify_jwt = false
+[auth]
+enabled = true
+port = 54322
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["https://lovable.dev", "https://lovable.app"]
+jwt_expiry = 3600
+enable_signup = true
+email_confirm = false
 
-[functions.test-audio-call]
-verify_jwt = false
+[auth.external.google]
+enabled = false
 
-[functions.process-dialog]
-verify_jwt = false
+[auth.external.github]
+enabled = false
 
-[functions.call-status]
+[auth.external.gitlab]
+enabled = false
+
+[auth.external.bitbucket]
+enabled = false
+
+[auth.external.azure]
+enabled = false
+
+[auth.external.facebook]
+enabled = false
+
+[auth.external.discord]
+enabled = false
+
+[auth.external.twitter]
+enabled = false
+
+[auth.external.apple]
+enabled = false
+
+[auth.external.linkedin]
+enabled = false
+
+[auth.external.notion]
+enabled = false
+
+[auth.external.spotify]
+enabled = false
+
+[auth.external.slack]
+enabled = false
+
+[auth.external.workos]
+enabled = false
+
+[auth.external.zoom]
+enabled = false
+
+[db]
+port = 54322
+
+[storage]
+enabled = true
+port = 54323
+file_size_limit = "50MiB"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[realtime]
+enabled = true
+port = 54325
+
+[studio]
+enabled = true
+port = 54326
+
+[functions.ai-conversation]
 verify_jwt = false
 
 [functions.call-handler]
 verify_jwt = false
 
-[functions.twilio-echo]
+[functions.call-status]
+verify_jwt = false
+
+[functions.make-call]
+verify_jwt = false
+
+[functions.make-conversation-call]
+verify_jwt = false
+
+[functions.test-audio-call]
+verify_jwt = false
+
+[functions.text-to-speech]
 verify_jwt = false
 
 [functions.twilio-diagnostic]
 verify_jwt = false
 
-[functions.conversation-relay-handler]
+[functions.twilio-echo]
 verify_jwt = false
 
-[functions.make-conversation-call]
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.whatsapp-manager]
+verify_jwt = false
+
+[functions.whatsapp-sender]
 verify_jwt = false

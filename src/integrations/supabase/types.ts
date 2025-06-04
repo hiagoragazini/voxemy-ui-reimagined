@@ -418,6 +418,100 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_connections: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          instance_id: string | null
+          last_connected_at: string | null
+          phone_number: string | null
+          qr_code: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          last_connected_at?: string | null
+          phone_number?: string | null
+          qr_code?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          last_connected_at?: string | null
+          phone_number?: string | null
+          qr_code?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_connections_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          agent_id: string
+          created_at: string
+          direction: string
+          from_number: string
+          id: string
+          message_text: string | null
+          message_type: string
+          status: string
+          to_number: string
+          updated_at: string
+          whatsapp_message_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          direction: string
+          from_number: string
+          id?: string
+          message_text?: string | null
+          message_type?: string
+          status?: string
+          to_number: string
+          updated_at?: string
+          whatsapp_message_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          direction?: string
+          from_number?: string
+          id?: string
+          message_text?: string | null
+          message_type?: string
+          status?: string
+          to_number?: string
+          updated_at?: string
+          whatsapp_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

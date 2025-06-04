@@ -697,6 +697,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                   }}
                   onFormChange={handleFormChange}
                   agentName={formState.name || "Agente"}
+                  agentId={!isNew ? id : undefined}
                   instructions={formState.instructions}
                   responseStyle={formState.responseStyle}
                   knowledge={formState.knowledge}
