@@ -10,10 +10,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useVoiceCall } from "@/hooks/use-voice-call";
-import { Loader2, Save, ArrowLeft, ArrowRight } from "lucide-react";
+import { Loader2, Save, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { VOICES, VOICE_IDS } from "@/constants/voices";
 import { WhatsAppConfigTab } from "@/components/agents/WhatsAppConfigTab";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Lista expandida de vozes disponíveis
 const VOICES_OPTIONS = VOICES;
@@ -52,8 +53,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   console.log("=== DEBUG AGENT CONFIG ===");
   console.log("URL Agent Type:", urlAgentType);
   console.log("Is New:", isNew);
-  console.log("Search Params:", Object.fromEntries(searchParams.entries()));
-  console.log("Current URL:", window.location.href);
+  console.log("Agent ID:", id);
   
   const { textToSpeech, playAudio } = useVoiceCall();
   const [isLoading, setIsLoading] = useState(false);
@@ -61,9 +61,10 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
   const [activeTab, setActiveTab] = useState("basic");
   const [testMessage, setTestMessage] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saveAttempts, setSaveAttempts] = useState(0);
 
-  // Estados do formulário
+  // Estados do formulário com valores padrão seguros
   const [formState, setFormState] = useState({
     name: "",
     description: "",
@@ -82,13 +83,49 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     phoneNumber: "",
   });
 
-  // LÓGICA CONDICIONAL CORRIGIDA
-  // Se é novo agente E não tem tipo na URL, redireciona para seleção
-  useEffect(() => {
-    console.log("=== VERIFICANDO REDIRECIONAMENTO ===");
-    console.log("isNew:", isNew);
-    console.log("urlAgentType:", urlAgentType);
+  // Validação do ID do agente para páginas de edição
+  const isValidAgentId = (agentId: string | undefined): boolean => {
+    if (!agentId) return false;
+    // UUID validation pattern
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidPattern.test(agentId);
+  };
+
+  // Função para configurar valores padrão baseados no tipo
+  const setDefaultsByType = (agentType: 'text' | 'voice' | 'hybrid') => {
+    console.log("Configurando valores padrão para tipo:", agentType);
     
+    const defaultGreeting = agentType === 'text' 
+      ? "Olá! 👋 Sou seu assistente virtual. Como posso ajudar você hoje?"
+      : "Olá, como posso ajudar você hoje?";
+    
+    const defaultInstructions = agentType === 'text'
+      ? "Seja cordial, use emojis ocasionalmente e mantenha as respostas concisas e úteis para WhatsApp."
+      : "Seja cordial e objetivo nas respostas.";
+
+    const defaultPrompt = agentType === 'text' 
+      ? "Você é um assistente virtual especializado em atendimento ao cliente via WhatsApp. Seja amigável e use linguagem adequada para mensagens de texto."
+      : "Você é um assistente virtual especializado em atendimento ao cliente.";
+
+    // Set default voice_id only for voice and hybrid agents
+    const defaultVoiceId = (agentType === 'voice' || agentType === 'hybrid') 
+      ? VOICE_IDS.SARAH 
+      : '';
+
+    setFormState(prev => ({
+      ...prev,
+      type: agentType,
+      defaultGreeting,
+      instructions: defaultInstructions,
+      conversationPrompt: defaultPrompt,
+      responseStyle: "Formal e direto",
+      status: "active",
+      voiceId: defaultVoiceId,
+    }));
+  };
+
+  // VERIFICAÇÃO DE REDIRECIONAMENTO - Para novos agentes sem tipo
+  useEffect(() => {
     if (isNew && !urlAgentType) {
       console.log("Redirecionando para seleção de tipo...");
       navigate('/agents/new');
@@ -96,55 +133,79 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     }
   }, [isNew, urlAgentType, navigate]);
 
+  // CARREGAMENTO DE DADOS - Apenas para edição com ID válido
   useEffect(() => {
-    console.log("=== CARREGANDO DADOS DO AGENTE ===");
-    
     if (!isNew && id) {
-      // Carregamento real de dados do agente do Supabase
+      // Validar ID antes de tentar buscar
+      if (!isValidAgentId(id)) {
+        console.error("ID do agente inválido:", id);
+        setLoadError("ID do agente inválido");
+        toast.error("ID do agente inválido");
+        navigate('/agents');
+        return;
+      }
+
       setIsLoading(true);
+      setLoadError(null);
       
       const fetchAgent = async () => {
         try {
+          console.log("Buscando agente com ID:", id);
+          
           const { data, error } = await supabase
             .from('agents')
             .select('*')
             .eq('id', id)
-            .single();
+            .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no data
           
           if (error) {
             console.error('Erro ao carregar agente:', error);
-            toast.error('Erro ao carregar dados do agente');
-            setIsLoading(false);
-            return;
+            throw new Error(`Erro do banco: ${error.message}`);
           }
           
-          if (data) {
-            console.log("Agente carregado do Supabase:", data);
-            
-            // Type-safe conversion for agent type - include hybrid
-            const validType: 'text' | 'voice' | 'hybrid' = 
-              data.type === 'text' || data.type === 'voice' || data.type === 'hybrid' 
-                ? data.type 
-                : urlAgentType || 'text';
-            
-            // Preencher o formulário com os dados do agente
-            setFormState({
-              name: data.name || '',
-              description: data.description || '',
-              category: data.category || 'Atendimento',
-              type: validType,
-              voiceId: data.voice_id || '', // Can be null for text agents
-              status: data.status || 'active',
-              instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',
-              responseStyle: data.response_style || 'Formal e detalhado',
-              defaultGreeting: data.default_greeting || 'Olá, como posso ajudar você hoje?',
-              maxResponseLength: data.max_response_length?.toString() || '200',
-              knowledge: data.knowledge || 'Informações sobre produtos e serviços da empresa.\n\nPerguntas frequentes sobre atendimento ao cliente.',
-              aiModel: data.ai_model || 'gpt-4o-mini',
-              conversationPrompt: data.conversation_prompt || 'Você é um assistente virtual especializado em atendimento ao cliente.',
-              webhookUrl: data.webhook_url || '',
-              phoneNumber: data.phone_number || '',
-            });
+          if (!data) {
+            console.error('Agente não encontrado com ID:', id);
+            throw new Error('Agente não encontrado');
+          }
+          
+          console.log("Agente carregado do Supabase:", data);
+          
+          // Type-safe conversion with validation
+          const validType: 'text' | 'voice' | 'hybrid' = 
+            ['text', 'voice', 'hybrid'].includes(data.type) 
+              ? data.type as 'text' | 'voice' | 'hybrid'
+              : 'text';
+          
+          // Preencher o formulário com os dados do agente
+          setFormState({
+            name: data.name || '',
+            description: data.description || '',
+            category: data.category || 'Atendimento',
+            type: validType,
+            voiceId: data.voice_id || '',
+            status: data.status || 'active',
+            instructions: data.instructions || 'Este agente deve ser polido e direto nas respostas.',
+            responseStyle: data.response_style || 'Formal e detalhado',
+            defaultGreeting: data.default_greeting || 'Olá, como posso ajudar você hoje?',
+            maxResponseLength: data.max_response_length?.toString() || '200',
+            knowledge: data.knowledge || 'Informações sobre produtos e serviços da empresa.\n\nPerguntas frequentes sobre atendimento ao cliente.',
+            aiModel: data.ai_model || 'gpt-4o-mini',
+            conversationPrompt: data.conversation_prompt || 'Você é um assistente virtual especializado em atendimento ao cliente.',
+            webhookUrl: data.webhook_url || '',
+            phoneNumber: data.phone_number || '',
+          });
+          
+          toast.success(`Agente "${data.name}" carregado com sucesso!`);
+          
+        } catch (error: any) {
+          console.error('Erro ao buscar agente:', error);
+          const errorMessage = error.message || 'Erro desconhecido ao carregar agente';
+          setLoadError(errorMessage);
+          toast.error(errorMessage);
+          
+          // Se é erro de não encontrado, redireciona para lista
+          if (error.message.includes('não encontrado')) {
+            setTimeout(() => navigate('/agents'), 2000);
           }
         } finally {
           setIsLoading(false);
@@ -152,47 +213,24 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
       };
       
       fetchAgent();
-    } else if (urlAgentType) {
-      // Configurar valores padrão baseados no tipo da URL
-      console.log("Configurando valores padrão para tipo:", urlAgentType);
-      
-      const defaultGreeting = urlAgentType === 'text' 
-        ? "Olá! 👋 Sou seu assistente virtual. Como posso ajudar você hoje?"
-        : "Olá, como posso ajudar você hoje?";
-      
-      const defaultInstructions = urlAgentType === 'text'
-        ? "Seja cordial, use emojis ocasionalmente e mantenha as respostas concisas e úteis para WhatsApp."
-        : "Seja cordial e objetivo nas respostas.";
-
-      const defaultPrompt = urlAgentType === 'text' 
-        ? "Você é um assistente virtual especializado em atendimento ao cliente via WhatsApp. Seja amigável e use linguagem adequada para mensagens de texto."
-        : "Você é um assistente virtual especializado em atendimento ao cliente.";
-
-      // Set default voice_id only for voice and hybrid agents
-      const defaultVoiceId = (urlAgentType === 'voice' || urlAgentType === 'hybrid') 
-        ? VOICE_IDS.SARAH 
-        : '';
-
-      setFormState(prev => ({
-        ...prev,
-        type: urlAgentType,
-        defaultGreeting,
-        instructions: defaultInstructions,
-        conversationPrompt: defaultPrompt,
-        responseStyle: "Formal e direto",
-        status: "active",
-        voiceId: defaultVoiceId,
-      }));
+    } else if (isNew && urlAgentType) {
+      // Configurar valores padrão para novo agente
+      setDefaultsByType(urlAgentType);
     }
-  }, [id, isNew, urlAgentType]);
+  }, [id, isNew, urlAgentType, navigate]);
 
   const handleFormChange = (field: string, value: string) => {
     setFormState(prev => ({ ...prev, [field]: value }));
   };
 
   const handleTestVoice = async () => {
+    if (!formState.voiceId) {
+      toast.error("Selecione uma voz primeiro");
+      return;
+    }
+
     setIsTesting(true);
-    const textToTest = testMessage || `Olá, eu sou ${formState.name}, um assistente virtual.`;
+    const textToTest = testMessage || `Olá, eu sou ${formState.name || 'um assistente virtual'}.`;
     
     try {
       const audioContent = await textToSpeech({
@@ -242,13 +280,12 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     try {
       console.log(`Tentativa ${saveAttempts + 1} de salvar agente no Supabase...`);
       
-      // Preparar os dados para salvar no Supabase - incluindo o tipo e voice_id correto
+      // Preparar os dados para salvar no Supabase
       const agentData = {
         name: formState.name,
         description: formState.description,
         category: formState.category,
         type: formState.type,
-        // Set voice_id to null for text agents, value for voice/hybrid agents
         voice_id: formState.type === 'text' ? null : formState.voiceId || null,
         status: formState.status || 'active',
         instructions: formState.instructions,
@@ -285,7 +322,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         } else {
           throw new Error("Nenhum dado retornado após a inserção do agente");
         }
-      } else if (id) {
+      } else if (id && isValidAgentId(id)) {
         // Atualizar agente existente
         const { data, error } = await supabase
           .from('agents')
@@ -298,6 +335,8 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
         if (error) {
           throw error;
         }
+      } else {
+        throw new Error("ID do agente inválido para atualização");
       }
       
       if (!agentId) {
@@ -315,7 +354,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           .from('agents')
           .select('*')
           .eq('id', agentId)
-          .single();
+          .maybeSingle();
           
         if (verifyError || !verifyData) {
           console.error('Erro na verificação do agente após criação:', verifyError);
@@ -340,6 +379,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
     }
   };
 
+  // Loading state para busca de dados
   if (isLoading && !isNew) {
     return (
       <Layout>
@@ -348,6 +388,28 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
             <Loader2 className="h-10 w-10 animate-spin text-violet-600 mx-auto" />
             <p className="mt-4 text-muted-foreground">Carregando configurações do agente...</p>
           </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Error state para carregamento
+  if (loadError) {
+    return (
+      <Layout>
+        <div className="container mx-auto p-6">
+          <Alert variant="destructive" className="max-w-2xl mx-auto">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro ao carregar agente</AlertTitle>
+            <AlertDescription>
+              {loadError}
+              <div className="mt-4">
+                <Button onClick={() => navigate('/agents')} variant="outline">
+                  Voltar para lista de agentes
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
         </div>
       </Layout>
     );
@@ -408,6 +470,17 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                 Voltar para Seleção
               </Button>
             )}
+            {!isNew && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/agents')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar para Lista
+              </Button>
+            )}
             <div className="flex items-center gap-2">
               {formState.type === 'voice' ? (
                 <span className="text-2xl">🎤</span>
@@ -424,7 +497,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
             </div>
           </div>
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-700 to-violet-500">
-            {isNew ? "Configurar Novo Agente" : `Configurar Agente: ${formState.name}`}
+            {isNew ? "Configurar Novo Agente" : `Editar Agente: ${formState.name}`}
           </h1>
           <p className="mt-1 text-muted-foreground max-w-3xl">
             {isNew 
@@ -695,7 +768,7 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
                             id="testVoice"
                             value={testMessage} 
                             onChange={(e) => setTestMessage(e.target.value)} 
-                            placeholder={`Digite um texto para testar a voz. Padrão: "Olá, eu sou ${formState.name}, um assistente virtual."`}
+                            placeholder={`Digite um texto para testar a voz. Padrão: "Olá, eu sou ${formState.name || 'um assistente virtual'}."`}
                             rows={2}
                           />
                           <Button 
@@ -718,10 +791,11 @@ const AgentConfig = ({ isNew = false }: AgentConfigProps) => {
           </Tabs>
           
           {saveError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md">
-              <p className="font-medium">Erro ao salvar o agente</p>
-              <p className="text-sm mt-1">{saveError}</p>
-            </div>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Erro ao salvar o agente</AlertTitle>
+              <AlertDescription>{saveError}</AlertDescription>
+            </Alert>
           )}
           
           <div className="flex justify-end space-x-4">
