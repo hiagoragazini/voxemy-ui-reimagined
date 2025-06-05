@@ -1,18 +1,24 @@
 
-import { Request, Response } from 'express';
 import { healthChecker } from '@/lib/health/health-checker';
 
-export async function GET(req: Request, res: Response) {
+export async function GET(req: Request) {
   try {
     const healthStatus = await healthChecker.checkHealth();
     
     const statusCode = healthStatus.status === 'unhealthy' ? 503 : 200;
     
-    return res.status(statusCode).json(healthStatus);
+    return new Response(JSON.stringify(healthStatus), {
+      status: statusCode,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      }
+    });
   } catch (error) {
     console.error('Health check error:', error);
     
-    return res.status(503).json({
+    return new Response(JSON.stringify({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       services: {
@@ -25,6 +31,13 @@ export async function GET(req: Request, res: Response) {
         isValid: false,
         errors: ['Health check system failure'],
         warnings: []
+      }
+    }), {
+      status: 503,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
       }
     });
   }

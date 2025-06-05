@@ -1,4 +1,3 @@
-import { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 
 interface EvolutionWebhookPayload {
@@ -44,55 +43,69 @@ class WebhookProcessor {
     );
   }
 
-  async processWebhook(req: Request, res: Response): Promise<Response> {
+  async processWebhook(req: Request): Promise<Response> {
     try {
       // Validate webhook
       if (!(await this.validateWebhook(req))) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
 
-      const body: EvolutionWebhookPayload = req.body;
+      const body: EvolutionWebhookPayload = await req.json();
       console.log('WhatsApp webhook received:', JSON.stringify(body, null, 2));
 
       // Rate limiting
       if (!this.checkRateLimit(body.instance)) {
-        return res.status(429).json({ error: 'Rate limit exceeded' });
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
 
       // Get agent by instance
       const agentConfig = await this.getAgentByInstance(body.instance);
       if (!agentConfig) {
         console.error('Agent not found for instance:', body.instance);
-        return res.status(404).json({ error: 'Agent not found' });
+        return new Response(JSON.stringify({ error: 'Agent not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
 
       // Process different events
       switch (body.event) {
         case 'qrcode.updated':
-          return await this.handleQRCodeUpdate(req, res, body, agentConfig.id);
+          return await this.handleQRCodeUpdate(body, agentConfig.id);
         
         case 'connection.update':
-          return await this.handleConnectionUpdate(req, res, body, agentConfig.id);
+          return await this.handleConnectionUpdate(body, agentConfig.id);
         
         case 'messages.upsert':
-          return await this.handleNewMessage(req, res, body, agentConfig);
+          return await this.handleNewMessage(body, agentConfig);
         
         case 'messages.update':
-          return await this.handleMessageUpdate(req, res, body, agentConfig.id);
+          return await this.handleMessageUpdate(body, agentConfig.id);
         
         default:
           console.log('Unhandled webhook event:', body.event);
-          return res.json({ status: 'ignored' });
+          return new Response(JSON.stringify({ status: 'ignored' }), {
+            headers: { 'Content-Type': 'application/json' }
+          });
       }
 
     } catch (error) {
       console.error('Webhook processing error:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      return new Response(JSON.stringify({ error: 'Internal server error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 
   private async validateWebhook(req: Request): Promise<boolean> {
-    const apiKey = req.headers.authorization || req.headers.apikey;
+    const apiKey = req.headers.get('authorization') || req.headers.get('apikey');
     const expectedKey = process.env.EVOLUTION_API_KEY;
     
     if (!expectedKey) {
@@ -156,7 +169,7 @@ class WebhookProcessor {
     }
   }
 
-  private async handleQRCodeUpdate(req: Request, res: Response, body: EvolutionWebhookPayload, agentId: string): Promise<Response> {
+  private async handleQRCodeUpdate(body: EvolutionWebhookPayload, agentId: string): Promise<Response> {
     try {
       const qrCode = body.data.qrcode;
       
@@ -173,14 +186,19 @@ class WebhookProcessor {
         console.log('QR code updated in database');
       }
       
-      return res.json({ status: 'qr_updated' });
+      return new Response(JSON.stringify({ status: 'qr_updated' }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
     } catch (error) {
       console.error('Error handling QR code update:', error);
-      return res.status(500).json({ error: 'Failed to update QR code' });
+      return new Response(JSON.stringify({ error: 'Failed to update QR code' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 
-  private async handleConnectionUpdate(req: Request, res: Response, body: EvolutionWebhookPayload, agentId: string): Promise<Response> {
+  private async handleConnectionUpdate(body: EvolutionWebhookPayload, agentId: string): Promise<Response> {
     try {
       const state = body.data.state;
       const status = state === 'open' ? 'connected' : 'disconnected';
@@ -197,20 +215,27 @@ class WebhookProcessor {
       
       console.log('Connection status updated to:', status);
       
-      return res.json({ status: 'connection_updated' });
+      return new Response(JSON.stringify({ status: 'connection_updated' }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
     } catch (error) {
       console.error('Error handling connection update:', error);
-      return res.status(500).json({ error: 'Failed to update connection' });
+      return new Response(JSON.stringify({ error: 'Failed to update connection' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 
-  private async handleNewMessage(req: Request, res: Response, body: EvolutionWebhookPayload, agentConfig: AgentConfig): Promise<Response> {
+  private async handleNewMessage(body: EvolutionWebhookPayload, agentConfig: AgentConfig): Promise<Response> {
     try {
       const messageData = body.data;
       
       if (!messageData.key || messageData.key.fromMe) {
         console.log('Ignoring message from bot itself');
-        return res.json({ status: 'ignored' });
+        return new Response(JSON.stringify({ status: 'ignored' }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
 
       const messageText = messageData.message?.conversation || 
@@ -218,20 +243,15 @@ class WebhookProcessor {
       
       if (!messageText.trim()) {
         console.log('No text content in message');
-        return res.json({ status: 'no_text' });
+        return new Response(JSON.stringify({ status: 'no_text' }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
 
       const fromNumber = messageData.key.remoteJid.replace('@s.whatsapp.net', '');
       const senderName = messageData.pushName || fromNumber;
       
       console.log('Processing message from:', fromNumber, 'Text:', messageText);
-
-      // Get WhatsApp connection info
-      const { data: connection } = await this.supabase
-        .from('whatsapp_connections')
-        .select('phone_number')
-        .eq('agent_id', agentConfig.id)
-        .single();
 
       // Save incoming message
       await this.saveMessage(agentConfig.id, fromNumber, messageText, true);
@@ -247,24 +267,34 @@ class WebhookProcessor {
         await this.saveMessage(agentConfig.id, fromNumber, aiResponse, false);
       }
 
-      return res.json({ 
+      return new Response(JSON.stringify({ 
         status: 'processed',
         response: aiResponse 
+      }), {
+        headers: { 'Content-Type': 'application/json' }
       });
 
     } catch (error) {
       console.error('Error handling new message:', error);
-      return res.status(500).json({ error: 'Failed to process message' });
+      return new Response(JSON.stringify({ error: 'Failed to process message' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 
-  private async handleMessageUpdate(req: Request, res: Response, body: EvolutionWebhookPayload, agentId: string): Promise<Response> {
+  private async handleMessageUpdate(body: EvolutionWebhookPayload, agentId: string): Promise<Response> {
     try {
       console.log('Message update received:', body.data);
-      return res.json({ status: 'message_updated' });
+      return new Response(JSON.stringify({ status: 'message_updated' }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
     } catch (error) {
       console.error('Error handling message update:', error);
-      return res.status(500).json({ error: 'Failed to update message' });
+      return new Response(JSON.stringify({ error: 'Failed to update message' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 
@@ -362,10 +392,12 @@ ${context}`;
 
 const webhookProcessor = new WebhookProcessor();
 
-export async function POST(req: Request, res: Response) {
-  return webhookProcessor.processWebhook(req, res);
+export async function POST(req: Request) {
+  return webhookProcessor.processWebhook(req);
 }
 
-export async function GET(req: Request, res: Response) {
-  return res.json({ status: 'WhatsApp webhook is healthy' });
+export async function GET(req: Request) {
+  return new Response(JSON.stringify({ status: 'WhatsApp webhook is healthy' }), {
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
