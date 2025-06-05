@@ -1,18 +1,18 @@
 
-import { NextResponse } from 'next/server';
+import { Request, Response } from 'express';
 import { healthChecker } from '@/lib/health/health-checker';
 
-export async function GET() {
+export async function GET(req: Request, res: Response) {
   try {
     const healthStatus = await healthChecker.checkHealth();
     
     const statusCode = healthStatus.status === 'unhealthy' ? 503 : 200;
     
-    return NextResponse.json(healthStatus, { status: statusCode });
+    return res.status(statusCode).json(healthStatus);
   } catch (error) {
     console.error('Health check error:', error);
     
-    return NextResponse.json({
+    return res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       services: {
@@ -26,6 +26,6 @@ export async function GET() {
         errors: ['Health check system failure'],
         warnings: []
       }
-    }, { status: 503 });
+    });
   }
 }

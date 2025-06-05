@@ -15,6 +15,18 @@ interface WhatsAppConnection {
   qr_code: string | null;
 }
 
+interface DatabaseConnection {
+  id: string;
+  agent_id: string;
+  instance_id: string | null;
+  phone_number: string | null;
+  status: string;
+  last_connected_at: string | null;
+  created_at: string;
+  qr_code: string | null;
+  updated_at: string;
+}
+
 interface UseWhatsAppConnectionReturn {
   connection: WhatsAppConnection | null;
   isLoading: boolean;
@@ -28,6 +40,25 @@ interface UseWhatsAppConnectionReturn {
   hasError: boolean;
   refreshQrCode: () => Promise<void>;
 }
+
+// Helper function to convert database connection to our type
+const convertDbConnection = (dbConn: DatabaseConnection): WhatsAppConnection => {
+  const validStatuses: WhatsAppConnection['status'][] = ['connecting', 'connected', 'disconnected', 'error'];
+  const status = validStatuses.includes(dbConn.status as any) 
+    ? (dbConn.status as WhatsAppConnection['status'])
+    : 'disconnected';
+
+  return {
+    id: dbConn.id,
+    agent_id: dbConn.agent_id,
+    instance_id: dbConn.instance_id,
+    phone_number: dbConn.phone_number,
+    status,
+    last_connected_at: dbConn.last_connected_at,
+    created_at: dbConn.created_at,
+    qr_code: dbConn.qr_code
+  };
+};
 
 export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionReturn {
   const [connection, setConnection] = useState<WhatsAppConnection | null>(null);
@@ -89,7 +120,14 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
       }
 
       console.log('Connection status response:', data);
-      safeSetConnection(data);
+      
+      if (data) {
+        const convertedData = convertDbConnection(data as DatabaseConnection);
+        safeSetConnection(convertedData);
+      } else {
+        safeSetConnection(null);
+      }
+      
       safeSetError(null);
       
     } catch (error) {
@@ -137,7 +175,7 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
         agent_id: result.agentId,
         instance_id: result.instanceId,
         phone_number: result.phoneNumber || null,
-        status: result.status as any,
+        status: result.status as WhatsAppConnection['status'],
         last_connected_at: result.status === 'connected' ? new Date().toISOString() : null,
         created_at: new Date().toISOString(),
         qr_code: result.qrCode || null
@@ -189,12 +227,13 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
       const success = await whatsappManager.disconnectAgent(agentId);
 
       if (success) {
-        safeSetConnection(prev => prev ? { 
-          ...prev, 
+        const updatedConnection: WhatsAppConnection = {
+          ...connection!,
           status: 'disconnected',
           phone_number: null,
           qr_code: null
-        } : null);
+        };
+        safeSetConnection(updatedConnection);
         
         if (isMountedRef.current) {
           toast({
@@ -217,7 +256,7 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
         });
       }
     }
-  }, [agentId, clearAllIntervals, safeSetConnection, safeSetError, toast]);
+  }, [agentId, connection, clearAllIntervals, safeSetConnection, safeSetError, toast]);
 
   // Send message function
   const sendMessage = useCallback(async (to: string, message: string): Promise<boolean> => {
@@ -261,7 +300,6 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
     }
     
     try {
-      // Force refresh from manager
       await connect();
     } catch (error: any) {
       console.error('Error refreshing QR code:', error);
@@ -324,7 +362,11 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
         const isHealthy = healthStatus[agentId];
         
         if (!isHealthy && connection?.status === 'connected') {
-          safeSetConnection(prev => prev ? { ...prev, status: 'disconnected' } : null);
+          const updatedConnection: WhatsAppConnection = {
+            ...connection,
+            status: 'disconnected'
+          };
+          safeSetConnection(updatedConnection);
           if (isMountedRef.current) {
             toast({
               title: "Desconectado",
@@ -356,7 +398,7 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
         (payload) => {
           console.log('Real-time connection update:', payload);
           if (payload.new && isMountedRef.current) {
-            const newConnection = payload.new as WhatsAppConnection;
+            const newConnection = convertDbConnection(payload.new as DatabaseConnection);
             safeSetConnection(newConnection);
           }
         }
