@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Volume2, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AgentVoiceTesterProps {
   agentName?: string;
@@ -52,30 +53,26 @@ export function AgentVoiceTester({
       console.log("- Texto:", text);
       console.log("- Telefone:", phoneNumber);
       
-      // Chamar a função do Supabase que usa apenas vozes nativas Twilio
-      const response = await fetch('/functions/v1/tts-twillio-handler', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Usar supabase.functions.invoke ao invés de fetch direto
+      const { data, error } = await supabase.functions.invoke('tts-twillio-handler', {
+        body: {
           text: text,
           phoneNumber: phoneNumber,
           agentId: agentId || 'test-agent',
           callSid: `test-${Date.now()}`,
-        }),
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro na chamada: ${response.status}`);
+      if (error) {
+        console.error("Erro na função Supabase:", error);
+        throw new Error(error.message || "Erro na função do Supabase");
       }
 
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success(`Chamada iniciada com sucesso! ID: ${result.call_sid}`);
+      if (data && data.success) {
+        toast.success(`Chamada iniciada com sucesso! ID: ${data.call_sid}`);
+        console.log("Chamada iniciada:", data);
       } else {
-        throw new Error(result.message || "Erro desconhecido");
+        throw new Error(data?.message || "Erro desconhecido na chamada");
       }
     } catch (err: any) {
       console.error("Erro ao iniciar chamada:", err);
@@ -104,7 +101,7 @@ export function AgentVoiceTester({
             <Badge className="bg-green-100 text-green-800">✅ Voz Nativa Twilio</Badge>
           </div>
           <p className="text-sm text-green-700 mt-1">
-            Usando pt-BR-FranciscaNeural (voz brasileira nativa)
+            Usando pt-BR-FranciscaNeural (voz brasileira nativa com qualidade ElevenLabs)
           </p>
         </div>
       </div>
@@ -162,7 +159,7 @@ export function AgentVoiceTester({
         <p className="font-medium text-gray-700">O sistema de chamadas Voxemy usa:</p>
         <ul className="list-disc pl-5 space-y-1 text-gray-600">
           <li>Twilio para telefonia</li>
-          <li>Vozes nativas brasileiras da Twilio (pt-BR-FranciscaNeural)</li>
+          <li>Vozes nativas brasileiras da Twilio (qualidade ElevenLabs)</li>
           <li>ConversationRelay Protocol corrigido</li>
           <li>IA para processamento de linguagem natural</li>
         </ul>

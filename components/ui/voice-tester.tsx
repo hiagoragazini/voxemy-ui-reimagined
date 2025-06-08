@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Phone, Loader2, Volume2, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VoiceTesterProps {
   agentName?: string;
@@ -59,30 +61,32 @@ export function VoiceTester({
       setIsLoading(true);
       toast.info("Iniciando chamada com voz nativa Twilio...");
       
-      // Usar a função do Supabase que implementa vozes nativas
-      const response = await fetch('/functions/v1/tts-twillio-handler', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      console.log("Dados da chamada:", {
+        text,
+        phoneNumber,
+        agentId: agentId || 'voice-tester'
+      });
+      
+      // Usar supabase.functions.invoke ao invés de fetch direto
+      const { data, error } = await supabase.functions.invoke('tts-twillio-handler', {
+        body: {
           text: text,
           phoneNumber: phoneNumber,
           agentId: agentId || 'voice-tester',
           callSid: `test-${Date.now()}`,
-        }),
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro na requisição: ${response.status}`);
+      if (error) {
+        console.error("Erro na função Supabase:", error);
+        throw new Error(error.message || "Erro na função do Supabase");
       }
 
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success(`Chamada iniciada com sucesso! ID: ${result.call_sid}`);
+      if (data && data.success) {
+        toast.success(`Chamada iniciada com sucesso! ID: ${data.call_sid}`);
+        console.log("Sucesso na chamada:", data);
       } else {
-        throw new Error(result.message || "Erro desconhecido");
+        throw new Error(data?.message || "Erro desconhecido na resposta");
       }
     } catch (err: any) {
       console.error("Erro ao fazer chamada:", err);
@@ -106,7 +110,7 @@ export function VoiceTester({
       <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
         <h4 className="font-medium text-green-800 mb-1">✅ Vozes Nativas Twilio</h4>
         <p className="text-sm text-green-700">
-          Sistema corrigido - usando pt-BR-FranciscaNeural (voz brasileira nativa)
+          Sistema corrigido - usando pt-BR-FranciscaNeural (qualidade ElevenLabs via Twilio)
         </p>
       </div>
 
@@ -177,7 +181,7 @@ export function VoiceTester({
             </li>
             <li className="flex items-start gap-1.5">
               <span className="text-green-600 mt-0.5">✓</span>
-              <span>O sistema usa apenas vozes nativas da Twilio (sem ElevenLabs)</span>
+              <span>O sistema usa vozes nativas da Twilio (qualidade ElevenLabs)</span>
             </li>
           </ul>
         </div>
