@@ -1,5 +1,4 @@
-
-// Servidor WebSocket dedicado para Twilio ConversationRelay
+// Servidor WebSocket dedicado para Twilio ConversationRelay - VOZES NATIVAS
 // Template completo para implantação em Railway/Render
 
 require('dotenv').config();
@@ -14,7 +13,6 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 8080;
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Função para log detalhado
@@ -73,7 +71,6 @@ wss.on('connection', (ws, req) => {
   let fullUrl = null;
   
   try {
-    // Construir URL correta usando headers do host
     const host = req.headers.host || 'localhost:8080';
     fullUrl = new URL(req.url, `http://${host}`);
     callSid = fullUrl.searchParams.get('callSid');
@@ -94,7 +91,6 @@ wss.on('connection', (ws, req) => {
     });
   }
   
-  // Validação e warnings para callSid
   if (!callSid) {
     logEvent('WARNING_NO_CALLSID', {
       message: 'Conexão WebSocket sem callSid detectada',
@@ -102,7 +98,6 @@ wss.on('connection', (ws, req) => {
       headers: req.headers,
       userAgent: req.headers['user-agent']
     });
-    // Gerar callSid temporário para debug
     callSid = `DEBUG_${Date.now()}`;
   } else if (!callSid.startsWith('CA')) {
     logEvent('WARNING_INVALID_CALLSID_FORMAT', {
@@ -111,7 +106,6 @@ wss.on('connection', (ws, req) => {
     });
   }
   
-  // Validação de origem Twilio
   const userAgent = req.headers['user-agent'] || '';
   const isTwilioAgent = userAgent.includes('TwilioProxy') || userAgent.includes('Twilio');
   
@@ -126,7 +120,8 @@ wss.on('connection', (ws, req) => {
   logEvent('CONNECTION_ESTABLISHED', { 
     callSid: callSid,
     isTwilioAgent: isTwilioAgent,
-    activeConnections: wss.clients.size
+    activeConnections: wss.clients.size,
+    voiceMode: 'NATIVE_TWILIO'
   });
   
   let conversationHistory = [];
@@ -161,34 +156,24 @@ wss.on('connection', (ws, req) => {
           break;
           
         case 'start':
-          logEvent('CALL_START', { callSid, streamSid: msg.start?.streamSid });
+          logEvent('CALL_START', { callSid, streamSid: msg.start?.streamSid, voiceMode: 'NATIVE_TWILIO' });
           if (!hasGreeted) {
             hasGreeted = true;
+            
+            // CORREÇÃO: Usar apenas vozes NATIVAS do ConversationRelay
             const greeting = {
               event: 'speak',
               text: 'Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?',
               config: {
-                provider: ELEVENLABS_API_KEY ? 'elevenlabs' : 'twilio',
-                voice_id: 'FGY2WhTYpPnrIDTdsKH5',
-                stability: 0.35,
-                similarity: 0.75,
-                style: 0.4,
-                speed: 0.95,
+                voice: 'pt-BR-FranciscaNeural', // Voz brasileira nativa
+                rate: '0.95',
+                pitch: 'medium',
                 audio_format: 'ulaw_8000'
               }
             };
             
-            if (!ELEVENLABS_API_KEY) {
-              delete greeting.config.provider;
-              delete greeting.config.voice_id;
-              delete greeting.config.stability;
-              delete greeting.config.similarity;
-              delete greeting.config.style;
-              delete greeting.config.speed;
-            }
-            
             ws.send(JSON.stringify(greeting));
-            logEvent('GREETING_SENT', { callSid, greeting });
+            logEvent('GREETING_SENT_NATIVE_VOICE', { callSid, greeting });
           }
           break;
           
@@ -221,31 +206,20 @@ wss.on('connection', (ws, req) => {
               if (aiResponse) {
                 conversationHistory.push({ role: 'assistant', content: aiResponse });
                 
+                // CORREÇÃO: Resposta com voz NATIVA apenas
                 const speakEvent = {
                   event: 'speak',
                   text: aiResponse,
                   config: {
-                    provider: ELEVENLABS_API_KEY ? 'elevenlabs' : 'twilio',
-                    voice_id: 'FGY2WhTYpPnrIDTdsKH5',
-                    stability: 0.35,
-                    similarity: 0.75,
-                    style: 0.4,
-                    speed: 0.95,
+                    voice: 'pt-BR-FranciscaNeural', // Voz brasileira nativa
+                    rate: '0.95',
+                    pitch: 'medium',
                     audio_format: 'ulaw_8000'
                   }
                 };
                 
-                if (!ELEVENLABS_API_KEY) {
-                  delete speakEvent.config.provider;
-                  delete speakEvent.config.voice_id;
-                  delete speakEvent.config.stability;
-                  delete speakEvent.config.similarity;
-                  delete speakEvent.config.style;
-                  delete speakEvent.config.speed;
-                }
-                
                 ws.send(JSON.stringify(speakEvent));
-                logEvent('AI_RESPONSE_SENT', { callSid, response: aiResponse });
+                logEvent('AI_RESPONSE_SENT_NATIVE_VOICE', { callSid, response: aiResponse });
               }
             }
           }
@@ -259,7 +233,8 @@ wss.on('connection', (ws, req) => {
           logEvent('CALL_END', { 
             callSid, 
             reason: msg.reason,
-            duration: conversationHistory.length 
+            duration: conversationHistory.length,
+            voiceUsed: 'NATIVE_TWILIO' 
           });
           clearInterval(heartbeatInterval);
           ws.close();
@@ -309,9 +284,10 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     connections: wss.clients.size,
     port: PORT,
+    voiceMode: 'NATIVE_TWILIO_ONLY',
     apis: {
       openai: !!OPENAI_API_KEY,
-      elevenlabs: !!ELEVENLABS_API_KEY
+      elevenlabs: false // Removido conforme orientação Twilio
     }
   });
 });
@@ -320,7 +296,8 @@ app.get('/status', (req, res) => {
   res.status(200).json({
     status: 'ok',
     connections: wss.clients.size,
-    elevenlabs: !!ELEVENLABS_API_KEY,
+    voiceProvider: 'TWILIO_NATIVE',
+    elevenlabs: false,
     openai: !!OPENAI_API_KEY,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -351,9 +328,10 @@ app.get('/debug', (req, res) => {
 
 // Iniciar o servidor
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor WebSocket Voxemy CORRIGIDO iniciado na porta ${PORT}`);
-  console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, ElevenLabs=${!!ELEVENLABS_API_KEY}`);
+  console.log(`🚀 Servidor WebSocket Voxemy CORRIGIDO - VOZES NATIVAS iniciado na porta ${PORT}`);
+  console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, ElevenLabs=REMOVIDO (conforme Twilio)`);
   console.log(`🌐 Endpoints: /health, /status, /debug`);
   console.log(`🔌 WebSocket pronto para Twilio ConversationRelay`);
-  console.log(`🔧 Correções implementadas: URL parsing, logs detalhados, validação Twilio`);
+  console.log(`🎤 Usando APENAS vozes nativas brasileiras do ConversationRelay`);
+  console.log(`🔧 Correção aplicada: Removido ElevenLabs, usando pt-BR-FranciscaNeural`);
 });

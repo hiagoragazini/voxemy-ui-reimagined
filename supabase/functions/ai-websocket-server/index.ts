@@ -3,12 +3,11 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-console.log("🚀 Iniciando servidor WebSocket ConversationRelay Protocol");
-console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, ElevenLabs=${!!ELEVENLABS_API_KEY}`);
+console.log("🚀 Iniciando servidor WebSocket ConversationRelay Protocol - VOZES NATIVAS TWILIO");
+console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, Usando vozes nativas Twilio`);
 
 serve(async (req) => {
   const upgradeHeader = req.headers.get("Upgrade");
@@ -120,43 +119,29 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
     }
   }
 
-  // Função para enviar resposta de áudio no protocolo ConversationRelay
+  // Função para enviar resposta de áudio no protocolo ConversationRelay com vozes NATIVAS
   async function sendSpeakEvent(text: string) {
     if (!isConnected) return;
 
-    console.log(`🎙️ Enviando speak event: "${text}"`);
+    console.log(`🎙️ Enviando speak event com voz NATIVA Twilio: "${text}"`);
     
+    // CORREÇÃO: Usar apenas vozes nativas do ConversationRelay conforme Twilio
     const speakEvent = {
       event: "speak",
       text: text,
       config: {
-        provider: "elevenlabs",
-        voice_id: "FGY2WhTYpPnrIDTdsKH5", // Laura - voz brasileira
-        stability: 0.35,
-        similarity: 0.75,
-        style: 0.4,
-        speed: 0.95,
+        // Configuração para vozes NATIVAS do ConversationRelay
+        voice: "pt-BR-FranciscaNeural", // Voz brasileira nativa
+        rate: "0.95", // Velocidade natural
+        pitch: "medium", // Tom médio
         audio_format: "ulaw_8000" // Formato telefônico obrigatório
       }
     };
     
-    if (ELEVENLABS_API_KEY) {
-      speakEvent.config.provider = "elevenlabs";
-    } else {
-      // Fallback para TTS padrão do Twilio
-      delete speakEvent.config.provider;
-      delete speakEvent.config.voice_id;
-      delete speakEvent.config.stability;
-      delete speakEvent.config.similarity;
-      delete speakEvent.config.style;
-      delete speakEvent.config.speed;
-      console.log("⚠️ Usando TTS padrão do Twilio (ElevenLabs não disponível)");
-    }
-    
     try {
       socket.send(JSON.stringify(speakEvent));
-      console.log(`✅ Speak event enviado com sucesso`);
-      await saveConversationLog("ai_response", { text, config: speakEvent.config });
+      console.log(`✅ Speak event com voz nativa enviado com sucesso`);
+      await saveConversationLog("ai_response_native_voice", { text, config: speakEvent.config });
     } catch (error) {
       console.error(`❌ Erro enviando speak event:`, error);
     }
@@ -186,7 +171,7 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
 
   // Eventos WebSocket
   socket.onopen = () => {
-    console.log(`✅ WebSocket aberto para call ${callSid}`);
+    console.log(`✅ WebSocket aberto para call ${callSid} - VOZ NATIVA ATIVA`);
     startHeartbeat();
   };
 
@@ -207,10 +192,10 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
           break;
           
         case "start":
-          console.log(`🚀 Evento start recebido - iniciando conversa`);
+          console.log(`🚀 Evento start recebido - iniciando conversa com VOZ NATIVA`);
           hasStarted = true;
           
-          // Enviar mensagem de boas-vindas imediatamente
+          // Enviar mensagem de boas-vindas com voz NATIVA
           if (!hasGreeted) {
             hasGreeted = true;
             await sendSpeakEvent("Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?");
@@ -250,7 +235,8 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
           console.log(`🛑 Evento stop recebido - encerrando conexão`);
           await saveConversationLog("conversation_ended", {
             total_messages: conversationHistory.length,
-            final_history: conversationHistory
+            final_history: conversationHistory,
+            voice_used: "native_twilio"
           });
           
           if (heartbeatInterval) {
@@ -294,4 +280,5 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
   return response;
 });
 
-console.log("🚀 Servidor WebSocket ConversationRelay Protocol pronto");
+console.log("🚀 Servidor WebSocket ConversationRelay Protocol pronto - VOZES NATIVAS TWILIO");
+console.log("🎤 Configurado para usar vozes brasileiras nativas do ConversationRelay");

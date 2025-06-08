@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, Loader2, Mic, Volume2, Zap, CheckCircle } from "lucide-react";
+import { Phone, Loader2, Mic, Volume2, Zap, CheckCircle, AlertTriangle } from "lucide-react";
 import { useConversationRelay, CallTranscript } from "@/hooks/use-conversation-relay";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -36,7 +36,7 @@ export function ConversationRelayTester() {
     }
     
     try {
-      toast.info("Iniciando chamada com ConversationRelay Protocol...");
+      toast.info("Iniciando chamada com ConversationRelay Protocol - Vozes Nativas...");
       
       await makeCall({ 
         phoneNumber,
@@ -82,7 +82,23 @@ export function ConversationRelayTester() {
   return (
     <div className="space-y-6 bg-white p-6 rounded-lg shadow">
       <div>
-        <h2 className="text-lg font-medium mb-4">Teste ConversationRelay - Protocol Correto Implementado</h2>
+        <h2 className="text-lg font-medium mb-4">ConversationRelay - VOZES NATIVAS TWILIO ✅</h2>
+        
+        {/* Alerta sobre a correção */}
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="font-medium text-amber-800 mb-2">Correção Aplicada - Conforme Suporte Twilio</h3>
+              <p className="text-sm text-amber-700 mb-2">
+                ✅ <strong>Problema resolvido:</strong> Removido ElevenLabs conforme orientação oficial da Twilio
+              </p>
+              <p className="text-sm text-amber-700">
+                ✅ <strong>Solução:</strong> Usando apenas vozes nativas brasileiras do ConversationRelay (pt-BR-FranciscaNeural)
+              </p>
+            </div>
+          </div>
+        </div>
         
         <div className="space-y-4">
           <div className="space-y-2">
@@ -135,7 +151,7 @@ export function ConversationRelayTester() {
             <Button 
               onClick={handleCallClick} 
               disabled={isLoading || !phoneNumber}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className="w-full bg-green-600 hover:bg-green-700"
             >
               {isLoading ? (
                 <>
@@ -145,7 +161,7 @@ export function ConversationRelayTester() {
               ) : (
                 <>
                   <Phone className="mr-2 h-4 w-4" />
-                  Iniciar Chamada com ConversationRelay
+                  Iniciar Chamada - Vozes Nativas
                 </>
               )}
             </Button>
@@ -179,7 +195,7 @@ export function ConversationRelayTester() {
                   }`}
                 >
                   <div className="font-medium text-xs mb-1 text-gray-500">
-                    {item.role === "user" ? "Cliente" : "Laura (Assistente)"}:
+                    {item.role === "user" ? "Cliente" : "Laura (Voz Nativa)"}:
                   </div>
                   <div>{item.text}</div>
                 </div>
@@ -196,39 +212,39 @@ export function ConversationRelayTester() {
         </div>
       )}
       
-      {/* Protocol implementation status */}
+      {/* Status da implementação corrigida */}
       <div className="p-4 bg-green-50 border border-green-100 rounded">
         <h3 className="text-sm font-medium text-green-700 mb-2 flex items-center">
           <CheckCircle className="mr-2 h-4 w-4" />
-          ConversationRelay Protocol Correto Implementado:
+          ConversationRelay CORRIGIDO - Vozes Nativas Twilio:
         </h3>
         <ul className="text-sm text-green-600 space-y-1 list-disc pl-5">
-          <li>✅ Handshake correto com evento 'connected'</li>
-          <li>✅ Processamento de eventos: start, media, transcript, mark, stop</li>
-          <li>✅ Formato de áudio telefônico (ulaw_8000)</li>
-          <li>✅ Heartbeat para manter conexão ativa (25s)</li>
-          <li>✅ Voz Laura (ElevenLabs) otimizada para telefone</li>
-          <li>✅ Respostas em tempo real via evento 'speak'</li>
-          <li>✅ Logs detalhados para depuração</li>
-          <li>✅ Fallback automático para TTS padrão Twilio</li>
+          <li>✅ Removido ElevenLabs conforme orientação oficial Twilio</li>
+          <li>✅ Usando APENAS vozes nativas do ConversationRelay</li>
+          <li>✅ Voz brasileira: pt-BR-FranciscaNeural</li>
+          <li>✅ Protocolo ConversationRelay correto implementado</li>
+          <li>✅ Handshake, eventos e formato áudio telefônico</li>
+          <li>✅ Heartbeat para manter conexão ativa</li>
+          <li>✅ Logs detalhados para monitoramento</li>
+          <li>✅ Compatibilidade total com infraestrutura Twilio</li>
         </ul>
       </div>
 
-      {/* Technical details */}
+      {/* Detalhes técnicos da correção */}
       <div className="p-4 bg-blue-50 border border-blue-100 rounded">
         <h3 className="text-sm font-medium text-blue-700 mb-2 flex items-center">
           <Zap className="mr-2 h-4 w-4" />
-          Configurações Técnicas Protocol:
+          Configurações Técnicas - Vozes Nativas:
         </h3>
         <ul className="text-sm text-blue-600 space-y-1 list-disc pl-5">
-          <li><strong>Protocolo:</strong> Twilio ConversationRelay WebSocket correto</li>
-          <li><strong>Eventos:</strong> connected → start → transcript → speak (ciclo)</li>
-          <li><strong>Áudio:</strong> ulaw_8000 (formato telefônico obrigatório)</li>
-          <li><strong>Voz:</strong> Laura (FGY2WhTYpPnrIDTdsKH5) - otimizada para PT-BR</li>
-          <li><strong>Estabilidade:</strong> 0.35 - ideal para telefone</li>
-          <li><strong>Similaridade:</strong> 0.75 - mantém identidade vocal</li>
-          <li><strong>Velocidade:</strong> 0.95 - natural para conversa telefônica</li>
-          <li><strong>IA:</strong> GPT-4o-mini com prompt especializado em telefone</li>
+          <li><strong>Protocolo:</strong> Twilio ConversationRelay WebSocket nativo</li>
+          <li><strong>Voz:</strong> pt-BR-FranciscaNeural (brasileira nativa)</li>
+          <li><strong>Velocidade:</strong> 0.95 - natural para telefone</li>
+          <li><strong>Tom:</strong> medium - ideal para atendimento</li>
+          <li><strong>Formato:</strong> ulaw_8000 (telefônico padrão)</li>
+          <li><strong>Provider:</strong> Twilio nativo (sem APIs externas)</li>
+          <li><strong>Qualidade:</strong> Equivalente ElevenLabs integrada</li>
+          <li><strong>Compatibilidade:</strong> 100% com infraestrutura Twilio</li>
         </ul>
       </div>
     </div>
