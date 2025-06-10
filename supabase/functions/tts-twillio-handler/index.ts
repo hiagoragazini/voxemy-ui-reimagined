@@ -84,7 +84,6 @@ serve(async (req) => {
     console.log(`[DEBUG] TTS-Handler: URL completo: ${req.url}`);
     console.log(`[DEBUG] TTS-Handler: Origem da requisição: ${req.headers.get("origin") || "desconhecida"}`);
     console.log(`[DEBUG] TTS-Handler: User-Agent: ${req.headers.get("user-agent") || "desconhecido"}`);
-    console.log(`[DEBUG] TTS-Handler: Headers da requisição: ${JSON.stringify(Object.fromEntries(req.headers))}`);
 
     if (!text) {
       const errorMessage = "Parâmetro text/message é obrigatório e está ausente na requisição";
@@ -148,26 +147,17 @@ serve(async (req) => {
       console.log(`[DEBUG] TTS-Handler: Inicializando cliente Twilio`);
       const twilioClient = await getTwilioClient(twilioAccountSid, twilioAuthToken);
 
-      // URL para a função de processamento de diálogo do Supabase
-      const processDialogUrl = `https://${supabaseUrl.split("//")[1]}/functions/v1/process-dialog`;
+      // CORREÇÃO: URL correta para a função de processamento de diálogo
+      const supabaseDomain = supabaseUrl.replace('https://', '').replace('http://', '');
+      const processDialogUrl = `https://${supabaseDomain}/functions/v1/process-dialog`;
       
-      // Adicionar os parâmetros da chamada na URL como query string
-      const callbackParams = new URLSearchParams({
-        agentId: agentId || '',
-        campaignId: campaignId || '',
-        leadId: leadId || ''
-      }).toString();
-
-      // URL completa para o callback do Twilio
-      const callbackUrl = `${processDialogUrl}?${callbackParams}`;
-      
-      console.log(`[DEBUG] TTS-Handler: URL de callback: ${callbackUrl}`);
+      console.log(`[DEBUG] TTS-Handler: URL de callback corrigida: ${processDialogUrl}`);
       
       // TwiML para iniciar a conversa com a mensagem inicial
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
         <Say voice="woman" language="pt-BR">${decodedText}</Say>
-        <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="${callbackUrl}" method="POST">
+        <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="${processDialogUrl}" method="POST">
         </Gather>
         <Say voice="woman" language="pt-BR">Não ouvi nada. Vou encerrar a chamada.</Say>
         <Hangup/>
@@ -182,7 +172,7 @@ serve(async (req) => {
         twiml: twiml,
         to: formattedPhone,
         from: twilioPhoneNumber,
-        statusCallback: `${supabaseUrl}/functions/v1/call-status`,
+        statusCallback: `https://${supabaseDomain}/functions/v1/call-status`,
         statusCallbackMethod: 'POST',
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed']
       });

@@ -7,26 +7,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Função para criar cliente do Twilio
-async function getTwilioClient(accountSid, authToken) {
-  const twilio = await import("npm:twilio@4.20.0");
-  return new twilio.default(accountSid, authToken);
-}
-
 // Função para processar texto com OpenAI
 async function processWithAI(text, conversationHistory = []) {
+  const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
+  
+  if (!openAIApiKey) {
+    console.error("[ERROR] process-dialog: OPENAI_API_KEY não configurada");
+    return "Desculpe, estou com problemas técnicos no momento. Como posso ajudar de outra forma?";
+  }
+
   try {
-    // Inicializar o módulo OpenAI
-    const { default: OpenAI } = await import("npm:openai@4.20.0");
-    
-    const openai = new OpenAI({
-      apiKey: Deno.env.get("OPENAI_API_KEY"),
-    });
-    
-    // Detalhado logging para diagnóstico
-    console.log(`=== PROCESS WITH AI ===`);
-    console.log(`Input text: "${text}"`);
-    console.log(`History entries: ${conversationHistory.length}`);
+    console.log(`[DEBUG] process-dialog: Processando texto com IA: "${text}"`);
+    console.log(`[DEBUG] process-dialog: Histórico tem ${conversationHistory.length} entradas`);
     
     // Preparar mensagens para o modelo
     const systemPrompt = {
@@ -42,23 +34,45 @@ async function processWithAI(text, conversationHistory = []) {
     // Formatar histórico de conversas para o modelo
     const messages = [
       systemPrompt,
-      ...conversationHistory,
+      ...conversationHistory.slice(-6), // Apenas últimas 6 mensagens para evitar contexto muito longo
       { role: "user", content: text }
     ];
     
+    console.log(`[DEBUG] process-dialog: Enviando para OpenAI com ${messages.length} mensagens`);
+    
     // Fazer a chamada para a API com timeout adequado
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Modelo mais rápido e econômico
-      messages,
-      max_tokens: 150,
-      temperature: 0.7,
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openAIApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini", // Modelo mais rápido e econômico
+        messages,
+        max_tokens: 150,
+        temperature: 0.7,
+      }),
     });
     
-    const aiResponse = response.choices[0].message.content.trim();
-    console.log(`AI Response: "${aiResponse}"`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[ERROR] process-dialog: OpenAI API erro ${response.status}: ${errorText}`);
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const aiResponse = data.choices[0]?.message?.content?.trim();
+    
+    if (!aiResponse) {
+      throw new Error("Resposta vazia da OpenAI");
+    }
+    
+    console.log(`[DEBUG] process-dialog: Resposta da IA: "${aiResponse}"`);
     return aiResponse;
+    
   } catch (error) {
-    console.error("Erro ao processar texto com AI:", error);
+    console.error(`[ERROR] process-dialog: Erro ao processar com IA:`, error);
     return "Desculpe, estou tendo dificuldades para processar sua mensagem. Poderia repetir de outra forma?";
   }
 }
@@ -66,8 +80,8 @@ async function processWithAI(text, conversationHistory = []) {
 // Função para salvar histórico de conversa
 async function saveConversationHistory(supabase, callSid, messages, status = "active") {
   try {
-    console.log(`Saving conversation history for call ${callSid}, status: ${status}`);
-    console.log(`Message count: ${messages.length}`);
+    console.log(`[DEBUG] process-dialog: Salvando histórico para call ${callSid}, status: ${status}`);
+    console.log(`[DEBUG] process-dialog: Total de mensagens: ${messages.length}`);
     
     // Verificar se já existe um registro para essa chamada
     const { data, error } = await supabase
@@ -77,13 +91,13 @@ async function saveConversationHistory(supabase, callSid, messages, status = "ac
       .maybeSingle();
     
     if (error) {
-      console.error("Error querying call_logs:", error);
+      console.error("[ERROR] process-dialog: Erro ao consultar call_logs:", error);
       throw error;
     }
     
     // Se não existir, criar um novo registro
     if (!data) {
-      console.log("No existing record, creating new one");
+      console.log("[DEBUG] process-dialog: Criando novo registro");
       await supabase.from("call_logs").insert({
         call_sid: callSid,
         status: status,
@@ -91,7 +105,7 @@ async function saveConversationHistory(supabase, callSid, messages, status = "ac
       });
     } else {
       // Se existir, atualizar o registro
-      console.log(`Updating existing record: ${data.id}`);
+      console.log(`[DEBUG] process-dialog: Atualizando registro existente: ${data.id}`);
       await supabase.from("call_logs").update({
         status: status,
         transcription: messages,
@@ -101,7 +115,7 @@ async function saveConversationHistory(supabase, callSid, messages, status = "ac
     
     return true;
   } catch (error) {
-    console.error("Erro ao salvar histórico de conversa:", error);
+    console.error("[ERROR] process-dialog: Erro ao salvar histórico:", error);
     return false;
   }
 }
@@ -114,35 +128,54 @@ serve(async (req) => {
 
   try {
     console.log("\n=== PROCESS-DIALOG HANDLER ===");
-    console.log(`Timestamp: ${new Date().toISOString()}`);
-    console.log(`Method: ${req.method}`);
-    console.log(`URL: ${req.url}`);
+    console.log(`[DEBUG] process-dialog: Timestamp: ${new Date().toISOString()}`);
+    console.log(`[DEBUG] process-dialog: Method: ${req.method}`);
+    console.log(`[DEBUG] process-dialog: URL: ${req.url}`);
     
     // Parse content type to handle different request formats
     const contentType = req.headers.get("Content-Type") || "";
-    console.log(`Content-Type: ${contentType}`);
+    console.log(`[DEBUG] process-dialog: Content-Type: ${contentType}`);
     
-    let requestData;
-    if (contentType.includes("application/json")) {
-      requestData = await req.json();
-    } else if (contentType.includes("application/x-www-form-urlencoded") || 
-               contentType.includes("multipart/form-data")) {
-      // Handle form data from Twilio
-      const formData = await req.formData();
-      requestData = Object.fromEntries(formData.entries());
-    } else {
-      // Default to JSON parsing with fallback
-      requestData = await req.json().catch(() => ({}));
+    let requestData = {};
+    
+    try {
+      if (contentType.includes("application/json")) {
+        requestData = await req.json();
+        console.log("[DEBUG] process-dialog: Dados parseados como JSON");
+      } else if (contentType.includes("application/x-www-form-urlencoded")) {
+        // Handle form data from Twilio
+        const formData = await req.formData();
+        requestData = Object.fromEntries(formData.entries());
+        console.log("[DEBUG] process-dialog: Dados parseados como form data");
+        console.log(`[DEBUG] process-dialog: Form data keys: ${Object.keys(requestData).join(', ')}`);
+      } else {
+        // Try to parse as text and then form data
+        const text = await req.text();
+        console.log(`[DEBUG] process-dialog: Texto recebido: ${text.substring(0, 200)}...`);
+        
+        if (text.includes('=')) {
+          // Parse as URL encoded
+          const params = new URLSearchParams(text);
+          requestData = Object.fromEntries(params.entries());
+          console.log("[DEBUG] process-dialog: Parseado como URL encoded");
+        } else {
+          requestData = {};
+          console.log("[DEBUG] process-dialog: Não foi possível parsear os dados");
+        }
+      }
+    } catch (parseError) {
+      console.error(`[ERROR] process-dialog: Erro ao parsear request:`, parseError);
+      requestData = {};
     }
     
-    console.log("Request data:", JSON.stringify(requestData).substring(0, 200) + "...");
+    console.log(`[DEBUG] process-dialog: Request data keys: ${Object.keys(requestData).join(', ')}`);
     
     // Inicializar cliente Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Supabase credentials not configured");
+      console.error("[ERROR] process-dialog: Credenciais Supabase não configuradas");
       throw new Error("Credenciais Supabase não configuradas");
     }
     
@@ -155,23 +188,30 @@ serve(async (req) => {
     const endCall = requestData.endCall || false;
     
     // Log relevant data
-    console.log(`Call SID: ${callSid}`);
-    console.log(`Speech Result: "${speechResult}"`);
-    console.log(`Message Count: ${messages.length}`);
-    console.log(`End Call Flag: ${endCall}`);
+    console.log(`[DEBUG] process-dialog: Call SID: ${callSid}`);
+    console.log(`[DEBUG] process-dialog: Speech Result: "${speechResult}"`);
+    console.log(`[DEBUG] process-dialog: Message Count: ${messages.length}`);
+    console.log(`[DEBUG] process-dialog: End Call Flag: ${endCall}`);
     
     // Validate the data
     if (!callSid) {
-      console.error("Missing CallSid");
+      console.error("[ERROR] process-dialog: Missing CallSid");
       throw new Error("ID da chamada (callSid) não fornecido");
     }
 
     // Prepare TwiML response
     let twimlResponse;
     
+    // Helper function to check if the message indicates an end to the conversation
+    function isEndingConversation(message) {
+      const lowerMessage = message.toLowerCase();
+      const endPhrases = ["tchau", "adeus", "até logo", "encerrar", "desligar", "finalizar", "obrigado", "valeu"];
+      return endPhrases.some(phrase => lowerMessage.includes(phrase));
+    }
+    
     // If end call flag is set or if we received an end call message
     if (endCall || (speechResult && isEndingConversation(speechResult))) {
-      console.log("Processing end call scenario");
+      console.log("[DEBUG] process-dialog: Processando encerramento da chamada");
       // Mensagem de despedida
       const goodbyeMessage = "Obrigado pelo contato! Espero ter ajudado. Tenha um ótimo dia!";
       
@@ -194,7 +234,7 @@ serve(async (req) => {
     } 
     // Normal dialog processing
     else if (speechResult) {
-      console.log("Processing normal dialog");
+      console.log("[DEBUG] process-dialog: Processando diálogo normal");
       
       // Add user message to history
       const updatedMessages = [...messages, {
@@ -219,11 +259,16 @@ serve(async (req) => {
       // Save to Supabase
       await saveConversationHistory(supabase, callSid, updatedMessages);
       
+      // Get the current domain from the request
+      const requestUrl = new URL(req.url);
+      const currentDomain = requestUrl.hostname;
+      const protocol = requestUrl.protocol;
+      
       // Simple TwiML with Say element - most reliable approach
       twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
         <Say voice="woman" language="pt-BR">${aiResponse}</Say>
-        <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="https://${Deno.env.get("SUPABASE_URL").split("https://")[1]}/functions/v1/process-dialog" method="POST">
+        <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="${protocol}//${currentDomain}/functions/v1/process-dialog" method="POST">
         </Gather>
         <Say voice="woman" language="pt-BR">Não ouvi nada. Vou encerrar a chamada.</Say>
         <Hangup/>
@@ -231,7 +276,7 @@ serve(async (req) => {
     }
     // Initial welcome message
     else {
-      console.log("Processing initial welcome");
+      console.log("[DEBUG] process-dialog: Processando mensagem inicial");
       // Default welcome message
       const welcomeMessage = "Olá, aqui é da Voxemy. Como posso ajudar você hoje?";
       
@@ -245,11 +290,16 @@ serve(async (req) => {
       // Save to Supabase
       await saveConversationHistory(supabase, callSid, initialMessages);
       
+      // Get the current domain from the request
+      const requestUrl = new URL(req.url);
+      const currentDomain = requestUrl.hostname;
+      const protocol = requestUrl.protocol;
+      
       // Simple TwiML
       twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
       <Response>
         <Say voice="woman" language="pt-BR">${welcomeMessage}</Say>
-        <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="https://${Deno.env.get("SUPABASE_URL").split("https://")[1]}/functions/v1/process-dialog" method="POST">
+        <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="5" action="${protocol}//${currentDomain}/functions/v1/process-dialog" method="POST">
         </Gather>
         <Say voice="woman" language="pt-BR">Não ouvi nada. Vou encerrar a chamada.</Say>
         <Hangup/>
@@ -257,13 +307,15 @@ serve(async (req) => {
     }
     
     // Return TwiML response with proper content type
-    console.log("Sending TwiML response");
+    console.log("[DEBUG] process-dialog: Enviando resposta TwiML");
+    console.log(`[DEBUG] process-dialog: TwiML: ${twimlResponse.substring(0, 200)}...`);
+    
     return new Response(twimlResponse, {
       headers: { ...corsHeaders, "Content-Type": "application/xml" },
     });
 
   } catch (error) {
-    console.error("Erro na função process-dialog:", error);
+    console.error("[ERROR] process-dialog: Erro na função:", error);
     
     // TwiML de erro simplificado
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -278,10 +330,3 @@ serve(async (req) => {
     });
   }
 });
-
-// Helper function to check if the message indicates an end to the conversation
-function isEndingConversation(message) {
-  const lowerMessage = message.toLowerCase();
-  const endPhrases = ["tchau", "adeus", "até logo", "encerrar", "desligar", "finalizar"];
-  return endPhrases.some(phrase => lowerMessage.includes(phrase));
-}
