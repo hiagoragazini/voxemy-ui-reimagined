@@ -7,6 +7,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Função para escapar caracteres XML
+function escapeXML(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+// Função para sanitizar texto para TwiML
+function sanitizeForTwiML(text: string): string {
+  if (!text) return "";
+  
+  const cleaned = text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+    
+  return escapeXML(cleaned);
+}
+
 // Função para processar texto com OpenAI
 async function processWithAI(text, conversationHistory = []) {
   const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
@@ -26,6 +48,7 @@ async function processWithAI(text, conversationHistory = []) {
       Seja cordial, profissional e concisa nas respostas.
       Limite respostas a 2-3 frases curtas para conversação telefônica.
       Fale português brasileiro natural.
+      Evite caracteres especiais que podem causar problemas no áudio.
       Se cliente quiser encerrar, agradeça educadamente.`,
     };
     
@@ -119,9 +142,10 @@ serve(async (req) => {
   }
 
   try {
-    console.log("\n=== PROCESS-DIALOG HANDLER ===");
+    console.log("\n=== PROCESS-DIALOG HANDLER (VERSÃO CORRIGIDA) ===");
     console.log(`[DEBUG] process-dialog: ${new Date().toISOString()}`);
     console.log(`[DEBUG] process-dialog: Method: ${req.method}`);
+    console.log(`[DEBUG] process-dialog: URL: ${req.url}`);
     
     const contentType = req.headers.get("Content-Type") || "";
     console.log(`[DEBUG] process-dialog: Content-Type: ${contentType}`);
@@ -138,7 +162,7 @@ serve(async (req) => {
         console.log("[DEBUG] process-dialog: Parseado como form data");
       } else {
         const text = await req.text();
-        console.log(`[DEBUG] process-dialog: Texto recebido: ${text.substring(0, 100)}...`);
+        console.log(`[DEBUG] process-dialog: Texto recebido (${text.length} chars): ${text.substring(0, 200)}...`);
         
         if (text.includes('=')) {
           const params = new URLSearchParams(text);
@@ -151,7 +175,14 @@ serve(async (req) => {
       requestData = {};
     }
     
-    console.log(`[DEBUG] process-dialog: Dados keys: ${Object.keys(requestData).join(', ')}`);
+    console.log(`[DEBUG] process-dialog: Dados recebidos:`, {
+      keys: Object.keys(requestData),
+      CallSid: requestData.CallSid,
+      SpeechResult: requestData.SpeechResult,
+      From: requestData.From,
+      To: requestData.To,
+      CallStatus: requestData.CallStatus
+    });
     
     // Verificar OpenAI API Key
     const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
@@ -177,14 +208,27 @@ serve(async (req) => {
     const speechResult = requestData.SpeechResult || requestData.speechResult || "";
     const messages = requestData.messages || [];
     const endCall = requestData.endCall || false;
+    const callStatus = requestData.CallStatus || "";
     
     console.log(`[DEBUG] process-dialog: CallSid: ${callSid}`);
     console.log(`[DEBUG] process-dialog: SpeechResult: "${speechResult}"`);
+    console.log(`[DEBUG] process-dialog: CallStatus: "${callStatus}"`);
     console.log(`[DEBUG] process-dialog: EndCall: ${endCall}`);
     
     if (!callSid) {
       console.error("[ERROR] process-dialog: CallSid ausente");
-      throw new Error("CallSid não fornecido");
+      
+      // TwiML de erro mais suave
+      const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="woman" language="pt-BR">Desculpe, houve um problema técnico. Obrigada pelo contato.</Say>
+  <Hangup/>
+</Response>`;
+
+      return new Response(errorTwiml, {
+        headers: { ...corsHeaders, "Content-Type": "application/xml" },
+        status: 200
+      });
     }
 
     let twimlResponse;
@@ -192,7 +236,7 @@ serve(async (req) => {
     // Função para detectar fim de conversa
     function isEndingConversation(message) {
       const lower = message.toLowerCase();
-      const endPhrases = ["tchau", "adeus", "até logo", "encerrar", "desligar", "obrigado", "valeu"];
+      const endPhrases = ["tchau", "adeus", "até logo", "encerrar", "desligar", "obrigado", "obrigada", "valeu", "brigado", "brigada"];
       return endPhrases.some(phrase => lower.includes(phrase));
     }
     
@@ -201,6 +245,7 @@ serve(async (req) => {
       console.log("[DEBUG] process-dialog: Processando ENCERRAMENTO");
       
       const goodbyeMessage = "Obrigada pelo contato! Foi um prazer ajudar. Tenha um ótimo dia!";
+      const sanitizedGoodbye = sanitizeForTwiML(goodbyeMessage);
       
       const updatedMessages = [...messages, {
         role: "assistant",
@@ -212,12 +257,12 @@ serve(async (req) => {
       
       twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="woman" language="pt-BR">${goodbyeMessage}</Say>
+  <Say voice="woman" language="pt-BR">${sanitizedGoodbye}</Say>
   <Hangup/>
 </Response>`;
     } 
     // Processar diálogo normal
-    else if (speechResult) {
+    else if (speechResult && speechResult.trim().length > 0) {
       console.log("[DEBUG] process-dialog: Processando DIÁLOGO NORMAL");
       
       const updatedMessages = [...messages, {
@@ -232,6 +277,8 @@ serve(async (req) => {
         updatedMessages.map(m => ({ role: m.role, content: m.content }))
       );
       
+      const sanitizedAIResponse = sanitizeForTwiML(aiResponse);
+      
       updatedMessages.push({
         role: "assistant",
         content: aiResponse,
@@ -240,17 +287,32 @@ serve(async (req) => {
       
       await saveConversationHistory(supabase, callSid, updatedMessages);
       
-      // Obter domínio atual
-      const requestUrl = new URL(req.url);
-      const protocol = requestUrl.protocol;
-      const hostname = requestUrl.hostname;
+      // Construir URL do próprio processo
+      const currentUrl = new URL(req.url);
+      const processUrl = `${currentUrl.protocol}//${currentUrl.hostname}/functions/v1/process-dialog`;
       
       twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="woman" language="pt-BR">${aiResponse}</Say>
-  <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="8" action="${protocol}//${hostname}/functions/v1/process-dialog" method="POST">
+  <Say voice="woman" language="pt-BR">${sanitizedAIResponse}</Say>
+  <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="15" action="${processUrl}" method="POST">
   </Gather>
-  <Say voice="woman" language="pt-BR">Não ouvi sua resposta. Até logo!</Say>
+  <Say voice="woman" language="pt-BR">Não consegui ouvir sua resposta. Obrigada pelo contato!</Say>
+  <Hangup/>
+</Response>`;
+    }
+    // Caso especial: SpeechResult vazio (possível causa da voz robótica)
+    else if (requestData.hasOwnProperty('SpeechResult') && speechResult === "") {
+      console.log("[WARNING] process-dialog: SpeechResult vazio - possível falha na captura de voz");
+      
+      const currentUrl = new URL(req.url);
+      const processUrl = `${currentUrl.protocol}//${currentUrl.hostname}/functions/v1/process-dialog`;
+      
+      twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="woman" language="pt-BR">Desculpe, não consegui ouvir. Pode repetir por favor?</Say>
+  <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="15" action="${processUrl}" method="POST">
+  </Gather>
+  <Say voice="woman" language="pt-BR">Obrigada pelo contato. Tenha um bom dia!</Say>
   <Hangup/>
 </Response>`;
     }
@@ -259,6 +321,7 @@ serve(async (req) => {
       console.log("[DEBUG] process-dialog: Processando MENSAGEM INICIAL");
       
       const welcomeMessage = "Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?";
+      const sanitizedWelcome = sanitizeForTwiML(welcomeMessage);
       
       const initialMessages = [{
         role: "assistant",
@@ -268,33 +331,37 @@ serve(async (req) => {
       
       await saveConversationHistory(supabase, callSid, initialMessages);
       
-      const requestUrl = new URL(req.url);
-      const protocol = requestUrl.protocol;
-      const hostname = requestUrl.hostname;
+      const currentUrl = new URL(req.url);
+      const processUrl = `${currentUrl.protocol}//${currentUrl.hostname}/functions/v1/process-dialog`;
       
       twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="woman" language="pt-BR">${welcomeMessage}</Say>
-  <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="8" action="${protocol}//${hostname}/functions/v1/process-dialog" method="POST">
+  <Say voice="woman" language="pt-BR">${sanitizedWelcome}</Say>
+  <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="15" action="${processUrl}" method="POST">
   </Gather>
-  <Say voice="woman" language="pt-BR">Não ouvi sua resposta. Até logo!</Say>
+  <Say voice="woman" language="pt-BR">Obrigada pelo contato. Tenha um ótimo dia!</Say>
   <Hangup/>
 </Response>`;
     }
     
     console.log("[SUCCESS] process-dialog: Enviando resposta TwiML");
-    console.log(`[DEBUG] process-dialog: TwiML: ${twimlResponse.substring(0, 150)}...`);
+    console.log(`[DEBUG] process-dialog: TwiML (${twimlResponse.length} chars): ${twimlResponse.substring(0, 200)}...`);
     
     return new Response(twimlResponse, {
       headers: { ...corsHeaders, "Content-Type": "application/xml" },
     });
 
   } catch (error) {
-    console.error("[ERROR] process-dialog: Erro na função:", error);
+    console.error("[ERROR] process-dialog: Erro na função:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     
+    // TwiML de erro mais amigável
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="woman" language="pt-BR">Desculpe, ocorreu um erro no sistema. Vou encerrar a chamada.</Say>
+  <Say voice="woman" language="pt-BR">Desculpe, houve um problema no sistema. Obrigada pelo contato.</Say>
   <Hangup/>
 </Response>`;
     

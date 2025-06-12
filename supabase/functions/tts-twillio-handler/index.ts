@@ -7,6 +7,43 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Função para escapar caracteres XML/HTML
+function escapeXML(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+// Função para validar e limpar texto
+function sanitizeText(text: string): string {
+  if (!text) return "";
+  
+  // Remover caracteres de controle e não-UTF-8
+  const cleaned = text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+    
+  // Escapar para XML
+  return escapeXML(cleaned);
+}
+
+// Função para construir URL do webhook de forma robusta
+function buildWebhookUrl(supabaseUrl: string, functionName: string): string {
+  try {
+    const url = new URL(supabaseUrl);
+    const webhookUrl = `https://${url.hostname}/functions/v1/${functionName}`;
+    console.log(`[DEBUG] TTS-Handler: Webhook URL construída: ${webhookUrl}`);
+    return webhookUrl;
+  } catch (error) {
+    console.error(`[ERROR] TTS-Handler: Erro ao construir URL: ${error}`);
+    throw new Error("Erro ao construir URL do webhook");
+  }
+}
+
 // Função para importar o cliente Twilio
 async function getTwilioClient(accountSid, authToken) {
   try {
@@ -24,10 +61,11 @@ serve(async (req) => {
   }
 
   try {
-    console.log(`\n=== TTS-HANDLER INICIADO ===`);
+    console.log(`\n=== TTS-HANDLER INICIADO (VERSÃO CORRIGIDA) ===`);
     console.log(`[DEBUG] TTS-Handler: Timestamp: ${new Date().toISOString()}`);
     console.log(`[DEBUG] TTS-Handler: Method: ${req.method}`);
     console.log(`[DEBUG] TTS-Handler: URL: ${req.url}`);
+    console.log(`[DEBUG] TTS-Handler: Headers: ${JSON.stringify(Object.fromEntries(req.headers))}`);
 
     const isPostRequest = req.method === "POST";
     let text, voiceId, phoneNumber, callSid, agentId, campaignId, leadId;
@@ -44,6 +82,7 @@ serve(async (req) => {
       
       console.log("[DEBUG] TTS-Handler: Dados via POST:", {
         textLength: text?.length,
+        textPreview: text?.substring(0, 50),
         voiceId,
         phoneNumber,
         callSid,
@@ -61,6 +100,7 @@ serve(async (req) => {
       
       console.log("[DEBUG] TTS-Handler: Dados via GET:", {
         textLength: text?.length,
+        textPreview: text?.substring(0, 50),
         voiceId,
         phoneNumber,
         callSid
@@ -77,11 +117,17 @@ serve(async (req) => {
       throw new Error("Parâmetro phoneNumber é obrigatório");
     }
 
+    // Decodificar e sanitizar texto
     const decodedText = decodeURIComponent(text);
-    if (decodedText.trim().length === 0) {
-      console.error("[ERROR] TTS-Handler: Texto decodificado está vazio");
-      throw new Error("O texto decodificado está vazio");
+    const sanitizedText = sanitizeText(decodedText);
+    
+    if (sanitizedText.trim().length === 0) {
+      console.error("[ERROR] TTS-Handler: Texto sanitizado está vazio");
+      throw new Error("O texto fornecido está vazio ou inválido");
     }
+
+    console.log(`[DEBUG] TTS-Handler: Texto original: "${decodedText}"`);
+    console.log(`[DEBUG] TTS-Handler: Texto sanitizado: "${sanitizedText}"`);
 
     // Verificar credenciais Twilio
     const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
@@ -114,48 +160,53 @@ serve(async (req) => {
     }
     
     console.log(`[DEBUG] TTS-Handler: Número formatado: ${formattedPhone}`);
-    console.log(`[DEBUG] TTS-Handler: Texto para falar: "${decodedText}"`);
     
     try {
       console.log(`[DEBUG] TTS-Handler: Inicializando cliente Twilio`);
       const twilioClient = await getTwilioClient(twilioAccountSid, twilioAuthToken);
 
-      // CORREÇÃO CRÍTICA: URL correta para o process-dialog
-      const supabaseDomain = supabaseUrl.replace('https://', '').replace('http://', '');
-      const processDialogUrl = `https://${supabaseDomain}/functions/v1/process-dialog`;
+      // Construir URLs de webhook de forma robusta
+      const processDialogUrl = buildWebhookUrl(supabaseUrl, "process-dialog");
+      const callStatusUrl = buildWebhookUrl(supabaseUrl, "call-status");
       
-      console.log(`[DEBUG] TTS-Handler: URL de callback CORRIGIDA: ${processDialogUrl}`);
+      console.log(`[DEBUG] TTS-Handler: URL process-dialog: ${processDialogUrl}`);
+      console.log(`[DEBUG] TTS-Handler: URL call-status: ${callStatusUrl}`);
       
-      // TwiML simplificado e robusto
+      // TwiML robusto com timeouts aumentados e fallbacks melhorados
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="woman" language="pt-BR">${decodedText}</Say>
-  <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="10" action="${processDialogUrl}" method="POST">
+  <Say voice="woman" language="pt-BR">${sanitizedText}</Say>
+  <Gather input="speech" language="pt-BR" speechTimeout="auto" timeout="15" action="${processDialogUrl}" method="POST">
     <Say voice="woman" language="pt-BR">Como posso ajudar você?</Say>
   </Gather>
-  <Say voice="woman" language="pt-BR">Não consegui ouvir sua resposta. Até logo!</Say>
+  <Say voice="woman" language="pt-BR">Obrigada pelo contato. Tenha um ótimo dia!</Say>
   <Hangup/>
 </Response>`;
 
-      console.log(`[DEBUG] TTS-Handler: TwiML preparado com URL correta`);
-      console.log(`[DEBUG] TTS-Handler: Chamando número ${formattedPhone} do número ${twilioPhoneNumber}`);
+      console.log(`[DEBUG] TTS-Handler: TwiML gerado (${twiml.length} chars):`);
+      console.log(twiml);
+      console.log(`[DEBUG] TTS-Handler: Chamando ${formattedPhone} do ${twilioPhoneNumber}`);
       
       const call = await twilioClient.calls.create({
         twiml: twiml,
         to: formattedPhone,
         from: twilioPhoneNumber,
-        statusCallback: `https://${supabaseDomain}/functions/v1/call-status`,
+        statusCallback: callStatusUrl,
         statusCallbackMethod: 'POST',
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-        timeout: 30,
-        record: false
+        timeout: 45, // Aumentado para Brasil
+        record: false,
+        machineDetection: 'Enable', // Detectar secretária eletrônica
+        machineDetectionTimeout: 10
       });
       
-      console.log(`[SUCCESS] TTS-Handler: Chamada iniciada com SID: ${call.sid}`);
+      console.log(`[SUCCESS] TTS-Handler: Chamada criada com SID: ${call.sid}`);
+      console.log(`[DEBUG] TTS-Handler: Status inicial: ${call.status}`);
+      console.log(`[DEBUG] TTS-Handler: Direção: ${call.direction}`);
       
-      // Salvar no banco
+      // Salvar no banco com mais detalhes
       try {
-        await supabase
+        const { data: insertData, error: insertError } = await supabase
           .from("call_logs")
           .insert({
             call_sid: call.sid,
@@ -165,12 +216,18 @@ serve(async (req) => {
             status: "initiated",
             agent_id: agentId || null,
             campaign_id: campaignId || null,
-            lead_id: leadId || null
-          });
+            lead_id: leadId || null,
+            created_at: new Date().toISOString()
+          })
+          .select();
           
-        console.log("[DEBUG] TTS-Handler: Log salvo no banco");
+        if (insertError) {
+          console.error("[ERROR] TTS-Handler: Erro ao inserir no banco:", insertError);
+        } else {
+          console.log("[SUCCESS] TTS-Handler: Log salvo no banco:", insertData);
+        }
       } catch (dbError) {
-        console.warn(`[WARN] TTS-Handler: Erro ao salvar no banco: ${dbError}`);
+        console.error(`[ERROR] TTS-Handler: Erro inesperado no banco: ${dbError}`);
       }
       
       return new Response(
@@ -178,26 +235,48 @@ serve(async (req) => {
           success: true,
           call_sid: call.sid,
           phone_number: phoneNumber,
-          status: "initiated",
-          message: "Chamada iniciada com diálogo interativo corrigido",
-          callback_url: processDialogUrl
+          status: call.status,
+          direction: call.direction,
+          message: "Chamada iniciada com sistema corrigido",
+          webhook_urls: {
+            process_dialog: processDialogUrl,
+            call_status: callStatusUrl
+          },
+          text_info: {
+            original_length: decodedText.length,
+            sanitized_length: sanitizedText.length,
+            preview: sanitizedText.substring(0, 100)
+          }
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     } catch (twilioCallError) {
-      console.error(`[ERROR] TTS-Handler: Erro Twilio: ${twilioCallError}`);
-      throw new Error(`Falha na chamada Twilio: ${twilioCallError.message}`);
+      console.error(`[ERROR] TTS-Handler: Erro Twilio detalhado:`, {
+        message: twilioCallError.message,
+        code: twilioCallError.code,
+        moreInfo: twilioCallError.moreInfo,
+        status: twilioCallError.status
+      });
+      throw new Error(`Falha na chamada Twilio [${twilioCallError.code}]: ${twilioCallError.message}`);
     }
   } catch (error) {
-    console.error(`[ERROR] TTS-Handler: Erro geral: ${error}`);
+    console.error(`[ERROR] TTS-Handler: Erro geral:`, {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     
     return new Response(
       JSON.stringify({
         error: true,
         message: error.message || "Erro desconhecido",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        debug_info: {
+          error_type: error.name,
+          has_stack: !!error.stack
+        }
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
