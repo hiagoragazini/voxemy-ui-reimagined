@@ -35,6 +35,7 @@ export default function CampaignDetails() {
   const [agent, setAgent] = useState<ExtendedAgent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("leads");
+  const [pendingLeads, setPendingLeads] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -60,6 +61,19 @@ export default function CampaignDetails() {
         };
         
         setCampaign(typedCampaign);
+        
+        // Fetch pending leads count
+        const { count: pendingCount, error: pendingError } = await supabase
+          .from("leads")
+          .select("*", { count: 'exact', head: true })
+          .eq("campaign_id", id)
+          .eq("status", "pending");
+          
+        if (pendingError) {
+          console.error("Error fetching pending leads:", pendingError);
+        } else {
+          setPendingLeads(pendingCount || 0);
+        }
         
         // Fetch agent data if available
         if (typedCampaign.agent_id) {
@@ -95,6 +109,13 @@ export default function CampaignDetails() {
 
   const handleEditClick = () => {
     navigate(`/campaigns/${id}/edit`);
+  };
+
+  const handleCampaignRun = () => {
+    // Refresh campaign data after running
+    if (id) {
+      window.location.reload();
+    }
   };
 
   const handleStatusChange = async (newStatus: Campaign['status']) => {
@@ -278,7 +299,10 @@ export default function CampaignDetails() {
               campaignName={campaign.name}
               agentId={campaign.agent_id || undefined}
               agentName={agent?.name}
+              totalLeads={campaign.total_leads}
+              pendingLeads={pendingLeads}
               onEditClick={handleEditClick}
+              onCampaignRun={handleCampaignRun}
             />
           </div>
         </div>

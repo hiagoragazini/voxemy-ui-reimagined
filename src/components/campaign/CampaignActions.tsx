@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -14,7 +13,10 @@ interface CampaignActionsProps {
   campaignName: string;
   agentId?: string;
   agentName?: string;
+  totalLeads?: number;
+  pendingLeads?: number;
   onEditClick: () => void;
+  onCampaignRun?: () => void;
 }
 
 export function CampaignActions({ 
@@ -22,7 +24,10 @@ export function CampaignActions({
   campaignName, 
   agentId,
   agentName,
-  onEditClick 
+  totalLeads = 0,
+  pendingLeads = 0,
+  onEditClick,
+  onCampaignRun
 }: CampaignActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -153,6 +158,10 @@ export function CampaignActions({
     <>
       <RunCampaignButton 
         campaignId={campaignId}
+        campaignName={campaignName}
+        totalLeads={totalLeads}
+        pendingLeads={pendingLeads}
+        onCampaignRun={onCampaignRun}
         className="mr-2"
       />
       

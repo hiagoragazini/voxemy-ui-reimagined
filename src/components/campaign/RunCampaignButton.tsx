@@ -5,6 +5,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Play, Loader2, Users, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface RunCampaignButtonProps {
   campaignId: string;
@@ -12,6 +13,7 @@ interface RunCampaignButtonProps {
   totalLeads: number;
   pendingLeads: number;
   onCampaignRun?: () => void;
+  className?: string;
 }
 
 export function RunCampaignButton({ 
@@ -19,7 +21,8 @@ export function RunCampaignButton({
   campaignName, 
   totalLeads, 
   pendingLeads,
-  onCampaignRun 
+  onCampaignRun,
+  className 
 }: RunCampaignButtonProps) {
   const [isRunning, setIsRunning] = useState(false);
   const { toast } = useToast();
@@ -74,7 +77,7 @@ export function RunCampaignButton({
 
   if (pendingLeads === 0) {
     return (
-      <Button variant="outline" disabled>
+      <Button variant="outline" disabled className={className}>
         <Users className="mr-2 h-4 w-4" />
         Nenhum lead pendente
       </Button>
@@ -85,7 +88,7 @@ export function RunCampaignButton({
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button 
-          className="bg-green-600 hover:bg-green-700"
+          className={cn("bg-green-600 hover:bg-green-700", className)}
           disabled={isRunning}
         >
           {isRunning ? (
@@ -123,8 +126,8 @@ export function RunCampaignButton({
           
           <AlertDialogAction
             onClick={() => handleRunCampaign(true)}
-            variant="outline"
             disabled={isRunning}
+            className="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
           >
             {isRunning ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -136,7 +139,7 @@ export function RunCampaignButton({
           
           <AlertDialogAction
             onClick={() => handleRunCampaign(false)}
-            className="bg-green-600 hover:bg-green-700"
+            className="bg-green-600 hover:bg-green-700 text-white"
             disabled={isRunning}
           >
             {isRunning ? (
