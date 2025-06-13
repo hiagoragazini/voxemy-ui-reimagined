@@ -68,17 +68,12 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const healthCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clear all intervals
   const clearAllIntervals = useCallback(() => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
-    }
-    if (healthCheckIntervalRef.current) {
-      clearInterval(healthCheckIntervalRef.current);
-      healthCheckIntervalRef.current = null;
     }
   }, []);
 
@@ -347,40 +342,6 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
     }, 10000); // 10 seconds
   }, [clearAllIntervals, connection?.status, fetchConnectionStatus, toast]);
 
-  // Health check for connected instances
-  const startHealthCheck = useCallback(() => {
-    if (!connection || connection.status !== 'connected') return;
-    
-    healthCheckIntervalRef.current = setInterval(async () => {
-      if (!isMountedRef.current) {
-        clearAllIntervals();
-        return;
-      }
-
-      try {
-        const healthStatus = await whatsappManager.healthCheck();
-        const isHealthy = healthStatus[agentId];
-        
-        if (!isHealthy && connection?.status === 'connected') {
-          const updatedConnection: WhatsAppConnection = {
-            ...connection,
-            status: 'disconnected'
-          };
-          safeSetConnection(updatedConnection);
-          if (isMountedRef.current) {
-            toast({
-              title: "Desconectado",
-              description: "Conexão WhatsApp foi perdida",
-              variant: "destructive"
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Health check error:', error);
-      }
-    }, 60000); // 1 minute
-  }, [agentId, connection, safeSetConnection, toast, clearAllIntervals]);
-
   // Set up real-time subscription for connection updates
   useEffect(() => {
     if (!agentId) return;
@@ -416,18 +377,6 @@ export function useWhatsAppConnection(agentId: string): UseWhatsAppConnectionRet
       fetchConnectionStatus();
     }
   }, [agentId, fetchConnectionStatus]);
-
-  // Start health check when connected
-  useEffect(() => {
-    if (connection?.status === 'connected') {
-      startHealthCheck();
-    } else {
-      if (healthCheckIntervalRef.current) {
-        clearInterval(healthCheckIntervalRef.current);
-        healthCheckIntervalRef.current = null;
-      }
-    }
-  }, [connection?.status, startHealthCheck]);
 
   // Cleanup on unmount or agentId change
   useEffect(() => {

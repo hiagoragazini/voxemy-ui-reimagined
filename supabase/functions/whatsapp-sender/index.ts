@@ -13,6 +13,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log('WhatsApp Sender called');
+    
     if (req.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405,
@@ -20,92 +22,95 @@ serve(async (req) => {
       });
     }
 
-    const { agentId, to, message, messageType = 'text' } = await req.json();
+    const { agentId, to, message } = await req.json();
 
     if (!agentId || !to || !message) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+      return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    console.log('Sending message to:', to, 'via agent:', agentId);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Get WhatsApp connection for this agent
+    const { data: connection, error: connectionError } = await supabase
+      .from('whatsapp_connections')
+      .select('*')
+      .eq('agent_id', agentId)
+      .single();
+
+    if (connectionError || !connection) {
+      console.error('WhatsApp connection not found for agent:', agentId);
+      return new Response(JSON.stringify({ error: 'WhatsApp not connected for this agent' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (connection.status !== 'connected') {
+      console.error('WhatsApp not connected for agent:', agentId, 'Status:', connection.status);
+      return new Response(JSON.stringify({ error: 'WhatsApp not connected' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
 
     if (!evolutionApiUrl || !evolutionApiKey) {
+      console.error('Evolution API not configured');
       return new Response(JSON.stringify({ error: 'Evolution API not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Get connection info
-    const { data: connection } = await supabase
-      .from('whatsapp_connections')
-      .select('instance_id, phone_number')
-      .eq('agent_id', agentId)
-      .single();
-
-    if (!connection?.instance_id) {
-      return new Response(JSON.stringify({ error: 'WhatsApp not connected for this agent' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
     // Send message via Evolution API
+    const sendPayload = {
+      number: `${to}@s.whatsapp.net`,
+      text: message
+    };
+
+    console.log('Sending message payload:', sendPayload);
+
     const sendResponse = await fetch(`${evolutionApiUrl}/message/sendText/${connection.instance_id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': evolutionApiKey
       },
-      body: JSON.stringify({
-        number: `${to}@s.whatsapp.net`,
-        text: message
-      })
+      body: JSON.stringify(sendPayload)
     });
 
-    const sendResult = await sendResponse.json();
+    const sendResponseText = await sendResponse.text();
+    console.log('Send response status:', sendResponse.status);
+    console.log('Send response body:', sendResponseText);
 
     if (!sendResponse.ok) {
-      throw new Error(`Failed to send message: ${sendResult.message}`);
+      throw new Error(`Failed to send message: ${sendResponse.status} - ${sendResponseText}`);
     }
 
-    // Log outgoing message
-    const { error: logError } = await supabase
-      .from('whatsapp_messages')
-      .insert({
-        agent_id: agentId,
-        whatsapp_message_id: sendResult.key?.id || '',
-        from_number: connection.phone_number || '',
-        to_number: to,
-        message_text: message,
-        message_type: messageType,
-        direction: 'outbound',
-        status: 'sent'
-      });
-
-    if (logError) {
-      console.error('Failed to log message:', logError);
-    }
-
-    return new Response(JSON.stringify({
-      status: 'sent',
-      messageId: sendResult.key?.id,
-      message: message
+    return new Response(JSON.stringify({ 
+      success: true,
+      message: 'Message sent successfully',
+      messageId: `out_${Date.now()}`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('WhatsApp sender error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('WhatsApp Sender error:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message || 'Failed to send message',
+      details: 'Check Evolution API configuration and connection status'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

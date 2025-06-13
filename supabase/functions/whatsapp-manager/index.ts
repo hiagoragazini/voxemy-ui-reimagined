@@ -70,7 +70,7 @@ serve(async (req) => {
     }
 
     const instanceName = `agent_${agentId}`;
-    const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-webhook/${agentId}`;
+    const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-webhook`;
     console.log('Using instance name:', instanceName);
     console.log('Webhook URL:', webhookUrl);
 
@@ -94,7 +94,7 @@ serve(async (req) => {
           }
 
           // Wait a moment before creating new instance
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
 
           // Create new instance
           console.log('Creating new Evolution API instance...');
@@ -129,7 +129,7 @@ serve(async (req) => {
 
           // Wait for instance to initialize
           console.log('Waiting for instance to initialize...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise(resolve => setTimeout(resolve, 5000));
 
           // Get QR code
           console.log('Fetching QR code...');
@@ -145,7 +145,7 @@ serve(async (req) => {
           let qrCode = null;
           if (qrResponse.ok) {
             const qrResponseText = await qrResponse.text();
-            console.log('QR response body:', qrResponseText.substring(0, 200) + '...');
+            console.log('QR response body (first 200 chars):', qrResponseText.substring(0, 200) + '...');
             
             try {
               const qrData = JSON.parse(qrResponseText);
@@ -348,36 +348,38 @@ serve(async (req) => {
                   }
 
                   return new Response(JSON.stringify({
-                    ...connection,
                     status: newStatus,
-                    phone_number: phoneNumber,
                     connected: isConnected,
-                    message: isConnected ? 'WhatsApp connected' : 'WhatsApp disconnected'
+                    instanceId: connection.instance_id,
+                    phoneNumber: phoneNumber,
+                    qrCode: isConnected ? null : connection.qr_code,
+                    lastConnectedAt: connection.last_connected_at
                   }), {
                     headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                   });
                 } catch (statusParseError) {
                   console.error('Failed to parse status response:', statusParseError);
                 }
-              } else {
-                const statusErrorText = await statusResponse.text();
-                console.error('Status check failed:', statusResponse.status, statusErrorText);
               }
             } catch (statusError) {
-              console.error('Error checking Evolution API status:', statusError);
+              console.error('Error checking Evolution API status:', statusError.message);
             }
           }
 
+          // Return database status if API check failed
           return new Response(JSON.stringify({
-            ...connection,
+            status: connection.status,
             connected: connection.status === 'connected',
-            message: `Status: ${connection.status}`
+            instanceId: connection.instance_id,
+            phoneNumber: connection.phone_number,
+            qrCode: connection.qr_code,
+            lastConnectedAt: connection.last_connected_at
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
 
         } catch (error) {
-          console.error('Status error:', error);
+          console.error('Status check error:', error);
           return new Response(JSON.stringify({ 
             error: error.message,
             details: 'Failed to check WhatsApp status'
@@ -387,105 +389,16 @@ serve(async (req) => {
           });
         }
 
-      case 'qrcode':
-        try {
-          console.log('Refreshing QR code for agent:', agentId);
-          
-          const { data: connection } = await supabase
-            .from('whatsapp_connections')
-            .select('instance_id')
-            .eq('agent_id', agentId)
-            .single();
-
-          if (!connection?.instance_id) {
-            return new Response(JSON.stringify({ 
-              error: 'No active instance found',
-              message: 'Connect WhatsApp first'
-            }), {
-              status: 404,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          }
-
-          const qrResponse = await fetch(`${evolutionApiUrl}/instance/connect/${connection.instance_id}`, {
-            headers: {
-              'apikey': evolutionApiKey
-            }
-          });
-
-          console.log('QR refresh response status:', qrResponse.status);
-
-          if (qrResponse.ok) {
-            const qrResponseText = await qrResponse.text();
-            console.log('QR refresh response body length:', qrResponseText.length);
-            
-            try {
-              const qrData = JSON.parse(qrResponseText);
-              const qrCode = qrData.base64 || qrData.qrcode?.base64 || qrData.qr;
-              
-              if (qrCode) {
-                // Update QR code in database
-                await supabase
-                  .from('whatsapp_connections')
-                  .update({ 
-                    qr_code: qrCode,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('agent_id', agentId);
-
-                console.log('QR code updated successfully');
-
-                return new Response(JSON.stringify({
-                  qrCode: qrCode,
-                  message: 'QR code refreshed successfully'
-                }), {
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                });
-              }
-            } catch (qrParseError) {
-              console.error('Failed to parse QR refresh response:', qrParseError);
-            }
-          } else {
-            const qrErrorText = await qrResponse.text();
-            console.error('QR refresh failed:', qrResponse.status, qrErrorText);
-          }
-
-          return new Response(JSON.stringify({ 
-            error: 'QR code not available',
-            message: 'Unable to generate QR code. Try connecting again.'
-          }), {
-            status: 404,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-
-        } catch (error) {
-          console.error('QR code error:', error);
-          return new Response(JSON.stringify({ 
-            error: error.message,
-            details: 'Failed to refresh QR code'
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-
       default:
-        console.error('Invalid action:', action);
-        return new Response(JSON.stringify({ 
-          error: 'Invalid action',
-          validActions: ['connect', 'disconnect', 'status', 'qrcode']
-        }), {
+        return new Response(JSON.stringify({ error: 'Invalid action' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
 
   } catch (error) {
-    console.error('WhatsApp manager error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      details: 'Unexpected error in WhatsApp manager'
-    }), {
+    console.error('WhatsApp Manager error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
