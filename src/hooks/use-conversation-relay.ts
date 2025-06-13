@@ -168,7 +168,9 @@ export function useConversationRelay() {
         // Parse conversation log for real-time updates
         if (data.conversation_log) {
           try {
-            const logData = JSON.parse(data.conversation_log);
+            const logData = typeof data.conversation_log === 'string' 
+              ? JSON.parse(data.conversation_log) 
+              : data.conversation_log;
             console.log(`📋 Log da conversa:`, logData);
           } catch (parseError) {
             console.error("❌ Erro ao analisar log da conversa:", parseError);
