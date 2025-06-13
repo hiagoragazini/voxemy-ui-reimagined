@@ -115,10 +115,10 @@ export function useConversationRelay() {
         
         setLastPolled(Date.now());
         
-        // Fetch call status and transcript
+        // Fetch call status and transcript with only existing columns
         const { data, error } = await supabase
           .from("call_logs")
-          .select("status, transcription, conversation_relay_active, conversation_log")
+          .select("status, transcription, conversation_relay_active, conversation_log, websocket_url")
           .eq("call_sid", sid)
           .maybeSingle();
           
@@ -136,7 +136,8 @@ export function useConversationRelay() {
           status: data.status,
           hasTranscription: !!data.transcription,
           relayActive: data.conversation_relay_active,
-          hasLog: !!data.conversation_log
+          hasLog: !!data.conversation_log,
+          websocketUrl: data.websocket_url
         });
         
         // Update call status

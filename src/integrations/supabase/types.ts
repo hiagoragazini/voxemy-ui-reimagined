@@ -123,6 +123,7 @@ export type Database = {
           call_analysis: Json | null
           call_sid: string
           campaign_id: string | null
+          conversation_log: Json | null
           conversation_relay_active: boolean | null
           created_at: string
           duration: number | null
@@ -134,12 +135,14 @@ export type Database = {
           to_number: string | null
           transcription: string | null
           transcription_status: string | null
+          websocket_url: string | null
         }
         Insert: {
           agent_id?: string | null
           call_analysis?: Json | null
           call_sid: string
           campaign_id?: string | null
+          conversation_log?: Json | null
           conversation_relay_active?: boolean | null
           created_at?: string
           duration?: number | null
@@ -151,12 +154,14 @@ export type Database = {
           to_number?: string | null
           transcription?: string | null
           transcription_status?: string | null
+          websocket_url?: string | null
         }
         Update: {
           agent_id?: string | null
           call_analysis?: Json | null
           call_sid?: string
           campaign_id?: string | null
+          conversation_log?: Json | null
           conversation_relay_active?: boolean | null
           created_at?: string
           duration?: number | null
@@ -168,6 +173,7 @@ export type Database = {
           to_number?: string | null
           transcription?: string | null
           transcription_status?: string | null
+          websocket_url?: string | null
         }
         Relationships: [
           {
