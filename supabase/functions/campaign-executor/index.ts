@@ -8,23 +8,20 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Credenciais do Supabase não estão configuradas");
+      throw new Error("Credenciais do Supabase não configuradas");
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get request parameters
     const { 
       campaignId, 
       maxCalls = 5, 
@@ -32,52 +29,68 @@ serve(async (req) => {
       respectBusinessHours = true
     } = await req.json();
 
-    console.log(`Executor de campanha iniciado - Modo: ${dryRun ? 'Simulação' : 'Produção'}`);
+    console.log(`Campaign Executor iniciado - Modo: ${dryRun ? 'Simulação' : 'Produção'}`);
     console.log(`Parâmetros: campaignId=${campaignId || 'todas'}, maxCalls=${maxCalls}`);
 
-    // Check if current time is within business hours (9 AM to 6 PM)
+    // Verificar horário comercial (9h às 18h, Segunda a Sexta)
     const now = new Date();
     const currentHour = now.getHours();
-    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
-    // Default business hours: Monday-Friday, 9 AM - 6 PM
+    const currentDay = now.getDay();
     const isBusinessHours = currentDay >= 1 && currentDay <= 5 && currentHour >= 9 && currentHour < 18;
     
-    // If respectBusinessHours is true and we're outside business hours, return early
     if (respectBusinessHours && !isBusinessHours) {
-      console.log(`Fora do horário comercial (${currentDay}:${currentHour}). Nenhuma chamada será feita.`);
+      console.log(`Fora do horário comercial (${currentDay}:${currentHour}). Execução cancelada.`);
       
       return new Response(
         JSON.stringify({
           success: true,
-          message: "Fora do horário comercial. Nenhuma chamada será feita.",
+          message: "Fora do horário comercial. Nenhuma ligação será feita.",
           processedCampaigns: 0,
           processedLeads: 0,
           errors: 0,
           dryRun,
           timestamp: now.toISOString(),
-          businessHours: {
-            isBusinessHours,
-            currentDay,
-            currentHour
-          }
+          businessHours: { isBusinessHours, currentDay, currentHour }
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    // Process campaigns and make calls
+    // Rate limiting - verificar chamadas recentes
+    const oneMinuteAgo = new Date();
+    oneMinuteAgo.setMinutes(oneMinuteAgo.getMinutes() - 1);
+    
+    const { count: recentCallCount } = await supabase
+      .from("call_logs")
+      .select("*", { count: "exact", head: true })
+      .gt("recorded_at", oneMinuteAgo.toISOString());
+    
+    const maxCallsPerMinute = 10;
+    if (recentCallCount >= maxCallsPerMinute) {
+      console.log(`Rate limit atingido: ${recentCallCount} chamadas no último minuto.`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Rate limit atingido. Aguardando próximo ciclo.",
+          processedCampaigns: 0,
+          processedLeads: 0,
+          errors: 0,
+          rateLimited: true
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     let processedCampaigns = 0;
     let processedLeads = 0;
     let errors = 0;
     
-    // Get active campaigns
+    // Buscar campanhas ativas
     let campaignsQuery = supabase
       .from("campaigns")
       .select("*, agents(*)")
       .eq("status", "active");
       
-    // If campaignId is provided, filter by it
     if (campaignId) {
       campaignsQuery = campaignsQuery.eq("id", campaignId);
     }
@@ -91,13 +104,11 @@ serve(async (req) => {
     
     console.log(`Encontradas ${campaigns?.length || 0} campanhas ativas`);
     
-    // Process each campaign
     if (campaigns && campaigns.length > 0) {
       for (const campaign of campaigns) {
         try {
-          // Ensure there is an agent and the agent is active
           if (!campaign.agent_id || campaign.agents?.status !== "active") {
-            console.log(`Campanha ${campaign.id} pulada: agente inativo ou não encontrado`);
+            console.log(`Campanha ${campaign.id} pulada: agente inativo`);
             continue;
           }
           
@@ -119,7 +130,7 @@ serve(async (req) => {
     
     const responseData = {
       success: true,
-      message: `Execução de campanhas concluída: ${processedLeads} leads processados em ${processedCampaigns} campanhas`,
+      message: `Execução concluída: ${processedLeads} leads processados em ${processedCampaigns} campanhas`,
       processedCampaigns,
       processedLeads,
       errors,
@@ -127,21 +138,20 @@ serve(async (req) => {
       timestamp: now.toISOString()
     };
     
-    console.log(`Resultado: ${JSON.stringify(responseData)}`);
+    console.log(`Resultado final: ${JSON.stringify(responseData)}`);
     
-    // Return results
     return new Response(
       JSON.stringify(responseData),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
     
   } catch (error) {
-    console.error("Error processing campaigns:", error);
+    console.error("Erro no campaign-executor:", error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "Unknown error",
+        error: error.message || "Erro desconhecido",
         timestamp: new Date().toISOString()
       }),
       { 
@@ -152,37 +162,19 @@ serve(async (req) => {
   }
 });
 
-// Process a single campaign
 async function processCampaign(
   supabase: any, 
   campaign: any,
   maxCalls: number,
   dryRun: boolean
 ): Promise<{ processedLeads: number, errors: number }> {
-  // Enhanced rate limiting by checking the most recent calls to avoid flooding
-  const oneMinuteAgo = new Date();
-  oneMinuteAgo.setMinutes(oneMinuteAgo.getMinutes() - 1);
-  
-  // Check how many calls have been made in the last minute to avoid rate limiting
-  const { count: recentCallCount } = await supabase
-    .from("call_logs")
-    .select("*", { count: "exact", head: true })
-    .gt("recorded_at", oneMinuteAgo.toISOString());
-  
-  // Simple rate limiting - no more than 10 calls per minute
-  const maxCallsPerMinute = 10;
-  if (recentCallCount >= maxCallsPerMinute) {
-    console.log(`Taxa limite atingida: ${recentCallCount} chamadas no último minuto. Aguardando...`);
-    return { processedLeads: 0, errors: 0 };
-  }
-  
   let processedLeads = 0;
   let errors = 0;
 
   try {
     console.log(`Buscando leads pendentes para campanha ${campaign.id}`);
     
-    // Get pending leads for this campaign
+    // Buscar leads pendentes
     const { data: leads, error: leadsError } = await supabase
       .from("leads")
       .select("*")
@@ -192,28 +184,30 @@ async function processCampaign(
       .limit(maxCalls);
       
     if (leadsError) {
-      console.error(`Erro ao buscar leads para campanha ${campaign.id}:`, leadsError);
+      console.error(`Erro ao buscar leads:`, leadsError);
       return { processedLeads: 0, errors: 1 };
     }
     
-    // If no pending leads, check if we should mark campaign as completed
     if (!leads || leads.length === 0) {
-      console.log(`Nenhum lead pendente encontrado para campanha ${campaign.id}`);
+      console.log(`Nenhum lead pendente para campanha ${campaign.id}`);
       
-      const { data: remainingLeads } = await supabase
+      // Verificar se todos os leads foram processados
+      const { count: remainingLeads } = await supabase
         .from("leads")
-        .select("count", { count: "exact", head: true })
+        .select("*", { count: "exact", head: true })
         .eq("campaign_id", campaign.id)
-        .not("status", "eq", "completed");
+        .eq("status", "pending");
         
-      if (remainingLeads && remainingLeads.count === 0) {
-        // All leads completed, mark campaign as completed
+      if (remainingLeads === 0) {
         console.log(`Todos os leads processados. Marcando campanha ${campaign.id} como concluída`);
         
         if (!dryRun) {
           await supabase
             .from("campaigns")
-            .update({ status: "completed", end_date: new Date().toISOString() })
+            .update({ 
+              status: "completed", 
+              end_date: new Date().toISOString() 
+            })
             .eq("id", campaign.id);
         }
       }
@@ -223,89 +217,80 @@ async function processCampaign(
     
     console.log(`Processando ${leads.length} leads para campanha ${campaign.id}`);
     
-    // Process each lead (make a call for each)
     for (const lead of leads) {
       try {
-        console.log(`Processando lead: ${lead.name} (${lead.id})`);
+        console.log(`Processando lead: ${lead.name} (${lead.phone})`);
         
         if (dryRun) {
-          console.log(`[SIMULAÇÃO] Chamada seria feita para ${lead.phone}`);
+          console.log(`[SIMULAÇÃO] Ligação seria feita para ${lead.phone}`);
           processedLeads++;
           continue;
         }
         
-        // Make call via make-call function
-        const callbackUrl = `${supabaseUrl}/functions/v1/call-status`;
+        // Preparar mensagem personalizada baseada no agente
+        const agent = campaign.agents;
+        let message = agent.default_greeting || 
+          `Olá ${lead.name}, aqui é ${agent.name}. Como posso ajudá-lo hoje?`;
         
-        // Improved error handling for fetch operations
-        try {
-          const callResponse = await fetch(`${supabaseUrl}/functions/v1/make-call`, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${supabaseServiceKey}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              phoneNumber: lead.phone,
-              callbackUrl,
-              agentId: campaign.agent_id,
-              campaignId: campaign.id,
-              leadId: lead.id,
-              agentName: campaign.agents.name,
-              voiceId: campaign.agents.voice_id,
-              useAI: true
-            })
-          });
-          
-          if (!callResponse.ok) {
-            const errorText = await callResponse.text();
-            throw new Error(`HTTP error ${callResponse.status}: ${errorText}`);
+        // Personalizar mensagem com informações do lead e campanha
+        message = message
+          .replace(/\{nome\}/g, lead.name || "")
+          .replace(/\{campanha\}/g, campaign.name || "");
+        
+        // Fazer ligação via make-call
+        const { error: callError } = await supabase.functions.invoke('make-call', {
+          body: {
+            phoneNumber: lead.phone,
+            callbackUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/call-status`,
+            agentId: campaign.agent_id,
+            campaignId: campaign.id,
+            leadId: lead.id,
+            agentName: agent.name,
+            voiceId: agent.voice_id || "21m00Tcm4TlvDq8ikWAM",
+            useAI: true,
+            message: message,
+            recordCall: true,
+            transcribeCall: true
           }
+        });
+        
+        if (callError) {
+          console.error(`Erro ao fazer ligação para lead ${lead.id}:`, callError);
           
-          const callResult = await callResponse.json();
-          
-          if (!callResult.success) {
-            throw new Error(callResult.error || "Unknown error making call");
-          }
-          
-          console.log(`Chamada iniciada com sucesso para lead ${lead.id}, SID: ${callResult.callSid}`);
-          
-          // Mark lead as called
-          await supabase
-            .from("leads")
-            .update({
-              status: "called",
-              call_result: "Chamada em andamento"
-            })
-            .eq("id", lead.id);
-            
-          processedLeads++;
-          
-        } catch (fetchError) {
-          console.error(`Erro ao chamar função make-call para lead ${lead.id}:`, fetchError);
-          
-          // Mark lead as failed
+          // Marcar lead como falhado
           await supabase
             .from("leads")
             .update({
               status: "failed",
-              call_result: `Erro: ${fetchError.message || "Falha na chamada"}`
+              call_result: `Erro: ${callError.message || "Falha na ligação"}`
             })
             .eq("id", lead.id);
             
           errors++;
+        } else {
+          console.log(`Ligação iniciada com sucesso para lead ${lead.id}`);
+          
+          // Marcar lead como chamado
+          await supabase
+            .from("leads")
+            .update({
+              status: "called",
+              call_result: "Ligação em andamento"
+            })
+            .eq("id", lead.id);
+            
+          processedLeads++;
         }
         
-        // Add a small delay between calls to avoid overwhelming the Twilio API
+        // Pausa entre ligações para evitar sobrecarga
         if (processedLeads > 0 && processedLeads < leads.length) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
         
       } catch (leadError) {
         console.error(`Erro ao processar lead ${lead.id}:`, leadError);
         
         if (!dryRun) {
-          // Mark lead as failed
           await supabase
             .from("leads")
             .update({
@@ -322,7 +307,7 @@ async function processCampaign(
     console.log(`Campanha ${campaign.id} concluída: ${processedLeads} leads processados, ${errors} erros`);
     return { processedLeads, errors };
   } catch (error) {
-    console.error(`Erro geral em processCampaign para ${campaign.id}:`, error);
+    console.error(`Erro geral em processCampaign:`, error);
     return { processedLeads, errors: errors + 1 };
   }
 }

@@ -1,78 +1,153 @@
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Phone, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Play, Loader2, Users, Phone } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RunCampaignButtonProps {
   campaignId: string;
-  maxCalls?: number;
-  variant?: "default" | "outline" | "secondary" | "destructive" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
-  className?: string;
+  campaignName: string;
+  totalLeads: number;
+  pendingLeads: number;
+  onCampaignRun?: () => void;
 }
 
 export function RunCampaignButton({ 
   campaignId, 
-  maxCalls = 3,
-  variant = "outline",
-  size = "sm",
-  className = ""
+  campaignName, 
+  totalLeads, 
+  pendingLeads,
+  onCampaignRun 
 }: RunCampaignButtonProps) {
-  const [loading, setLoading] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const { toast } = useToast();
 
-  const handleRunCampaign = async () => {
+  const handleRunCampaign = async (dryRun: boolean = false) => {
+    setIsRunning(true);
+    
     try {
-      setLoading(true);
+      console.log(`Iniciando campanha ${campaignId} - Modo: ${dryRun ? 'Simulação' : 'Produção'}`);
       
-      const { data, error } = await supabase.functions.invoke("campaign-executor", {
+      const { data, error } = await supabase.functions.invoke('campaign-executor', {
         body: {
-          campaignId,
-          maxCalls,
-          dryRun: false
+          campaignId: campaignId,
+          maxCalls: Math.min(pendingLeads, 5), // Máximo 5 ligações por vez
+          dryRun: dryRun,
+          respectBusinessHours: true
         }
       });
-      
+
       if (error) {
-        throw new Error(error.message);
+        console.error('Erro ao executar campanha:', error);
+        throw error;
       }
-      
-      if (data?.success) {
-        toast.success(
-          `Campanha executada com sucesso! ${data.processedLeads || 0} leads processados.`,
-          { duration: 5000 }
-        );
+
+      console.log('Resultado da execução:', data);
+
+      if (data.success) {
+        toast({
+          title: dryRun ? "Simulação Concluída" : "Campanha Executada",
+          description: data.message || `${data.processedLeads} leads processados com sucesso`,
+        });
+
+        // Chamar callback se fornecido
+        if (onCampaignRun) {
+          onCampaignRun();
+        }
       } else {
-        throw new Error(data?.error || "Erro ao executar campanha");
+        throw new Error(data.error || 'Erro desconhecido na execução');
       }
+
     } catch (error: any) {
-      console.error("Error running campaign:", error);
-      toast.error("Erro ao executar campanha: " + (error.message || "Erro desconhecido"));
+      console.error('Erro na execução da campanha:', error);
+      toast({
+        title: "Erro",
+        description: `Erro ao executar campanha: ${error.message}`,
+        variant: "destructive"
+      });
     } finally {
-      setLoading(false);
+      setIsRunning(false);
     }
   };
-  
+
+  if (pendingLeads === 0) {
+    return (
+      <Button variant="outline" disabled>
+        <Users className="mr-2 h-4 w-4" />
+        Nenhum lead pendente
+      </Button>
+    );
+  }
+
   return (
-    <Button
-      variant={variant}
-      size={size}
-      className={className}
-      disabled={loading}
-      onClick={handleRunCampaign}
-    >
-      {loading ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          Executando...
-        </>
-      ) : (
-        <>
-          <Phone className="h-4 w-4 mr-2" />
-          Executar Agora
-        </>
-      )}
-    </Button>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button 
+          className="bg-green-600 hover:bg-green-700"
+          disabled={isRunning}
+        >
+          {isRunning ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Play className="mr-2 h-4 w-4" />
+          )}
+          {isRunning ? 'Executando...' : 'Executar Campanha'}
+        </Button>
+      </AlertDialogTrigger>
+      
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Phone className="h-5 w-5" />
+            Executar Campanha: {campaignName}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="space-y-2">
+            <p>
+              Esta ação iniciará ligações automáticas para os leads pendentes.
+            </p>
+            <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+              <p><strong>Total de leads:</strong> {totalLeads}</p>
+              <p><strong>Leads pendentes:</strong> {pendingLeads}</p>
+              <p><strong>Ligações nesta execução:</strong> {Math.min(pendingLeads, 5)}</p>
+            </div>
+            <p className="text-sm text-gray-600">
+              As ligações serão feitas apenas em horário comercial (9h às 18h, Segunda a Sexta).
+            </p>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        
+        <AlertDialogFooter className="gap-2">
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          
+          <AlertDialogAction
+            onClick={() => handleRunCampaign(true)}
+            variant="outline"
+            disabled={isRunning}
+          >
+            {isRunning ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="mr-2 h-4 w-4" />
+            )}
+            Simular
+          </AlertDialogAction>
+          
+          <AlertDialogAction
+            onClick={() => handleRunCampaign(false)}
+            className="bg-green-600 hover:bg-green-700"
+            disabled={isRunning}
+          >
+            {isRunning ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Phone className="mr-2 h-4 w-4" />
+            )}
+            Executar Agora
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
