@@ -7,6 +7,7 @@ export interface CallTranscript {
   role: "user" | "assistant";
   text: string;
   timestamp?: string;
+  confidence?: number;
 }
 
 export function useConversationRelay() {
@@ -47,12 +48,13 @@ export function useConversationRelay() {
         throw new Error("Número de telefone inválido");
       }
       
-      console.log("Iniciando chamada com ConversationRelay:", {
+      console.log("🚀 Iniciando chamada ConversationRelay CORRIGIDO:", {
         phoneNumber: cleanPhone,
         agentId,
         campaignId,
         leadId,
-        testMode
+        testMode,
+        timestamp: new Date().toISOString()
       });
       
       // Call the Edge Function to make the call
@@ -67,11 +69,11 @@ export function useConversationRelay() {
       });
       
       if (error) {
-        console.error("Erro ao fazer chamada:", error);
+        console.error("❌ Erro ao fazer chamada:", error);
         throw new Error(error.message || "Falha ao conectar");
       }
       
-      console.log("Chamada iniciada com sucesso:", data);
+      console.log("✅ Chamada iniciada com sucesso - CORRIGIDO:", data);
       
       if (data.success && data.callSid) {
         setCallSid(data.callSid);
@@ -80,15 +82,15 @@ export function useConversationRelay() {
         // Start polling for call status and transcripts
         startPolling(data.callSid);
         
-        toast.success("Chamada iniciada com sucesso! ConversationRelay ativo.");
+        toast.success("🎉 Chamada iniciada com sucesso! ConversationRelay CORRIGIDO ativo com vozes nativas.");
         return data;
       } else {
         throw new Error("Resposta inválida do servidor");
       }
     } catch (err: any) {
-      console.error("Erro inesperado ao fazer chamada:", err);
+      console.error("❌ Erro inesperado ao fazer chamada:", err);
       setError(err.message || "Falha inesperada");
-      toast.error(`Erro: ${err.message || "Falha inesperada"}`);
+      toast.error(`❌ Erro: ${err.message || "Falha inesperada"}`);
       return null;
     } finally {
       setIsLoading(false);
@@ -102,10 +104,12 @@ export function useConversationRelay() {
     setIsPolling(true);
     setLastPolled(Date.now());
     
+    console.log(`🔄 Iniciando polling para CallSid: ${sid}`);
+    
     const pollInterval = setInterval(async () => {
       try {
-        // Only poll if we haven't polled in the last 1 second
-        if (Date.now() - lastPolled < 1000) {
+        // Only poll if we haven't polled in the last 2 seconds
+        if (Date.now() - lastPolled < 2000) {
           return;
         }
         
@@ -114,44 +118,69 @@ export function useConversationRelay() {
         // Fetch call status and transcript
         const { data, error } = await supabase
           .from("call_logs")
-          .select("status, transcription, conversation_relay_active")
+          .select("status, transcription, conversation_relay_active, conversation_log")
           .eq("call_sid", sid)
-          .single();
+          .maybeSingle();
           
         if (error) {
-          console.error("Erro ao buscar status da chamada:", error);
+          console.error("❌ Erro ao buscar status da chamada:", error);
           return;
         }
         
+        if (!data) {
+          console.log(`⚠️ Nenhum log encontrado para CallSid: ${sid}`);
+          return;
+        }
+        
+        console.log(`📊 Dados da chamada:`, {
+          status: data.status,
+          hasTranscription: !!data.transcription,
+          relayActive: data.conversation_relay_active,
+          hasLog: !!data.conversation_log
+        });
+        
         // Update call status
-        if (data && data.status) {
+        if (data.status) {
           setCallStatus(data.status);
           
           // Stop polling if call is completed/failed
           if (["completed", "failed", "busy", "no-answer", "canceled"].includes(data.status)) {
+            console.log(`🏁 Chamada finalizada com status: ${data.status}`);
             clearInterval(pollInterval);
             setIsPolling(false);
           }
         }
         
         // Update transcript if available
-        if (data && data.transcription) {
+        if (data.transcription) {
           try {
             const transcriptData = JSON.parse(data.transcription);
-            if (Array.isArray(transcriptData)) {
+            if (Array.isArray(transcriptData) && transcriptData.length > 0) {
+              console.log(`📝 Transcrição atualizada: ${transcriptData.length} mensagens`);
               setTranscript(transcriptData);
             }
           } catch (parseError) {
-            console.error("Erro ao analisar transcrição:", parseError);
+            console.error("❌ Erro ao analisar transcrição:", parseError);
+          }
+        }
+        
+        // Parse conversation log for real-time updates
+        if (data.conversation_log) {
+          try {
+            const logData = JSON.parse(data.conversation_log);
+            console.log(`📋 Log da conversa:`, logData);
+          } catch (parseError) {
+            console.error("❌ Erro ao analisar log da conversa:", parseError);
           }
         }
       } catch (pollError) {
-        console.error("Erro durante polling:", pollError);
+        console.error("❌ Erro durante polling:", pollError);
       }
-    }, 2000); // Poll every 2 seconds
+    }, 3000); // Poll every 3 seconds (mais estável)
     
     // Clean up interval on unmount
     return () => {
+      console.log(`🛑 Parando polling para CallSid: ${sid}`);
       clearInterval(pollInterval);
       setIsPolling(false);
     };
@@ -159,6 +188,7 @@ export function useConversationRelay() {
   
   // Stop polling explicitly
   const stopPolling = useCallback(() => {
+    console.log("🛑 Polling parado manualmente");
     setIsPolling(false);
   }, []);
 

@@ -1,5 +1,6 @@
-// Servidor WebSocket dedicado para Twilio ConversationRelay - VOZES NATIVAS
-// Template completo para implantação em Railway/Render
+
+// Servidor WebSocket dedicado para Twilio ConversationRelay - VERSÃO CORRIGIDA
+// Template completo para implantação em Railway/Render - PROTOCOLO COMPLETO
 
 require('dotenv').config();
 const express = require('express');
@@ -14,59 +15,111 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 8080;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-// Função para log detalhado
-function logEvent(type, data) {
+console.log(`🚀 Servidor WebSocket ConversationRelay - VERSÃO CORRIGIDA - PROTOCOLO COMPLETO`);
+console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, Supabase=${!!SUPABASE_URL}`);
+console.log(`🎤 Usando APENAS vozes nativas brasileiras do ConversationRelay`);
+
+// Função para log detalhado com timestamp
+function logEvent(type, data, callSid = null) {
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] ${type}:`, JSON.stringify(data, null, 2));
+  const prefix = callSid ? `[${callSid}]` : '[SYSTEM]';
+  console.log(`${timestamp} ${prefix} ${type}:`, JSON.stringify(data, null, 2));
 }
 
-// Sistema de prompt para IA
+// Sistema de prompt otimizado para telefonia
 const systemPrompt = `Você é Laura, assistente virtual brasileira da Voxemy para atendimento telefônico.
 
 INSTRUÇÕES CRÍTICAS:
-- Seja natural, amigável e concisa (máximo 2 frases)
-- Use português brasileiro coloquial para telefone
-- Processe o que o cliente disse e responda adequadamente
-- Se não entender, peça para repetir educadamente
+- Seja natural, amigável e concisa (máximo 2 frases por resposta)
+- Use português brasileiro coloquial apropriado para telefone
+- Processe completamente o que o cliente disse antes de responder
+- Se não entender claramente, peça para repetir de forma educada
 - Mantenha a conversa fluindo naturalmente
+- Evite repetições desnecessárias
+- Foque em ajudar o cliente de forma prática
 
 Esta é uma conversa telefônica ao vivo em tempo real.`;
 
-// Função para gerar resposta da IA
-async function generateAIResponse(userText, conversationHistory = []) {
+// Função para gerar resposta da IA otimizada
+async function generateAIResponse(userText, conversationHistory = [], callSid = null) {
   if (!OPENAI_API_KEY) {
-    return "Desculpe, estou com problemas técnicos no momento.";
+    logEvent('AI_ERROR', { error: 'OpenAI API key não configurada' }, callSid);
+    return "Desculpe, estou com problemas técnicos no momento. Pode tentar novamente?";
   }
 
   try {
+    logEvent('AI_REQUEST', { userText, historyLength: conversationHistory.length }, callSid);
+    
     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        ...conversationHistory.slice(-6),
+        ...conversationHistory.slice(-8), // Últimas 8 mensagens para contexto
         { role: 'user', content: userText }
       ],
-      max_tokens: 100,
-      temperature: 0.7
+      max_tokens: 120, // Respostas mais concisas para telefone
+      temperature: 0.7,
+      presence_penalty: 0.3, // Evitar repetições
+      frequency_penalty: 0.3
     }, {
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 10000 // 10 segundos timeout
     });
 
-    return response.data.choices[0]?.message?.content?.trim() || 
-           "Desculpe, não entendi bem. Pode repetir?";
+    const aiResponse = response.data.choices[0]?.message?.content?.trim();
+    
+    if (aiResponse) {
+      logEvent('AI_RESPONSE', { response: aiResponse, tokens: response.data.usage }, callSid);
+      return aiResponse;
+    } else {
+      logEvent('AI_ERROR', { error: 'Resposta vazia da OpenAI' }, callSid);
+      return "Desculpe, não entendi bem. Pode repetir?";
+    }
   } catch (error) {
-    logEvent('AI_ERROR', { error: error.message });
-    return "Desculpe, não entendi bem. Pode repetir?";
+    logEvent('AI_ERROR', { 
+      error: error.message, 
+      status: error.response?.status,
+      data: error.response?.data 
+    }, callSid);
+    return "Desculpe, não consegui processar sua mensagem. Pode tentar novamente?";
   }
 }
 
-// Gerenciar conexões WebSocket
+// Função para salvar logs no Supabase
+async function saveConversationLog(callSid, event, data) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !callSid) return;
+
+  try {
+    await axios.post(`${SUPABASE_URL}/rest/v1/call_logs`, {
+      call_sid: callSid,
+      conversation_log: JSON.stringify({
+        event,
+        data,
+        timestamp: new Date().toISOString(),
+        server: 'external_railway'
+      }),
+      status: 'conversation_active'
+    }, {
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      }
+    });
+  } catch (error) {
+    logEvent('SUPABASE_ERROR', { error: error.message }, callSid);
+  }
+}
+
+// Gerenciar conexões WebSocket com protocolo ConversationRelay COMPLETO
 wss.on('connection', (ws, req) => {
-  // Corrigir extração da URL e callSid
+  // Extrair callSid e outros parâmetros da URL
   let callSid = null;
   let fullUrl = null;
   
@@ -98,12 +151,7 @@ wss.on('connection', (ws, req) => {
       headers: req.headers,
       userAgent: req.headers['user-agent']
     });
-    callSid = `DEBUG_${Date.now()}`;
-  } else if (!callSid.startsWith('CA')) {
-    logEvent('WARNING_INVALID_CALLSID_FORMAT', {
-      callSid: callSid,
-      expected: 'Formato CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
-    });
+    callSid = `UNKNOWN_${Date.now()}`;
   }
   
   const userAgent = req.headers['user-agent'] || '';
@@ -114,180 +162,255 @@ wss.on('connection', (ws, req) => {
       callSid: callSid,
       userAgent: userAgent,
       message: 'Conexão pode não ser do Twilio'
-    });
+    }, callSid);
   }
   
   logEvent('CONNECTION_ESTABLISHED', { 
     callSid: callSid,
     isTwilioAgent: isTwilioAgent,
     activeConnections: wss.clients.size,
-    voiceMode: 'NATIVE_TWILIO'
-  });
+    voiceMode: 'NATIVE_TWILIO_CORRECTED',
+    server: 'RAILWAY_DEDICATED'
+  }, callSid);
   
+  // Estado da conexão
   let conversationHistory = [];
   let hasGreeted = false;
+  let isConnected = false;
+  let hasStarted = false;
+  let lastTranscript = "";
   
   // Heartbeat para manter conexão ativa
   const heartbeatInterval = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.ping();
-      logEvent('HEARTBEAT_SENT', { callSid });
+      try {
+        ws.ping();
+        logEvent('HEARTBEAT_SENT', { status: 'ok' }, callSid);
+      } catch (error) {
+        logEvent('HEARTBEAT_ERROR', { error: error.message }, callSid);
+        clearInterval(heartbeatInterval);
+      }
     } else {
       clearInterval(heartbeatInterval);
     }
   }, 25000);
   
+  // Função para enviar speak event com vozes nativas
+  function sendSpeakEvent(text) {
+    if (ws.readyState !== WebSocket.OPEN) {
+      logEvent('SPEAK_ERROR', { error: 'WebSocket not open', text }, callSid);
+      return;
+    }
+
+    const speakEvent = {
+      event: 'speak',
+      text: text,
+      config: {
+        voice: 'pt-BR-FranciscaNeural', // Voz brasileira nativa
+        rate: '0.95',
+        pitch: 'medium',
+        audio_format: 'ulaw_8000'
+      }
+    };
+    
+    try {
+      ws.send(JSON.stringify(speakEvent));
+      logEvent('SPEAK_SENT', { text, config: speakEvent.config }, callSid);
+    } catch (error) {
+      logEvent('SPEAK_ERROR', { error: error.message, text }, callSid);
+    }
+  }
+  
   ws.on('message', async (message) => {
     try {
       const msg = JSON.parse(message);
       logEvent('MESSAGE_RECEIVED', { 
-        callSid, 
         event: msg.event, 
         hasData: !!msg.data,
-        messageSize: message.length
-      });
+        messageSize: message.length,
+        timestamp: new Date().toISOString()
+      }, callSid);
+      
+      // Salvar evento no Supabase
+      await saveConversationLog(callSid, 'message_received', { event: msg.event, data: msg });
       
       switch (msg.event) {
         case 'connected':
-          logEvent('HANDSHAKE_RECEIVED', { callSid });
+          logEvent('HANDSHAKE_RECEIVED', { streamSid: msg.streamSid }, callSid);
+          isConnected = true;
+          
+          // CRÍTICO: Responder imediatamente ao handshake
           const response = { event: 'connected' };
           ws.send(JSON.stringify(response));
-          logEvent('HANDSHAKE_SENT', { callSid, response });
+          logEvent('HANDSHAKE_SENT', { response }, callSid);
+          
+          await saveConversationLog(callSid, 'handshake_completed', { success: true });
           break;
           
         case 'start':
-          logEvent('CALL_START', { callSid, streamSid: msg.start?.streamSid, voiceMode: 'NATIVE_TWILIO' });
+          logEvent('CALL_START', { 
+            streamSid: msg.start?.streamSid, 
+            voiceMode: 'NATIVE_TWILIO_CORRECTED',
+            server: 'RAILWAY_DEDICATED'
+          }, callSid);
+          hasStarted = true;
+          
           if (!hasGreeted) {
             hasGreeted = true;
+            sendSpeakEvent('Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?');
             
-            // CORREÇÃO: Usar apenas vozes NATIVAS do ConversationRelay
-            const greeting = {
-              event: 'speak',
+            conversationHistory.push({
+              role: 'assistant',
+              content: 'Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?',
+              timestamp: new Date().toISOString()
+            });
+            
+            await saveConversationLog(callSid, 'greeting_sent', { 
               text: 'Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?',
-              config: {
-                voice: 'pt-BR-FranciscaNeural', // Voz brasileira nativa
-                rate: '0.95',
-                pitch: 'medium',
-                audio_format: 'ulaw_8000'
-              }
-            };
-            
-            ws.send(JSON.stringify(greeting));
-            logEvent('GREETING_SENT_NATIVE_VOICE', { callSid, greeting });
+              voice: 'pt-BR-FranciscaNeural'
+            });
           }
           break;
           
         case 'media':
-          // Log apenas a cada 50 pacotes de media para não poluir
-          if (Math.random() < 0.02) { // ~2% dos pacotes
+          // Log apenas amostra dos pacotes de media para não poluir
+          if (Math.random() < 0.01) { // ~1% dos pacotes
             logEvent('MEDIA_SAMPLE', { 
-              callSid, 
               mediaLength: msg.media?.length || 0,
-              timestamp: msg.media?.timestamp 
-            });
+              timestamp: msg.media?.timestamp,
+              sequence: msg.media?.sequence
+            }, callSid);
           }
           break;
           
         case 'transcript':
           if (msg.transcript?.speech) {
             const userSpeech = msg.transcript.speech.trim();
-            logEvent('TRANSCRIPT_RECEIVED', { 
-              callSid, 
-              speech: userSpeech,
-              confidence: msg.transcript.confidence,
-              isFinal: msg.transcript.is_final 
-            });
+            const confidence = msg.transcript.confidence;
+            const isFinal = msg.transcript.is_final;
             
-            if (userSpeech.length > 2) {
-              conversationHistory.push({ role: 'user', content: userSpeech });
+            logEvent('TRANSCRIPT_RECEIVED', { 
+              speech: userSpeech,
+              confidence: confidence,
+              isFinal: isFinal,
+              length: userSpeech.length
+            }, callSid);
+            
+            // Processar apenas transcrições finais e com confiança adequada
+            if (isFinal && userSpeech.length > 2 && userSpeech !== lastTranscript && confidence > 0.7) {
+              lastTranscript = userSpeech;
               
-              const aiResponse = await generateAIResponse(userSpeech, conversationHistory);
+              conversationHistory.push({ 
+                role: 'user', 
+                content: userSpeech,
+                timestamp: new Date().toISOString(),
+                confidence: confidence
+              });
+              
+              await saveConversationLog(callSid, 'user_speech', { 
+                text: userSpeech, 
+                confidence: confidence 
+              });
+              
+              // Gerar resposta da IA
+              const aiResponse = await generateAIResponse(userSpeech, conversationHistory, callSid);
               
               if (aiResponse) {
-                conversationHistory.push({ role: 'assistant', content: aiResponse });
+                conversationHistory.push({ 
+                  role: 'assistant', 
+                  content: aiResponse,
+                  timestamp: new Date().toISOString()
+                });
                 
-                // CORREÇÃO: Resposta com voz NATIVA apenas
-                const speakEvent = {
-                  event: 'speak',
+                sendSpeakEvent(aiResponse);
+                
+                await saveConversationLog(callSid, 'ai_response', { 
                   text: aiResponse,
-                  config: {
-                    voice: 'pt-BR-FranciscaNeural', // Voz brasileira nativa
-                    rate: '0.95',
-                    pitch: 'medium',
-                    audio_format: 'ulaw_8000'
-                  }
-                };
-                
-                ws.send(JSON.stringify(speakEvent));
-                logEvent('AI_RESPONSE_SENT_NATIVE_VOICE', { callSid, response: aiResponse });
+                  voice: 'pt-BR-FranciscaNeural'
+                });
               }
             }
           }
           break;
           
         case 'mark':
-          logEvent('MARK_RECEIVED', { callSid, mark: msg.mark });
+          logEvent('MARK_RECEIVED', { mark: msg.mark }, callSid);
           break;
           
         case 'stop':
           logEvent('CALL_END', { 
-            callSid, 
             reason: msg.reason,
             duration: conversationHistory.length,
-            voiceUsed: 'NATIVE_TWILIO' 
+            voiceUsed: 'NATIVE_TWILIO_CORRECTED',
+            server: 'RAILWAY_DEDICATED'
+          }, callSid);
+          
+          await saveConversationLog(callSid, 'call_ended', {
+            reason: msg.reason,
+            total_messages: conversationHistory.length,
+            final_history: conversationHistory
           });
+          
           clearInterval(heartbeatInterval);
           ws.close();
           break;
           
         default:
-          logEvent('UNKNOWN_EVENT', { callSid, event: msg.event, data: msg });
+          logEvent('UNKNOWN_EVENT', { event: msg.event, data: msg }, callSid);
           break;
       }
     } catch (error) {
       logEvent('MESSAGE_PARSE_ERROR', { 
-        callSid, 
         error: error.message, 
         rawMessage: message.toString().substring(0, 200) + '...' 
-      });
+      }, callSid);
     }
   });
   
   ws.on('close', (code, reason) => {
     logEvent('CONNECTION_CLOSED', { 
-      callSid, 
       code, 
       reason: reason?.toString(),
-      activeConnections: wss.clients.size - 1
-    });
+      activeConnections: wss.clients.size - 1,
+      conversationLength: conversationHistory.length
+    }, callSid);
     clearInterval(heartbeatInterval);
   });
   
   ws.on('error', (error) => {
     logEvent('WEBSOCKET_ERROR', { 
-      callSid, 
       error: error.message,
       stack: error.stack?.substring(0, 500)
-    });
+    }, callSid);
     clearInterval(heartbeatInterval);
   });
   
   ws.on('pong', () => {
-    logEvent('HEARTBEAT_PONG', { callSid });
+    logEvent('HEARTBEAT_PONG', { timestamp: new Date().toISOString() }, callSid);
   });
 });
 
-// Rotas HTTP para monitoramento
+// Rotas HTTP para monitoramento e diagnóstico
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     connections: wss.clients.size,
     port: PORT,
-    voiceMode: 'NATIVE_TWILIO_ONLY',
+    voiceMode: 'NATIVE_TWILIO_CORRECTED',
+    server: 'RAILWAY_DEDICATED',
+    version: '2.0_CORRIGIDO',
     apis: {
       openai: !!OPENAI_API_KEY,
+      supabase: !!SUPABASE_URL,
       elevenlabs: false // Removido conforme orientação Twilio
+    },
+    features: {
+      conversation_relay: true,
+      native_voices: true,
+      portuguese_support: true,
+      realtime_transcription: true,
+      ai_responses: !!OPENAI_API_KEY
     }
   });
 });
@@ -296,12 +419,16 @@ app.get('/status', (req, res) => {
   res.status(200).json({
     status: 'ok',
     connections: wss.clients.size,
-    voiceProvider: 'TWILIO_NATIVE',
-    elevenlabs: false,
+    voiceProvider: 'TWILIO_NATIVE_CORRECTED',
+    protocol: 'CONVERSATION_RELAY_COMPLETE',
+    language: 'pt-BR',
+    voice: 'pt-BR-FranciscaNeural',
     openai: !!OPENAI_API_KEY,
+    supabase: !!SUPABASE_URL,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    memory: process.memoryUsage()
+    memory: process.memoryUsage(),
+    environment: process.env.NODE_ENV || 'production'
   });
 });
 
@@ -311,7 +438,8 @@ app.get('/debug', (req, res) => {
     connections.push({
       index,
       readyState: client.readyState,
-      protocol: client.protocol
+      protocol: client.protocol,
+      url: client.url
     });
   });
   
@@ -321,17 +449,53 @@ app.get('/debug', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: {
       NODE_ENV: process.env.NODE_ENV,
-      PORT: PORT
+      PORT: PORT,
+      OPENAI_API_KEY: !!OPENAI_API_KEY,
+      SUPABASE_URL: !!SUPABASE_URL
+    },
+    websocketServer: {
+      readyState: wss.readyState,
+      clients: wss.clients.size
     }
   });
 });
 
+// Middleware para logs de requisições HTTP
+app.use((req, res, next) => {
+  logEvent('HTTP_REQUEST', {
+    method: req.method,
+    url: req.url,
+    userAgent: req.headers['user-agent'],
+    origin: req.headers.origin
+  });
+  next();
+});
+
 // Iniciar o servidor
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor WebSocket Voxemy CORRIGIDO - VOZES NATIVAS iniciado na porta ${PORT}`);
-  console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, ElevenLabs=REMOVIDO (conforme Twilio)`);
+  console.log(`🚀 Servidor WebSocket Voxemy CORRIGIDO - PROTOCOLO COMPLETO - iniciado na porta ${PORT}`);
+  console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, Supabase=${!!SUPABASE_URL}, ElevenLabs=REMOVIDO`);
   console.log(`🌐 Endpoints: /health, /status, /debug`);
-  console.log(`🔌 WebSocket pronto para Twilio ConversationRelay`);
+  console.log(`🔌 WebSocket pronto para Twilio ConversationRelay COMPLETO`);
   console.log(`🎤 Usando APENAS vozes nativas brasileiras do ConversationRelay`);
-  console.log(`🔧 Correção aplicada: Removido ElevenLabs, usando pt-BR-FranciscaNeural`);
+  console.log(`🔧 Versão: 2.0 CORRIGIDA - Protocolo ConversationRelay Completo`);
+  console.log(`🚀 Servidor Railway dedicado com autenticação corrigida`);
+  console.log(`✅ Pronto para receber chamadas do Twilio`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🔄 Recebido SIGTERM, encerrando graciosamente...');
+  server.close(() => {
+    console.log('✅ Servidor encerrado graciosamente.');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🔄 Recebido SIGINT, encerrando graciosamente...');
+  server.close(() => {
+    console.log('✅ Servidor encerrado graciosamente.');
+    process.exit(0);
+  });
 });

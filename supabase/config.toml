@@ -10,110 +10,25 @@ max_rows = 1000
 
 [auth]
 enabled = true
-port = 54322
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["https://lovable.dev", "https://lovable.app"]
-jwt_expiry = 3600
-enable_signup = true
-email_confirm = false
-
-[auth.external.google]
-enabled = false
-
-[auth.external.github]
-enabled = false
-
-[auth.external.gitlab]
-enabled = false
-
-[auth.external.bitbucket]
-enabled = false
-
-[auth.external.azure]
-enabled = false
-
-[auth.external.facebook]
-enabled = false
-
-[auth.external.discord]
-enabled = false
-
-[auth.external.twitter]
-enabled = false
-
-[auth.external.apple]
-enabled = false
-
-[auth.external.linkedin]
-enabled = false
-
-[auth.external.notion]
-enabled = false
-
-[auth.external.spotify]
-enabled = false
-
-[auth.external.slack]
-enabled = false
-
-[auth.external.workos]
-enabled = false
-
-[auth.external.zoom]
-enabled = false
-
-[db]
-port = 54322
-
-[storage]
-enabled = true
-port = 54323
-file_size_limit = "50MiB"
-
-[inbucket]
-enabled = true
 port = 54324
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+refresh_token_reuse_interval = 10
+enable_signup = true
 
-[realtime]
-enabled = true
-port = 54325
-
-[studio]
-enabled = true
-port = 54326
-
-[functions.ai-conversation]
+[functions.conversation-relay-handler]
 verify_jwt = false
 
-[functions.call-handler]
+[functions.ai-websocket-server]
 verify_jwt = false
+
+[functions.make-conversation-call]
+verify_jwt = true
 
 [functions.call-status]
 verify_jwt = false
 
-[functions.make-call]
-verify_jwt = false
-
-[functions.make-conversation-call]
-verify_jwt = false
-
-[functions.test-audio-call]
-verify_jwt = false
-
-[functions.text-to-speech]
-verify_jwt = false
-
-[functions.twilio-diagnostic]
-verify_jwt = false
-
-[functions.twilio-echo]
-verify_jwt = false
-
-[functions.whatsapp-webhook]
-verify_jwt = false
-
-[functions.whatsapp-manager]
-verify_jwt = false
-
-[functions.whatsapp-sender]
-verify_jwt = false
+[functions.campaign-executor]
+verify_jwt = true

@@ -6,8 +6,9 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-console.log("🚀 Iniciando servidor WebSocket ConversationRelay Protocol - VOZES NATIVAS TWILIO");
-console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, Usando vozes nativas Twilio`);
+console.log("🚀 WebSocket Server ConversationRelay - FALLBACK CORRIGIDO - Vozes Nativas Twilio");
+console.log(`📊 APIs: OpenAI=${!!OPENAI_API_KEY}, Supabase=${!!SUPABASE_URL}`);
+console.log(`🔧 Modo: FALLBACK para quando servidor externo não disponível`);
 
 serve(async (req) => {
   const upgradeHeader = req.headers.get("Upgrade");
@@ -19,7 +20,7 @@ serve(async (req) => {
   const callSid = url.searchParams.get("callSid");
   const agentId = url.searchParams.get("agentId");
   
-  console.log(`🎯 Nova conexão WebSocket: CallSid=${callSid}, AgentId=${agentId}`);
+  console.log(`🎯 FALLBACK WebSocket: CallSid=${callSid}, AgentId=${agentId}`);
 
   const { socket, response } = Deno.upgradeWebSocket(req);
   
@@ -27,22 +28,24 @@ serve(async (req) => {
   let isConnected = false;
   let hasStarted = false;
   let hasGreeted = false;
-  let conversationHistory: Array<{role: string, content: string, timestamp: string}> = [];
+  let conversationHistory: Array<{role: string, content: string, timestamp: string, confidence?: number}> = [];
   let lastTranscript = "";
   let heartbeatInterval: number | null = null;
 
   const systemPrompt = `Você é Laura, assistente virtual brasileira da Voxemy para atendimento telefônico.
 
-INSTRUÇÕES CRÍTICAS:
-- Seja natural, amigável e concisa (máximo 2 frases)
-- Use português brasileiro coloquial para telefone
-- Processe o que o cliente disse e responda adequadamente
-- Se não entender, peça para repetir educadamente
+INSTRUÇÕES CRÍTICAS - VERSÃO CORRIGIDA:
+- Seja natural, amigável e concisa (máximo 2 frases por resposta)
+- Use português brasileiro coloquial apropriado para telefone
+- Processe completamente o que o cliente disse antes de responder
+- Se não entender claramente, peça para repetir de forma educada
 - Mantenha a conversa fluindo naturalmente
+- Evite repetições desnecessárias
+- Foque em ajudar o cliente de forma prática
 
-Esta é uma conversa telefônica ao vivo em tempo real.`;
+Esta é uma conversa telefônica ao vivo em tempo real - SISTEMA CORRIGIDO.`;
 
-  // Função para salvar logs
+  // Função para salvar logs - CORRIGIDA
   async function saveConversationLog(event: string, data: any) {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !callSid) return;
 
@@ -56,18 +59,21 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
             event,
             data,
             timestamp: new Date().toISOString(),
-            conversation_history: conversationHistory
+            conversation_history: conversationHistory,
+            server: 'supabase_fallback_corrected'
           }),
           transcription: JSON.stringify(conversationHistory),
-          status: "conversation_active"
+          status: event === "conversation_ended" ? "completed" : "conversation_active"
         })
         .eq("call_sid", callSid);
+        
+      console.log(`📝 Log salvo (FALLBACK): ${event}`);
     } catch (error) {
-      console.error("❌ Erro salvando log:", error);
+      console.error("❌ Erro salvando log (FALLBACK):", error);
     }
   }
 
-  // Função para gerar resposta da IA
+  // Função para gerar resposta da IA - MELHORADA
   async function generateAIResponse(userText: string): Promise<string | null> {
     if (!OPENAI_API_KEY) {
       return "Desculpe, estou com problemas técnicos no momento.";
@@ -90,10 +96,12 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
           model: "gpt-4o-mini",
           messages: [
             { role: "system", content: systemPrompt },
-            ...conversationHistory.slice(-6).map(h => ({ role: h.role, content: h.content }))
+            ...conversationHistory.slice(-8).map(h => ({ role: h.role, content: h.content }))
           ],
-          max_tokens: 100,
-          temperature: 0.7
+          max_tokens: 120,
+          temperature: 0.7,
+          presence_penalty: 0.3,
+          frequency_penalty: 0.3
         }),
       });
 
@@ -110,44 +118,44 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
           content: aiResponse,
           timestamp: new Date().toISOString()
         });
+        
+        console.log(`🤖 Resposta IA (FALLBACK): "${aiResponse}"`);
       }
       
       return aiResponse;
     } catch (error) {
-      console.error(`❌ Erro gerando resposta IA:`, error);
-      return "Desculpe, não entendi bem. Pode repetir?";
+      console.error(`❌ Erro gerando resposta IA (FALLBACK):`, error);
+      return "Desculpe, não consegui processar sua mensagem. Pode tentar novamente?";
     }
   }
 
-  // Função para enviar resposta de áudio no protocolo ConversationRelay com vozes NATIVAS
+  // Função para enviar resposta de áudio - CORRIGIDA
   async function sendSpeakEvent(text: string) {
     if (!isConnected) return;
 
-    console.log(`🎙️ Enviando speak event com voz NATIVA Twilio: "${text}"`);
+    console.log(`🎙️ FALLBACK - Enviando speak com voz NATIVA: "${text}"`);
     
-    // CORREÇÃO: Usar apenas vozes nativas do ConversationRelay conforme Twilio
     const speakEvent = {
       event: "speak",
       text: text,
       config: {
-        // Configuração para vozes NATIVAS do ConversationRelay
         voice: "pt-BR-FranciscaNeural", // Voz brasileira nativa
-        rate: "0.95", // Velocidade natural
-        pitch: "medium", // Tom médio
-        audio_format: "ulaw_8000" // Formato telefônico obrigatório
+        rate: "0.95",
+        pitch: "medium",
+        audio_format: "ulaw_8000"
       }
     };
     
     try {
       socket.send(JSON.stringify(speakEvent));
-      console.log(`✅ Speak event com voz nativa enviado com sucesso`);
-      await saveConversationLog("ai_response_native_voice", { text, config: speakEvent.config });
+      console.log(`✅ FALLBACK - Speak event enviado com sucesso`);
+      await saveConversationLog("ai_response_fallback", { text, config: speakEvent.config });
     } catch (error) {
-      console.error(`❌ Erro enviando speak event:`, error);
+      console.error(`❌ FALLBACK - Erro enviando speak:`, error);
     }
   }
 
-  // Configurar heartbeat para manter conexão ativa
+  // Configurar heartbeat - MELHORADO
   function startHeartbeat() {
     if (heartbeatInterval) clearInterval(heartbeatInterval);
     
@@ -155,68 +163,70 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
       if (socket.readyState === WebSocket.OPEN) {
         try {
           socket.ping();
-          console.log("❤️ Heartbeat enviado");
+          console.log("❤️ FALLBACK - Heartbeat enviado");
         } catch (error) {
-          console.error("❌ Erro enviando heartbeat:", error);
+          console.error("❌ FALLBACK - Erro heartbeat:", error);
         }
       }
-    }, 25000); // A cada 25 segundos
+    }, 25000);
   }
 
-  // Função de log detalhado
-  function logEvent(type: string, data: any) {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${type}: ${JSON.stringify(data)}`);
-  }
-
-  // Eventos WebSocket
+  // Eventos WebSocket - PROTOCOLO CORRIGIDO
   socket.onopen = () => {
-    console.log(`✅ WebSocket aberto para call ${callSid} - VOZ NATIVA ATIVA`);
+    console.log(`✅ FALLBACK WebSocket aberto para call ${callSid} - VOZ NATIVA`);
     startHeartbeat();
   };
 
   socket.onmessage = async (event) => {
     try {
       const data = JSON.parse(event.data);
-      logEvent("RECEIVED", data);
+      console.log(`📨 FALLBACK - Evento recebido: ${data.event}`);
       
       switch (data.event) {
         case "connected":
-          console.log(`🤝 Evento connected recebido - respondendo handshake`);
+          console.log(`🤝 FALLBACK - Handshake recebido`);
           isConnected = true;
           
-          // CRÍTICO: Responder imediatamente ao handshake
           const connectedResponse = { event: "connected" };
           socket.send(JSON.stringify(connectedResponse));
-          logEvent("SENT", connectedResponse);
+          console.log(`✅ FALLBACK - Handshake respondido`);
+          
+          await saveConversationLog("handshake_completed_fallback", { success: true });
           break;
           
         case "start":
-          console.log(`🚀 Evento start recebido - iniciando conversa com VOZ NATIVA`);
+          console.log(`🚀 FALLBACK - Call start com VOZ NATIVA`);
           hasStarted = true;
           
-          // Enviar mensagem de boas-vindas com voz NATIVA
           if (!hasGreeted) {
             hasGreeted = true;
-            await sendSpeakEvent("Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?");
+            await sendSpeakEvent("Olá! Aqui é a Laura da Voxemy pelo sistema de backup. Como posso ajudar você hoje?");
           }
           break;
           
         case "media":
-          // Evento de áudio do usuário - apenas loggar (não precisa processar)
-          console.log(`🎤 Evento media recebido (audio chunk)`);
+          // Log apenas ocasional para não poluir
+          if (Math.random() < 0.005) {
+            console.log(`🎤 FALLBACK - Media chunk recebido`);
+          }
           break;
           
         case "transcript":
           if (data.transcript && data.transcript.speech) {
             const userSpeech = data.transcript.speech.trim();
-            console.log(`💬 Transcrição recebida: "${userSpeech}"`);
+            const confidence = data.transcript.confidence || 0;
+            const isFinal = data.transcript.is_final;
             
-            // Evitar processar transcrições duplicadas ou muito curtas
-            if (userSpeech.length > 2 && userSpeech !== lastTranscript) {
+            console.log(`💬 FALLBACK - Transcrição: "${userSpeech}" (conf: ${confidence})`);
+            
+            if (isFinal && userSpeech.length > 2 && userSpeech !== lastTranscript && confidence > 0.7) {
               lastTranscript = userSpeech;
               
-              // Gerar resposta da IA
+              await saveConversationLog("user_speech_fallback", { 
+                text: userSpeech, 
+                confidence: confidence 
+              });
+              
               const aiResponse = await generateAIResponse(userSpeech);
               
               if (aiResponse) {
@@ -227,16 +237,15 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
           break;
           
         case "mark":
-          console.log(`🔖 Evento mark recebido: ${data.mark}`);
-          // Não requer resposta
+          console.log(`🔖 FALLBACK - Mark: ${data.mark}`);
           break;
           
         case "stop":
-          console.log(`🛑 Evento stop recebido - encerrando conexão`);
-          await saveConversationLog("conversation_ended", {
+          console.log(`🛑 FALLBACK - Call ended`);
+          await saveConversationLog("conversation_ended_fallback", {
             total_messages: conversationHistory.length,
             final_history: conversationHistory,
-            voice_used: "native_twilio"
+            server: 'supabase_fallback_corrected'
           });
           
           if (heartbeatInterval) {
@@ -248,18 +257,16 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
           break;
           
         default:
-          console.log(`❓ Evento desconhecido: ${data.event}`);
-          logEvent("UNKNOWN_EVENT", data);
+          console.log(`❓ FALLBACK - Evento desconhecido: ${data.event}`);
           break;
       }
     } catch (error) {
-      console.error(`❌ Erro processando evento:`, error);
-      logEvent("ERROR", { error: error.message, raw_data: event.data });
+      console.error(`❌ FALLBACK - Erro processando evento:`, error);
     }
   };
 
   socket.onclose = () => {
-    console.log(`🔌 WebSocket fechado para call ${callSid}`);
+    console.log(`🔌 FALLBACK WebSocket fechado para call ${callSid}`);
     isConnected = false;
     
     if (heartbeatInterval) {
@@ -269,16 +276,16 @@ Esta é uma conversa telefônica ao vivo em tempo real.`;
   };
 
   socket.onerror = (error) => {
-    console.error(`💥 Erro WebSocket para call ${callSid}:`, error);
-    logEvent("WEBSOCKET_ERROR", error);
+    console.error(`💥 FALLBACK WebSocket erro para call ${callSid}:`, error);
   };
 
   socket.onpong = () => {
-    console.log("🏓 Pong recebido - conexão ativa");
+    console.log("🏓 FALLBACK - Pong recebido");
   };
 
   return response;
 });
 
-console.log("🚀 Servidor WebSocket ConversationRelay Protocol pronto - VOZES NATIVAS TWILIO");
-console.log("🎤 Configurado para usar vozes brasileiras nativas do ConversationRelay");
+console.log("🚀 FALLBACK WebSocket Server pronto - SISTEMA CORRIGIDO");
+console.log("🎤 Configurado para usar vozes brasileiras nativas como FALLBACK");
+console.log("🔧 Sistema de backup para quando servidor Railway não disponível");
