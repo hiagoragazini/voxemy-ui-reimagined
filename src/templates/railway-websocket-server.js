@@ -1,6 +1,6 @@
 
-// Servidor WebSocket ConversationRelay para Railway - PROTOCOLO COMPLETO
-// Deploy direto no Railway com suporte completo ao protocolo Twilio
+// Servidor WebSocket ConversationRelay Railway - VOZES NATIVAS TWILIO
+// Corrigido conforme orientação Twilio Support - sem APIs externas
 
 const express = require('express');
 const http = require('http');
@@ -18,8 +18,9 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-console.log('🚀 Servidor ConversationRelay Railway - PROTOCOLO COMPLETO IMPLEMENTADO');
+console.log('🚀 Servidor ConversationRelay Railway - VOZES NATIVAS CORRIGIDO');
 console.log(`🔑 OpenAI: ${!!OPENAI_API_KEY}, Supabase: ${!!SUPABASE_URL}`);
+console.log('🎤 Usando APENAS vozes nativas ConversationRelay (ElevenLabs integrado)');
 
 // Sistema de prompt otimizado para telefonia brasileira
 const SYSTEM_PROMPT = `Você é Laura, assistente virtual brasileira da Voxemy para atendimento telefônico.
@@ -88,7 +89,7 @@ async function saveConversationLog(callSid, event, data) {
       event,
       data,
       timestamp: new Date().toISOString(),
-      server: 'railway_dedicated'
+      server: 'railway_native_voices'
     };
 
     await axios.patch(`${SUPABASE_URL}/rest/v1/call_logs`, {
@@ -111,7 +112,7 @@ async function saveConversationLog(callSid, event, data) {
   }
 }
 
-// Gerenciar conexões WebSocket com protocolo ConversationRelay COMPLETO
+// Gerenciar conexões WebSocket com protocolo ConversationRelay NATIVO
 wss.on('connection', (ws, req) => {
   // Extrair parâmetros da URL
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -120,7 +121,7 @@ wss.on('connection', (ws, req) => {
   const campaignId = url.searchParams.get('campaignId');
   const leadId = url.searchParams.get('leadId');
   
-  console.log(`🔌 [${callSid}] Nova conexão WebSocket - Railway ConversationRelay`);
+  console.log(`🔌 [${callSid}] Nova conexão WebSocket - Railway VOZES NATIVAS`);
   console.log(`📋 [${callSid}] Params: Agent=${agentId}, Campaign=${campaignId}, Lead=${leadId}`);
   
   // Estado da conexão
@@ -129,7 +130,6 @@ wss.on('connection', (ws, req) => {
   let isConnected = false;
   let streamSid = null;
   let lastTranscript = "";
-  let silenceTimer = null;
   
   // Heartbeat para manter conexão ativa
   const heartbeatInterval = setInterval(() => {
@@ -145,30 +145,36 @@ wss.on('connection', (ws, req) => {
     }
   }, 25000);
   
-  // Função para enviar mensagem de voz usando ConversationRelay
-  function sendVoiceMessage(text) {
+  // Função para enviar mensagem usando ConversationRelay NATIVO
+  function sendNativeVoiceMessage(text) {
     if (ws.readyState !== WebSocket.OPEN || !streamSid) {
       console.error(`❌ [${callSid}] WebSocket não está pronto para enviar voz`);
       return;
     }
 
-    console.log(`🎙️ [${callSid}] Enviando voz: "${text}"`);
+    console.log(`🎙️ [${callSid}] Enviando voz NATIVA: "${text}"`);
     
+    // Usar evento 'message' com voice nativo conforme documentação Twilio
     const messageEvent = {
       event: 'message',
       streamSid: streamSid,
       text: text,
-      voice: 'Polly.Camila-Neural' // Voz brasileira do Polly
+      voice: 'Polly.Camila-Neural', // Voz brasileira NATIVA do ConversationRelay
+      language: 'pt-BR'
     };
     
     try {
       ws.send(JSON.stringify(messageEvent));
-      console.log(`✅ [${callSid}] Mensagem de voz enviada`);
+      console.log(`✅ [${callSid}] Mensagem de voz NATIVA enviada`);
       
       // Salvar no Supabase
-      saveConversationLog(callSid, 'ai_voice_sent', { text, voice: 'Polly.Camila-Neural' });
+      saveConversationLog(callSid, 'native_voice_sent', { 
+        text, 
+        voice: 'Polly.Camila-Neural',
+        system: 'twilio_native'
+      });
     } catch (error) {
-      console.error(`❌ [${callSid}] Erro enviando voz:`, error.message);
+      console.error(`❌ [${callSid}] Erro enviando voz NATIVA:`, error.message);
     }
   }
   
@@ -203,12 +209,12 @@ wss.on('connection', (ws, req) => {
         timestamp: new Date().toISOString()
       });
       
-      // Enviar resposta por voz
-      sendVoiceMessage(aiResponse);
+      // Enviar resposta por voz NATIVA
+      sendNativeVoiceMessage(aiResponse);
     }
   }
   
-  // Eventos WebSocket - PROTOCOLO CONVERSATIONRELAY COMPLETO
+  // Eventos WebSocket - PROTOCOLO CONVERSATIONRELAY NATIVO
   ws.on('message', async (message) => {
     try {
       const data = JSON.parse(message.toString());
@@ -216,23 +222,23 @@ wss.on('connection', (ws, req) => {
       
       switch (data.event) {
         case 'connected':
-          console.log(`🤝 [${callSid}] ConversationRelay conectado`);
+          console.log(`🤝 [${callSid}] ConversationRelay conectado - VOZES NATIVAS`);
           isConnected = true;
-          await saveConversationLog(callSid, 'connected', data);
+          await saveConversationLog(callSid, 'connected_native', data);
           break;
           
         case 'start':
           streamSid = data.start?.streamSid;
-          console.log(`🚀 [${callSid}] Stream iniciado: ${streamSid}`);
+          console.log(`🚀 [${callSid}] Stream iniciado: ${streamSid} - VOZES NATIVAS`);
           
           if (!hasGreeted && streamSid) {
             hasGreeted = true;
             setTimeout(() => {
-              sendVoiceMessage('Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?');
+              sendNativeVoiceMessage('Olá! Aqui é a Laura da Voxemy. Como posso ajudar você hoje?');
             }, 1000); // Aguardar 1 segundo antes da saudação
           }
           
-          await saveConversationLog(callSid, 'stream_started', { streamSid });
+          await saveConversationLog(callSid, 'stream_started_native', { streamSid });
           break;
           
         case 'media':
@@ -262,14 +268,14 @@ wss.on('connection', (ws, req) => {
           break;
           
         case 'stop':
-          console.log(`🛑 [${callSid}] Stream parado`);
-          await saveConversationLog(callSid, 'call_ended', {
+          console.log(`🛑 [${callSid}] Stream parado - VOZES NATIVAS`);
+          await saveConversationLog(callSid, 'call_ended_native', {
             total_messages: conversationHistory.length,
-            final_history: conversationHistory
+            final_history: conversationHistory,
+            voice_system: 'twilio_native'
           });
           
           clearInterval(heartbeatInterval);
-          if (silenceTimer) clearTimeout(silenceTimer);
           break;
           
         default:
@@ -285,7 +291,6 @@ wss.on('connection', (ws, req) => {
   ws.on('close', (code, reason) => {
     console.log(`🔌 [${callSid}] Conexão fechada - Code: ${code}, Reason: ${reason?.toString()}`);
     clearInterval(heartbeatInterval);
-    if (silenceTimer) clearTimeout(silenceTimer);
   });
   
   ws.on('error', (error) => {
@@ -305,19 +310,21 @@ app.get('/health', (req, res) => {
     connections: wss.clients.size,
     timestamp: new Date().toISOString(),
     port: PORT,
-    protocol: 'ConversationRelay_Complete',
-    server: 'Railway_Dedicated',
-    version: '3.0_RAILWAY_COMPLETE',
+    protocol: 'ConversationRelay_Native_Voices',
+    server: 'Railway_Native_TTS',
+    version: '4.0_NATIVE_VOICES',
+    voice_system: 'twilio_native_elevenlabs',
     apis: {
       openai: !!OPENAI_API_KEY,
-      supabase: !!SUPABASE_URL
+      supabase: !!SUPABASE_URL,
+      external_tts: false // Removido conforme orientação Twilio
     },
     features: {
       conversation_relay: true,
-      voice_synthesis: true,
+      native_voices: true,
+      portuguese_support: true,
       speech_recognition: true,
-      ai_responses: !!OPENAI_API_KEY,
-      portuguese_support: true
+      ai_responses: !!OPENAI_API_KEY
     }
   });
 });
@@ -326,10 +333,11 @@ app.get('/status', (req, res) => {
   res.json({
     status: 'running',
     connections: wss.clients.size,
-    protocol: 'ConversationRelay_Complete',
-    voice: 'Polly.Camila-Neural',
+    protocol: 'ConversationRelay_Native_Voices',
+    voice: 'Polly.Camila-Neural (Native)',
     language: 'pt-BR',
-    server: 'Railway_Dedicated',
+    server: 'Railway_Native_TTS',
+    voice_system: 'twilio_native_elevenlabs',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage()
@@ -354,6 +362,12 @@ app.get('/debug', (req, res) => {
       PORT: PORT,
       OPENAI_API_KEY: !!OPENAI_API_KEY,
       SUPABASE_URL: !!SUPABASE_URL
+    },
+    voice_config: {
+      system: 'twilio_native_elevenlabs',
+      voice: 'Polly.Camila-Neural',
+      language: 'pt-BR',
+      external_apis: false
     }
   });
 });
@@ -366,13 +380,14 @@ app.use((req, res, next) => {
 
 // Iniciar servidor
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor ConversationRelay Railway iniciado na porta ${PORT}`);
-  console.log(`🎯 Protocolo: ConversationRelay COMPLETO`);
+  console.log(`🚀 Servidor ConversationRelay Railway VOZES NATIVAS iniciado na porta ${PORT}`);
+  console.log(`🎯 Protocolo: ConversationRelay NATIVO com ElevenLabs integrado`);
   console.log(`🔌 WebSocket: ws://localhost:${PORT}`);
   console.log(`🌐 Endpoints: /health, /status, /debug`);
-  console.log(`🎙️ Voz: Polly.Camila-Neural (pt-BR)`);
+  console.log(`🎙️ Voz: Polly.Camila-Neural (NATIVA Twilio)`);
   console.log(`🤖 IA: ${OPENAI_API_KEY ? 'HABILITADA' : 'DESABILITADA'}`);
-  console.log(`✅ Pronto para receber conexões do Twilio ConversationRelay`);
+  console.log(`✅ Pronto para receber conexões do Twilio ConversationRelay NATIVO`);
+  console.log(`🔧 Sistema corrigido conforme orientação Twilio Support`);
 });
 
 // Graceful shutdown

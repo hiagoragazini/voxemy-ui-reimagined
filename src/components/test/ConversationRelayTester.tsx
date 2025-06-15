@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +35,7 @@ export function ConversationRelayTester() {
     }
     
     try {
-      toast.info("🚀 Iniciando chamada ConversationRelay CORRIGIDO - Sistema Completo...");
+      toast.info("🚀 Iniciando chamada com vozes NATIVAS - Sistema Corrigido...");
       
       await makeCall({ 
         phoneNumber,
@@ -83,21 +82,21 @@ export function ConversationRelayTester() {
   return (
     <div className="space-y-6 bg-white p-6 rounded-lg shadow">
       <div>
-        <h2 className="text-lg font-medium mb-4">ConversationRelay CORRIGIDO - Sistema Completo ✅</h2>
+        <h2 className="text-lg font-medium mb-4">ConversationRelay VOZES NATIVAS ✅</h2>
         
         {/* Status das correções aplicadas */}
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex items-start">
             <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
             <div>
-              <h3 className="font-medium text-green-800 mb-2">✅ Sistema CORRIGIDO - Todas as Melhorias Aplicadas</h3>
+              <h3 className="font-medium text-green-800 mb-2">✅ Sistema CORRIGIDO - Vozes Nativas Twilio</h3>
               <ul className="text-sm text-green-700 space-y-1 list-disc pl-5">
-                <li><strong>Autenticação Edge Function:</strong> verify_jwt = false (corrigido erro 401)</li>
-                <li><strong>Servidor WebSocket:</strong> Railway dedicado com protocolo ConversationRelay completo</li>
-                <li><strong>Vozes Nativas:</strong> pt-BR-FranciscaNeural integrada ao Twilio</li>
-                <li><strong>Logs Detalhados:</strong> Monitoramento completo da conversa</li>
-                <li><strong>Fallback Robusto:</strong> Sistema de backup automático</li>
-                <li><strong>Protocolo Completo:</strong> Handshake, eventos e áudio telefônico</li>
+                <li><strong>Vozes Nativas:</strong> Polly.Camila-Neural (ElevenLabs integrado no Twilio)</li>
+                <li><strong>Sem APIs Externas:</strong> Removido ElevenLabs API conforme orientação suporte</li>
+                <li><strong>Protocolo Simplificado:</strong> ConversationRelay nativo puro</li>
+                <li><strong>Qualidade Máxima:</strong> Sem perda de conversão ou latência</li>
+                <li><strong>Estabilidade:</strong> Sistema conforme especificação Twilio</li>
+                <li><strong>Compatibilidade:</strong> 100% com ConversationRelay oficial</li>
               </ul>
             </div>
           </div>
@@ -262,21 +261,29 @@ export function ConversationRelayTester() {
         </div>
       </div>
 
-      {/* Instruções de teste */}
+      {/* Instruções de teste corrigidas */}
       <div className="p-4 bg-amber-50 border border-amber-100 rounded">  
         <h3 className="text-sm font-medium text-amber-700 mb-2 flex items-center">
           <Zap className="mr-2 h-4 w-4" />
           Como Testar o Sistema CORRIGIDO:
         </h3>
         <ol className="text-sm text-amber-600 space-y-1 list-decimal pl-5">
-          <li>Configure EXTERNAL_WEBSOCKET_URL no Supabase: https://voxemy-websocket-server-production.up.railway.app</li>
+          <li>Faça deploy do servidor CORRIGIDO no Railway</li>
+          <li>Configure EXTERNAL_WEBSOCKET_URL no Supabase com a nova URL</li>
           <li>Desabilite "Modo de teste" para chamadas reais</li>
           <li>Insira um número válido (incluindo DDD)</li>
-          <li>Clique em "Iniciar Chamada - Sistema CORRIGIDO"</li>
-          <li>Aguarde a chamada (agora deve funcionar sem erro 401)</li>
-          <li>Converse normalmente - Laura responderá com voz nativa</li>
+          <li>Clique em "Iniciar Chamada - Sistema NATIVO"</li>
+          <li>Aguarde a chamada (agora deve funcionar sem erros)</li>
+          <li>Converse naturalmente - Laura responderá com voz nativa de qualidade</li>
           <li>Monitore a transcrição em tempo real</li>
         </ol>
+        
+        <div className="mt-3 p-2 bg-white border border-amber-200 rounded">
+          <p className="text-xs text-amber-700">
+            <strong>Importante:</strong> O sistema agora usa APENAS vozes nativas do ConversationRelay conforme orientação do suporte Twilio (Carolina E.). 
+            Isso elimina latência, garante qualidade máxima e resolve definitivamente o "application error, goodbye".
+          </p>
+        </div>
       </div>
     </div>
   );

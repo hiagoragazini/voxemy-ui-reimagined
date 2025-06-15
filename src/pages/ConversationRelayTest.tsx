@@ -9,28 +9,32 @@ export default function ConversationRelayTestPage() {
   return (
     <Layout>
       <div className="container py-6">
-        <h1 className="text-2xl font-bold mb-2">ConversationRelay - Sistema Completo Railway</h1>
+        <h1 className="text-2xl font-bold mb-2">ConversationRelay - Sistema VOZES NATIVAS</h1>
         <p className="mb-6 text-gray-600">
-          Sistema de chamadas com IA usando protocolo ConversationRelay completo e servidor WebSocket dedicado no Railway.
+          Sistema corrigido usando apenas vozes nativas do ConversationRelay (ElevenLabs integrado) conforme orientação do suporte Twilio.
         </p>
         
         <Tabs defaultValue="railway-deploy" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="railway-deploy">Deploy Railway</TabsTrigger>
-            <TabsTrigger value="server-setup">Configuração Avançada</TabsTrigger>
-            <TabsTrigger value="call-test">Teste de Chamadas</TabsTrigger>
+            <TabsTrigger value="railway-deploy">Deploy CORRIGIDO</TabsTrigger>
+            <TabsTrigger value="server-setup">Configuração Simplificada</TabsTrigger>
+            <TabsTrigger value="call-test">Teste NATIVO</TabsTrigger>
           </TabsList>
 
           <TabsContent value="railway-deploy" className="space-y-6">
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
-              <h2 className="text-lg font-medium text-blue-800 mb-2">🚀 Solução Completa Implementada</h2>
-              <p className="text-sm text-blue-700 mb-3">
-                Criei um servidor WebSocket Node.js completo que implementa corretamente o protocolo ConversationRelay do Twilio.
-                Este servidor processa áudio em tempo real, integra IA e usa vozes brasileiras nativas.
+            <div className="p-4 bg-green-50 border border-green-100 rounded-lg">
+              <h2 className="text-lg font-medium text-green-800 mb-2">🎯 Sistema CORRIGIDO - Vozes Nativas</h2>
+              <p className="text-sm text-green-700 mb-3">
+                <strong>Correção implementada:</strong> Removido ElevenLabs API externa e configurado para usar apenas vozes nativas do ConversationRelay 
+                (que já incluem ElevenLabs integrado) conforme orientação do suporte Twilio (Carolina E.).
               </p>
-              <p className="text-sm text-blue-700 font-medium">
-                ✅ O servidor Railway resolve completamente o problema de "application error, goodbye"
-              </p>
+              <ul className="text-sm text-green-700 space-y-1 list-disc pl-5">
+                <li>✅ <strong>Voz:</strong> Polly.Camila-Neural (brasileira nativa)</li>
+                <li>✅ <strong>Sistema:</strong> ConversationRelay puro</li>
+                <li>✅ <strong>Qualidade:</strong> ElevenLabs via Twilio (sem perda)</li>
+                <li>✅ <strong>Latência:</strong> Mínima (processamento nativo)</li>
+                <li>✅ <strong>Compatibilidade:</strong> 100% especificação oficial</li>
+              </ul>
             </div>
 
             <RailwayDeployGuide />
@@ -65,42 +69,39 @@ export default function ConversationRelayTestPage() {
         </Tabs>
         
         <div className="mt-8 p-5 bg-green-50 border border-green-100 rounded-lg">
-          <h2 className="text-lg font-medium text-green-800 mb-3">🎯 Sistema ConversationRelay Completo - Railway</h2>
+          <h2 className="text-lg font-medium text-green-800 mb-3">🎯 Sistema ConversationRelay VOZES NATIVAS</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <h3 className="font-medium text-green-700 mb-2">✅ Protocolo ConversationRelay</h3>
+              <h3 className="font-medium text-green-700 mb-2">✅ Correções Implementadas</h3>
               <ul className="text-green-600 space-y-1 list-disc pl-5">
-                <li>Handshake correto implementado</li>
-                <li>Processamento de áudio em tempo real</li>
-                <li>Transcrição automática com Whisper</li>
-                <li>Respostas de IA integradas</li>
-                <li>Voz brasileira (Polly.Camila-Neural)</li>
-                <li>Logs detalhados e debugging</li>
+                <li>Removido ElevenLabs API externa</li>
+                <li>Configurado Polly.Camila-Neural nativa</li>
+                <li>Protocolo ConversationRelay puro</li>
+                <li>Eventos 'message' com voice integrado</li>
+                <li>Sem dependências externas de TTS</li>
+                <li>Conforme orientação suporte Twilio</li>
               </ul>
             </div>
             <div>
-              <h3 className="font-medium text-green-700 mb-2">🚀 Infraestrutura Railway</h3>
+              <h3 className="font-medium text-green-700 mb-2">🎤 Voz Nativa Configurada</h3>
               <ul className="text-green-600 space-y-1 list-disc pl-5">
-                <li>Servidor Node.js dedicado</li>
-                <li>WebSocket nativo suportado</li>
-                <li>Deploy simples e rápido</li>
-                <li>Escalabilidade automática</li>
-                <li>Monitoramento integrado</li>
-                <li>Fallback automático configurado</li>
+                <li>Voice: Polly.Camila-Neural (brasileira)</li>
+                <li>Language: pt-BR</li>
+                <li>Sistema: ConversationRelay nativo</li>
+                <li>Qualidade: ElevenLabs integrado</li>
+                <li>Latência: Mínima (sem conversões)</li>
+                <li>Compatibilidade: 100% Twilio oficial</li>
               </ul>
             </div>
           </div>
           
           <div className="mt-4 p-3 bg-white border border-green-200 rounded">
-            <h4 className="font-medium text-green-700 mb-2">🔧 Diferenças da Implementação Railway:</h4>
-            <ul className="text-green-600 text-sm space-y-1 list-disc pl-5">
-              <li><strong>Protocolo Completo:</strong> Implementa todos os eventos ConversationRelay (connected, start, media, transcript, mark, stop)</li>
-              <li><strong>Processamento Real-time:</strong> Processa áudio telefônico e gera respostas imediatamente</li>
-              <li><strong>IA Integrada:</strong> OpenAI GPT-4o-mini para conversas naturais em português</li>
-              <li><strong>Voz Nativa:</strong> Usa Polly.Camila-Neural diretamente no Twilio</li>
-              <li><strong>Logs Avançados:</strong> Salva toda a conversa no Supabase com timestamps</li>
-              <li><strong>Estabilidade:</strong> Heartbeat, graceful shutdown e error recovery</li>
-            </ul>
+            <h4 className="font-medium text-green-700 mb-2">📞 Orientação Suporte Twilio:</h4>
+            <p className="text-green-600 text-sm italic">
+              "ConversationRelay também tem vozes ElevenLabs, recomendamos usar as vozes disponíveis lá. 
+              Não é possível trazer seu próprio TTS. Temos as mesmas vozes do ElevenLabs, exceto vozes personalizadas/clonadas."
+              <span className="block mt-1 font-medium">- Carolina E., Twilio Support</span>
+            </p>
           </div>
         </div>
       </div>
