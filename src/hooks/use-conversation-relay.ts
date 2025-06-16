@@ -57,7 +57,7 @@ export function useConversationRelay() {
         timestamp: new Date().toISOString()
       });
       
-      // Call the Edge Function to make the call
+      // Call the Edge Function to make the call (sem autenticação JWT)
       const { data, error } = await supabase.functions.invoke("make-conversation-call", {
         body: {
           phoneNumber: cleanPhone,
@@ -69,11 +69,11 @@ export function useConversationRelay() {
       });
       
       if (error) {
-        console.error("❌ Erro ao fazer chamada:", error);
-        throw new Error(error.message || "Falha ao conectar");
+        console.error("❌ Erro na edge function:", error);
+        throw new Error(error.message || "Falha ao conectar com o servidor");
       }
       
-      console.log("✅ Chamada iniciada com sucesso - CORRIGIDO:", data);
+      console.log("✅ Chamada iniciada com sucesso - Sistema CORRIGIDO:", data);
       
       if (data.success && data.callSid) {
         setCallSid(data.callSid);
@@ -82,10 +82,10 @@ export function useConversationRelay() {
         // Start polling for call status and transcripts
         startPolling(data.callSid);
         
-        toast.success("🎉 Chamada iniciada com sucesso! ConversationRelay CORRIGIDO ativo com vozes nativas.");
+        toast.success("🎉 Chamada iniciada! ConversationRelay CORRIGIDO ativo com vozes nativas.");
         return data;
       } else {
-        throw new Error("Resposta inválida do servidor");
+        throw new Error(data.message || "Resposta inválida do servidor");
       }
     } catch (err: any) {
       console.error("❌ Erro inesperado ao fazer chamada:", err);
@@ -115,7 +115,7 @@ export function useConversationRelay() {
         
         setLastPolled(Date.now());
         
-        // Fetch call status and transcript with only existing columns
+        // Fetch call status and transcript
         const { data, error } = await supabase
           .from("call_logs")
           .select("status, transcription, conversation_relay_active, conversation_log, websocket_url")
@@ -132,7 +132,7 @@ export function useConversationRelay() {
           return;
         }
         
-        console.log(`📊 Dados da chamada:`, {
+        console.log(`📊 Status da chamada:`, {
           status: data.status,
           hasTranscription: !!data.transcription,
           relayActive: data.conversation_relay_active,
@@ -171,7 +171,7 @@ export function useConversationRelay() {
             const logData = typeof data.conversation_log === 'string' 
               ? JSON.parse(data.conversation_log) 
               : data.conversation_log;
-            console.log(`📋 Log da conversa:`, logData);
+            console.log(`📋 Log da conversa atualizado:`, logData);
           } catch (parseError) {
             console.error("❌ Erro ao analisar log da conversa:", parseError);
           }
@@ -179,7 +179,7 @@ export function useConversationRelay() {
       } catch (pollError) {
         console.error("❌ Erro durante polling:", pollError);
       }
-    }, 3000); // Poll every 3 seconds (mais estável)
+    }, 3000); // Poll every 3 seconds
     
     // Clean up interval on unmount
     return () => {
